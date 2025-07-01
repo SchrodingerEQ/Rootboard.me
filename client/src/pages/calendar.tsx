@@ -128,6 +128,11 @@ export default function CalendarPage() {
         needsAuth={authStatus?.needsAuth}
       />
       
+      {/* Debug info */}
+      <div className="bg-yellow-100 p-2 text-xs">
+        Auth Status: {JSON.stringify(authStatus)} | needsAuth: {String(authStatus?.needsAuth)}
+      </div>
+      
       <main className="flex-1 overflow-hidden">
         <div className={`view-container h-full ${currentView === 'month' ? 'active' : ''}`}>
           <MonthView 

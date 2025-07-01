@@ -133,17 +133,15 @@ export function CalendarHeader({
           </Button>
         </div>
         
-        {/* Auth Button */}
-        {needsAuth && (
-          <Button
-            size="sm"
-            className="touch-button bg-[hsl(var(--google-green))] hover:bg-[hsl(var(--google-green))]/90 text-white"
-            onClick={onAuth}
-          >
-            <Key className="mr-2" size={16} />
-            Connect Google
-          </Button>
-        )}
+        {/* Auth Button - Debug */}
+        <Button
+          size="sm"
+          className="touch-button bg-[hsl(var(--google-green))] hover:bg-[hsl(var(--google-green))]/90 text-white"
+          onClick={onAuth}
+        >
+          <Key className="mr-2" size={16} />
+          Connect Google {needsAuth ? '(Auth Needed)' : '(No Auth)'}
+        </Button>
         
         {/* Refresh Button */}
         <Button
