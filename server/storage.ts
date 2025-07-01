@@ -69,8 +69,12 @@ export class MemStorage implements IStorage {
     const id = this.currentEventId++;
     const now = new Date();
     const event: CalendarEvent = { 
-      ...insertEvent, 
+      ...insertEvent,
       id,
+      color: insertEvent.color || '#1a73e8',
+      description: insertEvent.description || null,
+      location: insertEvent.location || null,
+      isAllDay: insertEvent.isAllDay || null,
       createdAt: now,
       updatedAt: now
     };
