@@ -73,7 +73,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   }
 
   return (
-    <div className={`event-item ${eventClass} cursor-pointer hover:opacity-90 transition-opacity`}>
+    <div className={`event-item ${eventClass} cursor-pointer hover:opacity-90 transition-opacity max-w-full truncate`}>
       {event.title}
     </div>
   );
