@@ -34,8 +34,7 @@ export function CalendarHeader({
     } else if (currentView === 'week') {
       return `Week of ${currentDate.toLocaleDateString('en-US', { 
         month: 'short', 
-        day: 'numeric',
-        year: 'numeric' 
+        day: 'numeric'
       })}`;
     } else if (currentView === 'day') {
       return currentDate.toLocaleDateString('en-US', { 
