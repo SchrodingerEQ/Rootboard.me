@@ -136,7 +136,7 @@ export function CalendarHeader({
         {/* Auth Button - Debug */}
         <Button
           size="sm"
-          className="touch-button bg-[hsl(var(--google-green))] hover:bg-[hsl(var(--google-green))]/90 text-white"
+          className="touch-button bg-green-600 hover:bg-green-700 text-white border border-gray-300"
           onClick={onAuth}
         >
           <Key className="mr-2" size={16} />
