@@ -88,6 +88,18 @@
     background-color: hsl(var(--google-border));
   }
 
+  .calendar-cell {
+    background-color: white;
+    min-height: 120px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .calendar-cell .space-y-1 > * {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   /* High contrast text for all calendar elements */
   .calendar-header,
   .calendar-title,
@@ -148,6 +160,38 @@
   .event-red { background-color: var(--google-red) !important; color: white !important; }
   .event-orange { background-color: var(--google-orange) !important; color: white !important; }
   .event-purple { background-color: var(--google-purple) !important; color: white !important; }
+  
+  /* Google Calendar specific event color classes */
+  .event-google-blue { 
+    background-color: #1a73e8 !important; 
+    color: white !important; 
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+  .event-google-green { 
+    background-color: #34a853 !important; 
+    color: white !important; 
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+  .event-orange { 
+    background-color: #ff9800 !important; 
+    color: white !important; 
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+  .event-purple { 
+    background-color: #9c27b0 !important; 
+    color: white !important; 
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+  .event-red { 
+    background-color: #ea4335 !important; 
+    color: white !important; 
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
   
   .calendar-cell {
     background-color: white;

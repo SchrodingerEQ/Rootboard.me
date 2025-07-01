@@ -64,7 +64,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   if (compact) {
     return (
       <div 
-        className={`event-item ${eventClass} cursor-pointer hover:opacity-90 transition-opacity`}
+        className={`event-item ${eventClass} cursor-pointer hover:opacity-90 transition-opacity px-2 py-1 rounded text-xs truncate w-full max-w-full overflow-hidden whitespace-nowrap`}
         title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ''}`}
       >
         {event.title}
