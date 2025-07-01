@@ -31,7 +31,7 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars }: Calendar
       return calendar.backgroundColor;
     }
     
-    // Generate a color based on calendar name
+    // Generate a consistent color based on calendar ID (same logic as backend)
     const colors = [
       '#1a73e8', // Blue
       '#34a853', // Green  
@@ -41,9 +41,18 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars }: Calendar
       '#795548', // Brown
       '#607d8b', // Blue Grey
       '#e91e63', // Pink
+      '#4caf50', // Light Green
+      '#ff5722', // Deep Orange
+      '#3f51b5', // Indigo
+      '#009688', // Teal
     ];
     
-    const index = calendar.summary.length % colors.length;
+    // Create a simple hash from the calendar ID to get consistent colors
+    let hash = 0;
+    for (let i = 0; i < calendar.id.length; i++) {
+      hash = ((hash << 5) - hash + calendar.id.charCodeAt(i)) & 0xffffffff;
+    }
+    const index = Math.abs(hash) % colors.length;
     return colors[index];
   };
 

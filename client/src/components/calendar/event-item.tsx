@@ -50,7 +50,10 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
 
   if (timeSlot) {
     return (
-      <div className={`event-item ${eventClass} m-1 p-2 rounded cursor-pointer hover:opacity-90 transition-opacity`}>
+      <div 
+        className="event-item m-1 p-2 rounded cursor-pointer hover:opacity-90 transition-opacity"
+        style={{ backgroundColor, color: textColor }}
+      >
         <div className="font-medium text-sm">{event.title}</div>
         <div className="text-xs opacity-75">
           {formatTime(startTime)} - {formatTime(endTime)}
@@ -65,7 +68,8 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   if (compact) {
     return (
       <div 
-        className={`event-item ${eventClass} cursor-pointer hover:opacity-90 transition-opacity px-2 py-1 rounded text-xs truncate w-full max-w-full overflow-hidden whitespace-nowrap`}
+        className="event-item cursor-pointer hover:opacity-90 transition-opacity px-2 py-1 rounded text-xs truncate w-full max-w-full overflow-hidden whitespace-nowrap"
+        style={{ backgroundColor, color: textColor }}
         title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ''}`}
       >
         {event.title}
@@ -74,7 +78,10 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   }
 
   return (
-    <div className={`event-item ${eventClass} cursor-pointer hover:opacity-90 transition-opacity w-full max-w-full overflow-hidden`}>
+    <div 
+      className="event-item cursor-pointer hover:opacity-90 transition-opacity w-full max-w-full overflow-hidden"
+      style={{ backgroundColor, color: textColor }}
+    >
       {event.title}
     </div>
   );
