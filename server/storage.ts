@@ -46,12 +46,15 @@ export class MemStorage implements IStorage {
 
   private loadCredentialsFromFile(): void {
     try {
-      const fs = require('fs');
-      if (fs.existsSync(this.credentialsFile)) {
-        const data = fs.readFileSync(this.credentialsFile, 'utf8');
-        this.googleCredentials = JSON.parse(data);
-        console.log('Loaded Google credentials from file');
-      }
+      import('fs').then(fs => {
+        if (fs.existsSync(this.credentialsFile)) {
+          const data = fs.readFileSync(this.credentialsFile, 'utf8');
+          this.googleCredentials = JSON.parse(data);
+          console.log('Loaded Google credentials from file');
+        }
+      }).catch(() => {
+        console.log('No existing credentials file found, starting fresh');
+      });
     } catch (error) {
       console.log('No existing credentials file found, starting fresh');
     }
@@ -59,11 +62,14 @@ export class MemStorage implements IStorage {
 
   private saveCredentialsToFile(): void {
     try {
-      const fs = require('fs');
-      if (this.googleCredentials) {
-        fs.writeFileSync(this.credentialsFile, JSON.stringify(this.googleCredentials, null, 2));
-        console.log('Saved Google credentials to file');
-      }
+      import('fs').then(fs => {
+        if (this.googleCredentials) {
+          fs.writeFileSync(this.credentialsFile, JSON.stringify(this.googleCredentials, null, 2));
+          console.log('Saved Google credentials to file');
+        }
+      }).catch(error => {
+        console.error('Failed to save credentials to file:', error);
+      });
     } catch (error) {
       console.error('Failed to save credentials to file:', error);
     }
