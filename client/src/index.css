@@ -1,0 +1,186 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;700&display=swap');
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  
+  /* Google Calendar Colors */
+  --google-blue: hsl(217, 89%, 51%);
+  --google-blue-hover: hsl(217, 89%, 41%);
+  --google-green: hsl(142, 76%, 36%);
+  --google-gray: hsl(210, 11%, 42%);
+  --google-light-gray: hsl(210, 17%, 97%);
+  --google-border: hsl(220, 13%, 85%);
+  --google-red: hsl(4, 90%, 58%);
+  --google-orange: hsl(36, 100%, 50%);
+  --google-purple: hsl(291, 64%, 42%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Google Sans', 'Roboto', 'Arial', sans-serif;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+  }
+}
+
+@layer components {
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    background-color: hsl(var(--google-border));
+  }
+  
+  .calendar-cell {
+    background-color: white;
+    min-height: 120px;
+    position: relative;
+  }
+  
+  .calendar-cell:hover {
+    background-color: hsl(var(--google-light-gray));
+  }
+  
+  .event-item {
+    font-size: 12px;
+    padding: 2px 6px;
+    margin: 1px 0;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .event-google-blue {
+    background-color: hsl(var(--google-blue));
+    color: white;
+  }
+  
+  .event-google-green {
+    background-color: hsl(var(--google-green));
+    color: white;
+  }
+  
+  .event-orange {
+    background-color: hsl(var(--google-orange));
+    color: white;
+  }
+  
+  .event-purple {
+    background-color: hsl(var(--google-purple));
+    color: white;
+  }
+  
+  .event-red {
+    background-color: hsl(var(--google-red));
+    color: white;
+  }
+  
+  .touch-button {
+    min-width: 48px;
+    min-height: 48px;
+    touch-action: manipulation;
+  }
+  
+  .time-slot {
+    height: 60px;
+    border-bottom: 1px solid hsl(var(--border));
+    position: relative;
+  }
+  
+  .time-slot:hover {
+    background-color: hsl(var(--muted));
+  }
+  
+  .current-time-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: hsl(var(--google-red));
+    z-index: 10;
+  }
+  
+  .view-container {
+    display: none;
+  }
+  
+  .view-container.active {
+    display: block;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendar-cell {
+    min-height: 80px;
+  }
+}
+
+/* Kiosk mode optimizations */
+@media (min-width: 1920px) {
+  .calendar-cell {
+    min-height: 140px;
+  }
+  
+  .time-slot {
+    height: 80px;
+  }
+  
+  .touch-button {
+    min-width: 56px;
+    min-height: 56px;
+  }
+}
