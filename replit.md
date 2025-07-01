@@ -139,6 +139,11 @@ Changelog:
   - Resolved OAuth callback DNS issues with enhanced error handling
   - Verified real Google Calendar data synchronization
   - Application now displays authentic calendar events from user's Google Calendar
+  - FIXED: Implemented persistent credential storage to survive server restarts
+  - FIXED: High contrast fonts for better touchscreen readability (black text on white)
+  - FIXED: Day view now properly displays calendar events
+  - FIXED: Auto-loading of events after authentication (no manual refresh needed)
+  - FIXED: Manual authentication endpoint for easier OAuth completion
 ```
 
 ## User Preferences
