@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/pages/calendar";
@@ -88,6 +88,16 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
   const refreshEvents = useCallback(() => {
     syncMutation.mutate();
   }, [syncMutation]);
+
+  // Auto-sync events when authentication is detected and no events exist
+  const hasTriggeredSync = useRef(false);
+  useEffect(() => {
+    if (authStatus?.authenticated && events.length === 0 && !isLoading && !hasTriggeredSync.current) {
+      console.log('Auto-triggering initial calendar sync');
+      hasTriggeredSync.current = true;
+      syncMutation.mutate();
+    }
+  }, [authStatus?.authenticated, events.length, isLoading, syncMutation]);
 
   return {
     events,

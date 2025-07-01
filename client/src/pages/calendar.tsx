@@ -27,6 +27,14 @@ export default function CalendarPage() {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
+  // Auto-sync events when authentication becomes available
+  useEffect(() => {
+    if (authStatus?.authenticated && events.length === 0 && !isRefreshing) {
+      console.log('Auto-syncing calendar events on authentication');
+      refreshEvents();
+    }
+  }, [authStatus?.authenticated, events.length, isRefreshing, refreshEvents]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('auth') === 'success') {
