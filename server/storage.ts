@@ -33,6 +33,7 @@ export class MemStorage implements IStorage {
   private currentUserId: number;
   private currentEventId: number;
   private currentCredentialsId: number;
+  private credentialsFile = './google_credentials.json';
 
   constructor() {
     this.users = new Map();
@@ -40,6 +41,32 @@ export class MemStorage implements IStorage {
     this.currentUserId = 1;
     this.currentEventId = 1;
     this.currentCredentialsId = 1;
+    this.loadCredentialsFromFile();
+  }
+
+  private loadCredentialsFromFile(): void {
+    try {
+      const fs = require('fs');
+      if (fs.existsSync(this.credentialsFile)) {
+        const data = fs.readFileSync(this.credentialsFile, 'utf8');
+        this.googleCredentials = JSON.parse(data);
+        console.log('Loaded Google credentials from file');
+      }
+    } catch (error) {
+      console.log('No existing credentials file found, starting fresh');
+    }
+  }
+
+  private saveCredentialsToFile(): void {
+    try {
+      const fs = require('fs');
+      if (this.googleCredentials) {
+        fs.writeFileSync(this.credentialsFile, JSON.stringify(this.googleCredentials, null, 2));
+        console.log('Saved Google credentials to file');
+      }
+    } catch (error) {
+      console.error('Failed to save credentials to file:', error);
+    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -119,6 +146,7 @@ export class MemStorage implements IStorage {
       updatedAt: now
     };
     this.googleCredentials = credentials;
+    this.saveCredentialsToFile();
     return credentials;
   }
 
@@ -131,6 +159,7 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     this.googleCredentials = updated;
+    this.saveCredentialsToFile();
     return updated;
   }
 }
