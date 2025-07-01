@@ -89,7 +89,7 @@ export function CalendarHeader({
       
       {/* Current Date Display */}
       <div className="flex-1 text-center">
-        <h2 className="text-xl font-medium text-[hsl(var(--google-gray))]">
+        <h2 className="text-lg font-medium text-[hsl(var(--google-gray))]">
           {getDateTitle()}
         </h2>
       </div>
