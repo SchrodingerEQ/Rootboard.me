@@ -145,7 +145,7 @@ export class GoogleCalendarService {
               startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date!),
               endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date!),
               location: googleEvent.location || '',
-              color: this.getEventColor(googleEvent.colorId),
+              color: calendar.backgroundColor || this.getCalendarColorById(calendar.id),
               isAllDay: !!googleEvent.start?.date,
             };
 
@@ -187,6 +187,32 @@ export class GoogleCalendarService {
     };
     
     return colorMap[colorId || '1'] || '#1a73e8';
+  }
+
+  private getCalendarColorById(calendarId: string): string {
+    // Generate a consistent color based on calendar ID
+    const colors = [
+      '#1a73e8', // Blue
+      '#34a853', // Green  
+      '#ea4335', // Red
+      '#ff9800', // Orange
+      '#9c27b0', // Purple
+      '#795548', // Brown
+      '#607d8b', // Blue Grey
+      '#e91e63', // Pink
+      '#4caf50', // Light Green
+      '#ff5722', // Deep Orange
+      '#3f51b5', // Indigo
+      '#009688', // Teal
+    ];
+    
+    // Create a simple hash from the calendar ID to get consistent colors
+    let hash = 0;
+    for (let i = 0; i < calendarId.length; i++) {
+      hash = ((hash << 5) - hash + calendarId.charCodeAt(i)) & 0xffffffff;
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
   }
 }
 

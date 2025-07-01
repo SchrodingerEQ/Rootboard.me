@@ -9,30 +9,31 @@ interface EventItemProps {
 }
 
 export function EventItem({ event, compact = false, timeSlot = false, detailed = false }: EventItemProps) {
-  const getEventColorClass = (color: string) => {
-    switch (color) {
-      case '#1a73e8':
-        return 'event-google-blue';
-      case '#34a853':
-        return 'event-google-green';
-      case '#ff9800':
-        return 'event-orange';
-      case '#9c27b0':
-        return 'event-purple';
-      case '#ea4335':
-        return 'event-red';
-      default:
-        return 'event-google-blue';
-    }
+  const getTextColor = (backgroundColor: string): string => {
+    // Convert hex to RGB to determine if we need light or dark text
+    const hex = backgroundColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Calculate brightness using standard formula
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    
+    // Return white text for dark backgrounds, black for light backgrounds
+    return brightness < 128 ? '#ffffff' : '#000000';
   };
 
-  const eventClass = getEventColorClass(event.color || '#1a73e8');
+  const backgroundColor = event.color || '#1a73e8';
+  const textColor = getTextColor(backgroundColor);
   const startTime = new Date(event.startTime);
   const endTime = new Date(event.endTime);
 
   if (detailed) {
     return (
-      <div className={`event-item ${eventClass} m-2 p-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity`}>
+      <div 
+        className="event-item m-2 p-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+        style={{ backgroundColor, color: textColor }}
+      >
         <div className="font-medium">{event.title}</div>
         <div className="text-xs opacity-75">
           {formatTime(startTime)} - {formatTime(endTime)}
