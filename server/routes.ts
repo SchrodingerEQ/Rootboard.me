@@ -130,6 +130,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Simplified test endpoint to complete auth manually
+  app.get("/api/test/complete-auth", async (req, res) => {
+    try {
+      // For testing purposes, create dummy credentials to test the calendar sync
+      await storage.createGoogleCredentials({
+        accessToken: "test_token",
+        refreshToken: "test_refresh",
+        expiryDate: new Date(Date.now() + 3600000), // 1 hour from now
+      });
+      
+      const credentials = await storage.getGoogleCredentials();
+      res.json({ 
+        success: true, 
+        hasCredentials: !!credentials,
+        message: "Test authentication completed" 
+      });
+    } catch (error) {
+      console.error('Test auth failed:', error);
+      res.status(500).json({ message: "Test authentication failed" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
