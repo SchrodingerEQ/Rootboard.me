@@ -101,14 +101,19 @@ export function DayView({ currentDate, events, isLoading }: DayViewProps) {
         <div className="overflow-y-auto relative">
           {timeSlots.map((_, timeIndex) => {
             const timeEvents = dayEvents.filter(event => {
-              const eventHour = new Date(event.startTime).getHours();
-              return eventHour === timeIndex;
+              const eventStart = new Date(event.startTime);
+              const eventEnd = new Date(event.endTime);
+              const eventStartHour = eventStart.getHours();
+              const eventEndHour = eventEnd.getHours();
+              
+              // Show event in the time slot where it starts
+              return eventStartHour === timeIndex;
             });
 
             return (
-              <div key={timeIndex} className="time-slot">
+              <div key={timeIndex} className="time-slot relative min-h-[60px] border-b border-border/30">
                 {timeEvents.map(event => (
-                  <EventItem key={event.id} event={event} detailed />
+                  <EventItem key={event.id} event={event} detailed timeSlot />
                 ))}
               </div>
             );

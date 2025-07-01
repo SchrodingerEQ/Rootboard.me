@@ -34,7 +34,22 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
 
   const { start, end } = getDateRange();
 
-  // Fetch calendar events
+  // Check authentication status
+  const {
+    data: authStatus,
+    refetch: checkAuthStatus
+  } = useQuery<AuthStatus>({
+    queryKey: ['/api/calendar/auth-status'],
+    queryFn: async () => {
+      const response = await fetch('/api/calendar/auth-status', { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to check auth status');
+      }
+      return response.json();
+    },
+  });
+
+  // Fetch calendar events (enabled only when authenticated)
   const {
     data: events = [],
     isLoading,
@@ -51,21 +66,7 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
       }
       return response.json();
     },
-  });
-
-  // Check authentication status
-  const {
-    data: authStatus,
-    refetch: checkAuthStatus
-  } = useQuery<AuthStatus>({
-    queryKey: ['/api/calendar/auth-status'],
-    queryFn: async () => {
-      const response = await fetch('/api/calendar/auth-status', { credentials: 'include' });
-      if (!response.ok) {
-        throw new Error('Failed to check auth status');
-      }
-      return response.json();
-    },
+    enabled: authStatus?.authenticated === true,
   });
 
   // Sync calendar events mutation

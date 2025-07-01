@@ -91,7 +91,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: 'Authentication successful', authenticated: true });
     } catch (error) {
       console.error('Failed to handle manual auth:', error);
-      res.status(500).json({ message: 'Authentication failed', error: error.message });
+      res.status(500).json({ 
+        message: 'Authentication failed', 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
 
