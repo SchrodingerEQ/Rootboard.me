@@ -57,10 +57,16 @@ export class GoogleCalendarService {
 
   getAuthUrl(): string {
     const scopes = ['https://www.googleapis.com/auth/calendar.readonly'];
-    return this.oauth2Client.generateAuthUrl({
+    const authUrl = this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: scopes,
+      prompt: 'consent'
     });
+    console.log('OAuth Client Configuration:');
+    console.log('Client ID:', process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + '...');
+    console.log('Redirect URI:', process.env.GOOGLE_REDIRECT_URI);
+    console.log('Generated Auth URL:', authUrl);
+    return authUrl;
   }
 
   async handleAuthCallback(code: string): Promise<void> {
