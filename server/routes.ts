@@ -20,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/google/callback", async (req, res) => {
     console.log('Google OAuth callback received:', req.query);
     try {
-      const { code, error: authError } = req.query;
+      const { code, error: authError, state } = req.query;
       
       if (authError) {
         console.log('OAuth error received:', authError);
@@ -29,10 +29,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (!code || typeof code !== 'string') {
         console.log('No authorization code provided');
-        return res.status(400).json({ message: "Authorization code is required" });
+        return res.status(400).send(`
+          <html>
+            <body>
+              <h1>Authentication Error</h1>
+              <p>No authorization code provided</p>
+              <a href="/">Return to Calendar</a>
+            </body>
+          </html>
+        `);
       }
 
-      console.log('Processing authorization code...');
+      console.log('Processing authorization code...', code.substring(0, 20) + '...');
       await googleCalendarService.handleAuthCallback(code);
       console.log('Google authentication successful');
       
@@ -40,10 +48,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const credentials = await storage.getGoogleCredentials();
       console.log('Verification: credentials stored?', !!credentials);
       
-      res.redirect("/?auth=success");
+      // Return success page with auto-redirect
+      res.send(`
+        <html>
+          <body>
+            <h1>Authentication Successful!</h1>
+            <p>Redirecting to calendar...</p>
+            <script>
+              setTimeout(() => {
+                window.location.href = '/?auth=success';
+              }, 2000);
+            </script>
+          </body>
+        </html>
+      `);
     } catch (error) {
       console.error('Failed to handle Google auth callback:', error);
-      res.redirect("/?auth=error");
+      res.send(`
+        <html>
+          <body>
+            <h1>Authentication Error</h1>
+            <p>Failed to complete authentication: ${error}</p>
+            <a href="/">Try Again</a>
+          </body>
+        </html>
+      `);
     }
   });
 
