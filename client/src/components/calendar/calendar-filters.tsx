@@ -19,7 +19,7 @@ interface CalendarFiltersProps {
 }
 
 export function CalendarFilters({ onCalendarToggle, enabledCalendars }: CalendarFiltersProps) {
-  const { data: calendars, isLoading, error } = useQuery({
+  const { data: calendars, isLoading, error } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
     enabled: true,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -70,7 +70,7 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars }: Calendar
     );
   }
 
-  if (!calendars || calendars.length <= 1) {
+  if (!calendars || !Array.isArray(calendars) || calendars.length <= 1) {
     return null; // Hide filter if only one calendar
   }
 

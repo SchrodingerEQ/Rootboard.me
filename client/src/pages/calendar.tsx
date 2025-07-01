@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
+import { CalendarFilters } from "@/components/calendar/calendar-filters";
 import { MonthView } from "@/components/calendar/month-view";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
@@ -12,6 +13,7 @@ export type CalendarView = "day" | "week" | "month";
 export default function CalendarPage() {
   const [currentView, setCurrentView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set());
   const { toast } = useToast();
   
   const {
@@ -22,6 +24,34 @@ export default function CalendarPage() {
     refreshEvents,
     checkAuthStatus
   } = useCalendar(currentDate, currentView);
+
+  // Initialize enabled calendars when events are loaded
+  useEffect(() => {
+    if (events.length > 0 && enabledCalendars.size === 0) {
+      const uniqueCalendarIds = new Set(events.map(event => event.calendarId));
+      setEnabledCalendars(uniqueCalendarIds);
+    }
+  }, [events, enabledCalendars.size]);
+
+  // Filter events based on enabled calendars
+  const filteredEvents = useMemo(() => {
+    if (enabledCalendars.size === 0) {
+      return events; // Show all events if no filters set
+    }
+    return events.filter(event => enabledCalendars.has(event.calendarId));
+  }, [events, enabledCalendars]);
+
+  const handleCalendarToggle = (calendarId: string, enabled: boolean) => {
+    setEnabledCalendars(prev => {
+      const newSet = new Set(prev);
+      if (enabled) {
+        newSet.add(calendarId);
+      } else {
+        newSet.delete(calendarId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     checkAuthStatus();
@@ -155,11 +185,19 @@ export default function CalendarPage() {
         needsAuth={authStatus?.needsAuth}
       />
       
+      {/* Calendar Filters */}
+      {authStatus?.authenticated && (
+        <CalendarFilters 
+          onCalendarToggle={handleCalendarToggle}
+          enabledCalendars={enabledCalendars}
+        />
+      )}
+      
       <main className="flex-1 overflow-hidden">
         <div className={`view-container h-full ${currentView === 'month' ? 'active' : ''}`}>
           <MonthView 
             currentDate={currentDate} 
-            events={events}
+            events={filteredEvents}
             isLoading={isLoading}
           />
         </div>
@@ -167,7 +205,7 @@ export default function CalendarPage() {
         <div className={`view-container h-full ${currentView === 'week' ? 'active' : ''}`}>
           <WeekView 
             currentDate={currentDate} 
-            events={events}
+            events={filteredEvents}
             isLoading={isLoading}
           />
         </div>
@@ -175,7 +213,7 @@ export default function CalendarPage() {
         <div className={`view-container h-full ${currentView === 'day' ? 'active' : ''}`}>
           <DayView 
             currentDate={currentDate} 
-            events={events}
+            events={filteredEvents}
             isLoading={isLoading}
           />
         </div>
