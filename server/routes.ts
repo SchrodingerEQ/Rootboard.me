@@ -99,6 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/calendar/auth-status", async (req, res) => {
     try {
       const credentials = await storage.getGoogleCredentials();
+      console.log('Auth status check - credentials found:', !!credentials);
       res.json({ 
         authenticated: !!credentials,
         needsAuth: !credentials 
@@ -107,6 +108,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Failed to check auth status:', error);
       res.status(500).json({ message: "Failed to check authentication status" });
     }
+  });
+
+  // Test endpoint to check OAuth configuration
+  app.get("/api/test/oauth-config", async (req, res) => {
+    res.json({
+      clientId: process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + '...',
+      redirectUri: process.env.GOOGLE_REDIRECT_URI,
+      hasCredentials: !!(await storage.getGoogleCredentials())
+    });
   });
 
   const httpServer = createServer(app);
