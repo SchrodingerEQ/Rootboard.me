@@ -11,6 +11,8 @@ export const users = pgTable("users", {
 export const calendarEvents = pgTable("calendar_events", {
   id: serial("id").primaryKey(),
   googleEventId: text("google_event_id").notNull().unique(),
+  calendarId: text("calendar_id").notNull().default("primary"),
+  calendarName: text("calendar_name").notNull().default("Primary"),
   title: text("title").notNull(),
   description: text("description"),
   startTime: timestamp("start_time").notNull(),

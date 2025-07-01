@@ -94,6 +94,21 @@ export class GoogleCalendarService {
     }
   }
 
+  async getCalendarList(): Promise<any[]> {
+    try {
+      const initialized = await this.initializeCredentials();
+      if (!initialized) {
+        throw new Error('Google Calendar credentials not initialized');
+      }
+
+      const response = await this.calendar.calendarList.list();
+      return response.data.items || [];
+    } catch (error) {
+      console.error('Failed to fetch calendar list:', error);
+      throw error;
+    }
+  }
+
   async syncCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
     try {
       const initialized = await this.initializeCredentials();
@@ -101,39 +116,52 @@ export class GoogleCalendarService {
         throw new Error('Google Calendar credentials not initialized');
       }
 
-      const response = await this.calendar.events.list({
-        calendarId: 'primary',
-        timeMin: startDate.toISOString(),
-        timeMax: endDate.toISOString(),
-        singleEvents: true,
-        orderBy: 'startTime',
-      });
-
-      const googleEvents = response.data.items || [];
+      // Get all calendars first
+      const calendars = await this.getCalendarList();
       const syncedEvents: CalendarEvent[] = [];
 
-      for (const googleEvent of googleEvents) {
-        const existingEvent = await storage.getCalendarEventByGoogleId(googleEvent.id!);
-        
-        const eventData: InsertCalendarEvent = {
-          googleEventId: googleEvent.id!,
-          title: googleEvent.summary || 'Untitled Event',
-          description: googleEvent.description || '',
-          startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date!),
-          endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date!),
-          location: googleEvent.location || '',
-          color: this.getEventColor(googleEvent.colorId),
-          isAllDay: !!googleEvent.start?.date,
-        };
+      // Fetch events from each calendar
+      for (const calendar of calendars) {
+        try {
+          const response = await this.calendar.events.list({
+            calendarId: calendar.id,
+            timeMin: startDate.toISOString(),
+            timeMax: endDate.toISOString(),
+            singleEvents: true,
+            orderBy: 'startTime',
+          });
 
-        let event: CalendarEvent;
-        if (existingEvent) {
-          event = await storage.updateCalendarEvent(existingEvent.id, eventData) || existingEvent;
-        } else {
-          event = await storage.createCalendarEvent(eventData);
+          const googleEvents = response.data.items || [];
+
+          for (const googleEvent of googleEvents) {
+            const existingEvent = await storage.getCalendarEventByGoogleId(googleEvent.id!);
+            
+            const eventData: InsertCalendarEvent = {
+              googleEventId: googleEvent.id!,
+              calendarId: calendar.id,
+              calendarName: calendar.summary || 'Unknown Calendar',
+              title: googleEvent.summary || 'Untitled Event',
+              description: googleEvent.description || '',
+              startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date!),
+              endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date!),
+              location: googleEvent.location || '',
+              color: this.getEventColor(googleEvent.colorId),
+              isAllDay: !!googleEvent.start?.date,
+            };
+
+            let event: CalendarEvent;
+            if (existingEvent) {
+              event = await storage.updateCalendarEvent(existingEvent.id, eventData) || existingEvent;
+            } else {
+              event = await storage.createCalendarEvent(eventData);
+            }
+
+            syncedEvents.push(event);
+          }
+        } catch (calendarError) {
+          console.warn(`Failed to sync events from calendar ${calendar.summary}:`, calendarError);
+          // Continue with other calendars even if one fails
         }
-
-        syncedEvents.push(event);
       }
 
       return syncedEvents;

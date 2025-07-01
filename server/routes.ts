@@ -126,6 +126,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get list of available calendars
+  app.get("/api/calendar/calendars", async (req, res) => {
+    try {
+      const calendars = await googleCalendarService.getCalendarList();
+      const calendarInfo = calendars.map(calendar => ({
+        id: calendar.id,
+        summary: calendar.summary,
+        primary: calendar.primary,
+        backgroundColor: calendar.backgroundColor,
+        foregroundColor: calendar.foregroundColor,
+        selected: calendar.selected !== false, // Default to true unless explicitly false
+        accessRole: calendar.accessRole
+      }));
+      res.json(calendarInfo);
+    } catch (error) {
+      console.error('Failed to get calendar list:', error);
+      res.status(500).json({ message: "Failed to fetch calendar list" });
+    }
+  });
+
   app.post("/api/calendar/sync", async (req, res) => {
     try {
       const { startDate, endDate } = req.body;

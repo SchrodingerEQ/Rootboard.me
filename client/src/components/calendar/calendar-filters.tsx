@@ -1,0 +1,123 @@
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+
+interface CalendarInfo {
+  id: string;
+  summary: string;
+  primary: boolean;
+  backgroundColor?: string;
+  foregroundColor?: string;
+  selected: boolean;
+  accessRole: string;
+}
+
+interface CalendarFiltersProps {
+  onCalendarToggle: (calendarId: string, enabled: boolean) => void;
+  enabledCalendars: Set<string>;
+}
+
+export function CalendarFilters({ onCalendarToggle, enabledCalendars }: CalendarFiltersProps) {
+  const { data: calendars, isLoading, error } = useQuery({
+    queryKey: ['/api/calendar/calendars'],
+    enabled: true,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  const getCalendarColor = (calendar: CalendarInfo): string => {
+    if (calendar.backgroundColor) {
+      return calendar.backgroundColor;
+    }
+    
+    // Generate a color based on calendar name
+    const colors = [
+      '#1a73e8', // Blue
+      '#34a853', // Green  
+      '#ea4335', // Red
+      '#ff9800', // Orange
+      '#9c27b0', // Purple
+      '#795548', // Brown
+      '#607d8b', // Blue Grey
+      '#e91e63', // Pink
+    ];
+    
+    const index = calendar.summary.length % colors.length;
+    return colors[index];
+  };
+
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  if (error) {
+    return null; // Hide filter if calendars can't be loaded
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex gap-2 px-4 py-2 bg-white border-b">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-16 rounded-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (!calendars || calendars.length <= 1) {
+    return null; // Hide filter if only one calendar
+  }
+
+  return (
+    <div className="flex gap-2 px-4 py-2 bg-white border-b overflow-x-auto">
+      {calendars.map((calendar: CalendarInfo) => {
+        const isEnabled = enabledCalendars.has(calendar.id);
+        const color = getCalendarColor(calendar);
+        const initials = getInitials(calendar.summary);
+        
+        return (
+          <Button
+            key={calendar.id}
+            variant="outline"
+            size="sm"
+            className={`
+              flex items-center gap-2 whitespace-nowrap min-w-fit rounded-full px-3 py-1 text-xs font-medium
+              transition-all duration-200 border-2
+              ${isEnabled 
+                ? 'opacity-100 shadow-sm' 
+                : 'opacity-50 hover:opacity-75'
+              }
+            `}
+            style={{
+              backgroundColor: isEnabled ? color : 'white',
+              borderColor: color,
+              color: isEnabled ? 'white' : color,
+            }}
+            onClick={() => onCalendarToggle(calendar.id, !isEnabled)}
+            title={`${isEnabled ? 'Hide' : 'Show'} ${calendar.summary} calendar`}
+          >
+            <div 
+              className={`
+                w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
+                ${isEnabled ? 'bg-white/20' : ''}
+              `}
+              style={{
+                backgroundColor: isEnabled ? 'rgba(255,255,255,0.3)' : color,
+                color: isEnabled ? 'white' : 'white',
+              }}
+            >
+              {initials}
+            </div>
+            <span className="font-medium">{calendar.summary}</span>
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
