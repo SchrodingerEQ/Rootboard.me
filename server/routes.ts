@@ -76,6 +76,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual auth code processing route
+  app.post("/api/auth/google/manual", async (req, res) => {
+    try {
+      const { code } = req.body;
+      if (!code || typeof code !== 'string') {
+        return res.status(400).json({ message: 'Authorization code required' });
+      }
+
+      console.log('Processing manual authorization code...', code.substring(0, 20) + '...');
+      await googleCalendarService.handleAuthCallback(code);
+      console.log('Manual Google authentication successful');
+      
+      res.json({ message: 'Authentication successful', authenticated: true });
+    } catch (error) {
+      console.error('Failed to handle manual auth:', error);
+      res.status(500).json({ message: 'Authentication failed', error: error.message });
+    }
+  });
+
   // Calendar events routes
   app.get("/api/calendar/events", async (req, res) => {
     try {

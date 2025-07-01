@@ -111,7 +111,26 @@ export default function CalendarPage() {
   };
 
   const handleAuth = () => {
-    window.location.href = '/api/auth/google';
+    // Open OAuth in a new window
+    const popup = window.open('/api/auth/google', 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+    
+    // Show instructions to user
+    toast({
+      title: "Google Authentication",
+      description: "A popup window has opened for Google sign-in. If you see a DNS error after authorizing, copy the URL and refresh this page.",
+      duration: 10000,
+    });
+    
+    // Check if popup is closed (user completed auth)
+    const checkClosed = setInterval(() => {
+      if (popup?.closed) {
+        clearInterval(checkClosed);
+        // Refresh auth status after popup closes
+        setTimeout(() => {
+          refreshEvents();
+        }, 1000);
+      }
+    }, 1000);
   };
 
   return (

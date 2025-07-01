@@ -9,6 +9,7 @@ import {
   type GoogleCredentials,
   type InsertGoogleCredentials
 } from "@shared/schema";
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -46,15 +47,18 @@ export class MemStorage implements IStorage {
 
   private loadCredentialsFromFile(): void {
     try {
-      import('fs').then(fs => {
-        if (fs.existsSync(this.credentialsFile)) {
-          const data = fs.readFileSync(this.credentialsFile, 'utf8');
-          this.googleCredentials = JSON.parse(data);
-          console.log('Loaded Google credentials from file');
-        }
-      }).catch(() => {
-        console.log('No existing credentials file found, starting fresh');
-      });
+      if (existsSync(this.credentialsFile)) {
+        const data = readFileSync(this.credentialsFile, 'utf8');
+        const parsed = JSON.parse(data);
+        // Convert date strings back to Date objects
+        this.googleCredentials = {
+          ...parsed,
+          createdAt: new Date(parsed.createdAt),
+          updatedAt: new Date(parsed.updatedAt),
+          expiryDate: new Date(parsed.expiryDate)
+        };
+        console.log('Loaded Google credentials from file');
+      }
     } catch (error) {
       console.log('No existing credentials file found, starting fresh');
     }
@@ -62,14 +66,10 @@ export class MemStorage implements IStorage {
 
   private saveCredentialsToFile(): void {
     try {
-      import('fs').then(fs => {
-        if (this.googleCredentials) {
-          fs.writeFileSync(this.credentialsFile, JSON.stringify(this.googleCredentials, null, 2));
-          console.log('Saved Google credentials to file');
-        }
-      }).catch(error => {
-        console.error('Failed to save credentials to file:', error);
-      });
+      if (this.googleCredentials) {
+        writeFileSync(this.credentialsFile, JSON.stringify(this.googleCredentials, null, 2));
+        console.log('Saved Google credentials to file');
+      }
     } catch (error) {
       console.error('Failed to save credentials to file:', error);
     }
