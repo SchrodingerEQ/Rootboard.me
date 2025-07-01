@@ -145,6 +145,10 @@ Changelog:
   - FIXED: Auto-loading of events after authentication (no manual refresh needed)
   - FIXED: Manual authentication endpoint for easier OAuth completion
   - VERIFIED: Auto-loading functionality confirmed working - events load on page refresh
+  - ADDED: Calendar filter buttons across top of interface
+  - ADDED: Individual calendar toggle functionality (show/hide specific calendars)
+  - ADDED: Color-coded events matching their source calendar colors
+  - FIXED: Calendar filtering logic to allow completely empty selection
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
