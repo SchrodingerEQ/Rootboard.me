@@ -5,36 +5,41 @@
 
 :root {
   --background: hsl(0, 0%, 100%);
-  --foreground: hsl(20, 14.3%, 4.1%);
+  --foreground: hsl(0, 0%, 5%);
   --muted: hsl(60, 4.8%, 95.9%);
-  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --muted-foreground: hsl(0, 0%, 25%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --popover-foreground: hsl(0, 0%, 5%);
   --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --card-foreground: hsl(0, 0%, 5%);
   --border: hsl(20, 5.9%, 90%);
   --input: hsl(20, 5.9%, 90%);
   --primary: hsl(207, 90%, 54%);
   --primary-foreground: hsl(211, 100%, 99%);
   --secondary: hsl(60, 4.8%, 95.9%);
-  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --secondary-foreground: hsl(0, 0%, 10%);
   --accent: hsl(60, 4.8%, 95.9%);
-  --accent-foreground: hsl(24, 9.8%, 10%);
+  --accent-foreground: hsl(0, 0%, 10%);
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
+  --ring: hsl(0, 0%, 5%);
   --radius: 0.5rem;
   
   /* Google Calendar Colors */
-  --google-blue: hsl(217, 89%, 51%);
-  --google-blue-hover: hsl(217, 89%, 41%);
-  --google-green: hsl(142, 76%, 36%);
-  --google-gray: hsl(210, 11%, 42%);
+  --google-blue: hsl(217, 89%, 45%);
+  --google-blue-hover: hsl(217, 89%, 35%);
+  --google-green: hsl(142, 76%, 30%);
+  --google-gray: hsl(210, 11%, 20%);
   --google-light-gray: hsl(210, 17%, 97%);
-  --google-border: hsl(220, 13%, 85%);
-  --google-red: hsl(4, 90%, 58%);
-  --google-orange: hsl(36, 100%, 50%);
-  --google-purple: hsl(291, 64%, 42%);
+  --google-border: hsl(220, 13%, 75%);
+  --google-red: hsl(4, 90%, 45%);
+  --google-orange: hsl(36, 100%, 40%);
+  --google-purple: hsl(291, 64%, 35%);
+  
+  /* High contrast text colors */
+  --text-primary: hsl(0, 0%, 0%);
+  --text-secondary: hsl(0, 0%, 20%);
+  --text-muted: hsl(0, 0%, 40%);
 }
 
 .dark {
@@ -82,6 +87,67 @@
     gap: 1px;
     background-color: hsl(var(--google-border));
   }
+
+  /* High contrast text for all calendar elements */
+  .calendar-header,
+  .calendar-title,
+  .calendar-nav-button,
+  .calendar-view-button {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+  }
+
+  .calendar-event,
+  .event-item {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+  }
+
+  .event-title {
+    color: inherit !important;
+    font-weight: 600 !important;
+  }
+
+  .event-time,
+  .calendar-time {
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+  }
+
+  .calendar-date,
+  .day-number {
+    color: var(--text-primary) !important;
+    font-weight: 500 !important;
+  }
+
+  .event-location {
+    color: var(--text-secondary) !important;
+    font-weight: 400 !important;
+  }
+
+  /* Ensure all text elements have strong contrast */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+    font-weight: 600 !important;
+  }
+
+  /* Force dark text on light backgrounds */
+  .bg-white *,
+  .bg-background * {
+    color: var(--text-primary) !important;
+  }
+
+  /* Button text contrast */
+  button {
+    font-weight: 500 !important;
+  }
+
+  /* Make sure event colors are visible */
+  .event-blue { background-color: var(--google-blue) !important; color: white !important; }
+  .event-green { background-color: var(--google-green) !important; color: white !important; }
+  .event-red { background-color: var(--google-red) !important; color: white !important; }
+  .event-orange { background-color: var(--google-orange) !important; color: white !important; }
+  .event-purple { background-color: var(--google-purple) !important; color: white !important; }
   
   .calendar-cell {
     background-color: white;
