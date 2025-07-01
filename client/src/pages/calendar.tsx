@@ -25,18 +25,20 @@ export default function CalendarPage() {
     checkAuthStatus
   } = useCalendar(currentDate, currentView);
 
-  // Initialize enabled calendars when events are loaded
+  // Initialize enabled calendars when events are loaded (only once)
+  const [hasInitialized, setHasInitialized] = useState(false);
   useEffect(() => {
-    if (events.length > 0 && enabledCalendars.size === 0) {
+    if (events.length > 0 && !hasInitialized) {
       const uniqueCalendarIds = new Set(events.map(event => event.calendarId));
       setEnabledCalendars(uniqueCalendarIds);
+      setHasInitialized(true);
     }
-  }, [events, enabledCalendars.size]);
+  }, [events, hasInitialized]);
 
   // Filter events based on enabled calendars
   const filteredEvents = useMemo(() => {
     if (enabledCalendars.size === 0) {
-      return events; // Show all events if no filters set
+      return []; // Show no events when no calendars are selected
     }
     return events.filter(event => enabledCalendars.has(event.calendarId));
   }, [events, enabledCalendars]);
