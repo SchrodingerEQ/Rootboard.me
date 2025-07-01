@@ -39,10 +39,8 @@ export function CalendarHeader({
       })}`;
     } else if (currentView === 'day') {
       return currentDate.toLocaleDateString('en-US', { 
-        weekday: 'long',
         month: 'long', 
-        day: 'numeric',
-        year: 'numeric' 
+        day: 'numeric'
       });
     }
   };
