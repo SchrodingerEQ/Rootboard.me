@@ -71,15 +71,23 @@ export class GoogleCalendarService {
 
   async handleAuthCallback(code: string): Promise<void> {
     try {
+      console.log('Handling auth callback with code:', code.substring(0, 20) + '...');
       const { tokens } = await this.oauth2Client.getToken(code);
+      console.log('Received tokens:', { 
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token,
+        expiryDate: tokens.expiry_date 
+      });
       
-      await storage.createGoogleCredentials({
+      const credentials = await storage.createGoogleCredentials({
         accessToken: tokens.access_token!,
         refreshToken: tokens.refresh_token!,
         expiryDate: new Date(tokens.expiry_date!),
       });
+      console.log('Stored credentials:', { id: credentials.id, hasTokens: !!credentials.accessToken });
 
       this.oauth2Client.setCredentials(tokens);
+      console.log('OAuth client credentials set successfully');
     } catch (error) {
       console.error('Failed to handle auth callback:', error);
       throw error;
