@@ -17,13 +17,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/auth/google/callback", async (req, res) => {
+    console.log('Google OAuth callback received:', req.query);
     try {
       const { code } = req.query;
       if (!code || typeof code !== 'string') {
+        console.log('No authorization code provided');
         return res.status(400).json({ message: "Authorization code is required" });
       }
 
+      console.log('Processing authorization code...');
       await googleCalendarService.handleAuthCallback(code);
+      console.log('Google authentication successful');
       res.redirect("/?auth=success");
     } catch (error) {
       console.error('Failed to handle Google auth callback:', error);
