@@ -6,9 +6,10 @@ interface EventItemProps {
   compact?: boolean;
   timeSlot?: boolean;
   detailed?: boolean;
+  onClick?: (event: CalendarEvent) => void;
 }
 
-export function EventItem({ event, compact = false, timeSlot = false, detailed = false }: EventItemProps) {
+export function EventItem({ event, compact = false, timeSlot = false, detailed = false, onClick }: EventItemProps) {
   const getTextColor = (backgroundColor: string): string => {
     // Convert hex to RGB to determine if we need light or dark text
     const hex = backgroundColor.replace('#', '');
@@ -33,6 +34,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
       <div 
         className="event-item m-2 p-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
         style={{ backgroundColor, color: textColor }}
+        onClick={() => onClick?.(event)}
       >
         <div className="font-medium">{event.title}</div>
         <div className="text-xs opacity-75">
@@ -53,6 +55,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
       <div 
         className="event-item m-1 p-2 rounded cursor-pointer hover:opacity-90 transition-opacity"
         style={{ backgroundColor, color: textColor }}
+        onClick={() => onClick?.(event)}
       >
         <div className="font-medium text-sm">{event.title}</div>
         <div className="text-xs opacity-75">
@@ -71,6 +74,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
         className="event-item cursor-pointer hover:opacity-90 transition-opacity px-2 py-1 rounded text-xs truncate w-full max-w-full overflow-hidden whitespace-nowrap"
         style={{ backgroundColor, color: textColor }}
         title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ''}`}
+        onClick={() => onClick?.(event)}
       >
         {event.title}
       </div>
@@ -81,6 +85,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
     <div 
       className="event-item cursor-pointer hover:opacity-90 transition-opacity w-full max-w-full overflow-hidden"
       style={{ backgroundColor, color: textColor }}
+      onClick={() => onClick?.(event)}
     >
       {event.title}
     </div>

@@ -8,6 +8,7 @@ interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
@@ -16,7 +17,7 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
   return `${hour} ${ampm}`;
 });
 
-export function WeekView({ currentDate, events, isLoading }: WeekViewProps) {
+export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekViewProps) {
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
   
   const getEventsForDay = (date: Date) => {
@@ -134,7 +135,7 @@ export function WeekView({ currentDate, events, isLoading }: WeekViewProps) {
                           return eventHour === timeIndex;
                         })
                         .map(event => (
-                          <EventItem key={event.id} event={event} timeSlot />
+                          <EventItem key={event.id} event={event} timeSlot onClick={onEventClick} />
                         ))
                       }
                     </div>

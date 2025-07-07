@@ -5,8 +5,11 @@ import { MonthView } from "@/components/calendar/month-view";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { LoadingIndicator } from "@/components/calendar/loading-indicator";
+import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
+import { CalendarEvent } from "@shared/schema";
 
 export type CalendarView = "day" | "week" | "month";
 
@@ -14,6 +17,8 @@ export default function CalendarPage() {
   const [currentView, setCurrentView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set());
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   
   const {
@@ -24,6 +29,13 @@ export default function CalendarPage() {
     refreshEvents,
     checkAuthStatus
   } = useCalendar(currentDate, currentView);
+  
+  // Get calendars for dialog metadata
+  const { data: calendars } = useQuery<any[]>({
+    queryKey: ['/api/calendar/calendars'],
+    enabled: true,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Initialize enabled calendars when events are loaded (only once)
   const [hasInitialized, setHasInitialized] = useState(false);
@@ -53,6 +65,16 @@ export default function CalendarPage() {
       }
       return newSet;
     });
+  };
+
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setIsDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setSelectedEvent(null);
   };
 
   useEffect(() => {
@@ -201,6 +223,7 @@ export default function CalendarPage() {
             currentDate={currentDate} 
             events={filteredEvents}
             isLoading={isLoading}
+            onEventClick={handleEventClick}
           />
         </div>
         
@@ -209,6 +232,7 @@ export default function CalendarPage() {
             currentDate={currentDate} 
             events={filteredEvents}
             isLoading={isLoading}
+            onEventClick={handleEventClick}
           />
         </div>
         
@@ -217,11 +241,20 @@ export default function CalendarPage() {
             currentDate={currentDate} 
             events={filteredEvents}
             isLoading={isLoading}
+            onEventClick={handleEventClick}
           />
         </div>
       </main>
 
       <LoadingIndicator isVisible={isRefreshing} />
+      
+      <EventDetailsDialog 
+        event={selectedEvent}
+        isOpen={isDialogOpen}
+        onClose={handleDialogClose}
+        calendarName={selectedEvent ? calendars?.find((cal: any) => cal.id === selectedEvent.calendarId)?.summary : undefined}
+        calendarColor={selectedEvent?.color ?? undefined}
+      />
     </div>
   );
 }

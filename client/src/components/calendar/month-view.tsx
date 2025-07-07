@@ -8,9 +8,10 @@ interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
-export function MonthView({ currentDate, events, isLoading }: MonthViewProps) {
+export function MonthView({ currentDate, events, isLoading, onEventClick }: MonthViewProps) {
   const monthDays = useMemo(() => getMonthCalendar(currentDate), [currentDate]);
   
   const getEventsForDate = (date: Date) => {
@@ -88,7 +89,7 @@ export function MonthView({ currentDate, events, isLoading }: MonthViewProps) {
                 
                 <div className="space-y-1">
                   {dayEvents.slice(0, 4).map((event) => (
-                    <EventItem key={event.id} event={event} compact />
+                    <EventItem key={event.id} event={event} compact onClick={onEventClick} />
                   ))}
                   {dayEvents.length > 4 && (
                     <div className="text-xs text-muted-foreground px-1">

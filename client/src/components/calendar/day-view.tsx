@@ -8,6 +8,7 @@ interface DayViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
+  onEventClick?: (event: CalendarEvent) => void;
 }
 
 const timeSlots = Array.from({ length: 24 }, (_, i) => {
@@ -16,7 +17,7 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
   return `${hour} ${ampm}`;
 });
 
-export function DayView({ currentDate, events, isLoading }: DayViewProps) {
+export function DayView({ currentDate, events, isLoading, onEventClick }: DayViewProps) {
   const dayEvents = useMemo(() => {
     return events.filter(event => {
       const eventDate = new Date(event.startTime);
@@ -113,7 +114,7 @@ export function DayView({ currentDate, events, isLoading }: DayViewProps) {
             return (
               <div key={timeIndex} className="time-slot relative min-h-[60px] border-b border-border/30">
                 {timeEvents.map(event => (
-                  <EventItem key={event.id} event={event} detailed timeSlot />
+                  <EventItem key={event.id} event={event} detailed timeSlot onClick={onEventClick} />
                 ))}
               </div>
             );
