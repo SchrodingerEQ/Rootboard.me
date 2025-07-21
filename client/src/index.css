@@ -246,7 +246,7 @@
   }
   
   .time-slot {
-    height: 60px;
+    height: 40px;
     border-bottom: 1px solid hsl(var(--border));
     position: relative;
   }
@@ -286,7 +286,7 @@
   }
   
   .time-slot {
-    height: 80px;
+    height: 50px;
   }
   
   .touch-button {
