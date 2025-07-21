@@ -174,33 +174,34 @@ export default function CalendarPage() {
   };
 
   const handleAuth = () => {
-    // Create a manual auth URL that doesn't rely on the callback
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly&prompt=consent&response_type=code&client_id=381282129214-1f837jgkt43qg4dkasv2hjgjd8jde20a.apps.googleusercontent.com&redirect_uri=urn:ietf:wg:oauth:2.0:oob`;
+    // Show manual instructions with direct auth URL
+    const clientId = "381282129214-1f837jgkt43qg4dkasv2hjgjd8jde20a.apps.googleusercontent.com";
+    const scope = "https://www.googleapis.com/auth/calendar.readonly";
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=urn:ietf:wg:oauth:2.0:oob&scope=${encodeURIComponent(scope)}&response_type=code&access_type=offline&prompt=consent`;
     
-    // Open OAuth in a new window with manual redirect
-    const popup = window.open(authUrl, 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
-    
-    // Show instructions for manual auth code
-    toast({
-      title: "Google Authentication",
-      description: "After authorizing, copy the authorization code from Google and enter it in the prompt that will appear.",
-      duration: 15000,
+    // Copy URL to clipboard and show instructions
+    navigator.clipboard.writeText(authUrl).then(() => {
+      toast({
+        title: "Authentication Required",
+        description: "The authorization URL has been copied to your clipboard. Please paste it in a new browser tab to authorize the app.",
+        duration: 20000,
+      });
+    }).catch(() => {
+      // Fallback if clipboard doesn't work
+      toast({
+        title: "Manual Authorization Required",
+        description: `Please copy this URL and paste it in a new browser tab: ${authUrl}`,
+        duration: 30000,
+      });
     });
     
-    // Check if popup is closed and prompt for auth code
-    const checkClosed = setInterval(() => {
-      if (popup?.closed) {
-        clearInterval(checkClosed);
-        
-        // Prompt user for the authorization code
-        setTimeout(() => {
-          const authCode = prompt("Please paste the authorization code from Google:");
-          if (authCode && authCode.trim()) {
-            handleManualAuth(authCode.trim());
-          }
-        }, 500);
+    // Prompt for auth code after a delay
+    setTimeout(() => {
+      const authCode = prompt("After authorizing the app in the new tab, please paste the authorization code here:");
+      if (authCode && authCode.trim()) {
+        handleManualAuth(authCode.trim());
       }
-    }, 1000);
+    }, 3000);
   };
 
   const handleManualAuth = async (code: string) => {
