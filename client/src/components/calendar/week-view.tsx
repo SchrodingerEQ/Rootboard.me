@@ -127,7 +127,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
                   }`}
                 >
                   {timeSlots.map((_, timeIndex) => (
-                    <div key={timeIndex} className="time-slot">
+                    <div key={timeIndex} className="time-slot px-0.5">
                       {/* Events for this time slot */}
                       {dayEvents
                         .filter(event => {

@@ -53,7 +53,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   if (timeSlot) {
     return (
       <div 
-        className="event-item px-1 py-1 rounded cursor-pointer hover:opacity-90 transition-opacity w-full"
+        className="event-item px-0.5 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity"
         style={{ backgroundColor, color: textColor }}
         onClick={() => onClick?.(event)}
       >
