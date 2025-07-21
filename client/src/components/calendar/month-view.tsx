@@ -104,8 +104,8 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   {date.getDate()}
                 </div>
                 
-                <div className="space-y-1 flex flex-col h-full px-1">
-                  <div className="space-y-1 flex-1 overflow-hidden">
+                <div className="space-y-0.5 flex flex-col h-full px-1">
+                  <div className="space-y-0.5 flex-1 overflow-hidden">
                     {dayEvents.slice(0, 3).map((event) => (
                       <EventItem key={event.id} event={event} compact onClick={onEventClick} />
                     ))}
@@ -113,19 +113,19 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   
                   {/* Show more indicator - always at bottom if there are more events */}
                   {dayEvents.length > 3 && (
-                    <div className="flex items-center justify-between mt-1 bg-blue-100 border border-blue-300 rounded px-2 py-1 flex-shrink-0">
+                    <div className="flex items-center justify-between mt-0.5 bg-blue-100 border border-blue-300 rounded px-1 py-0.5 flex-shrink-0">
                       <div className="text-xs text-blue-700 font-medium">
-                        +{dayEvents.length - 3} more
+                        +{dayEvents.length - 3}
                       </div>
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           handleShowMoreEvents(date);
                         }}
-                        className="p-1 hover:bg-blue-200 rounded transition-colors flex-shrink-0"
+                        className="p-0.5 hover:bg-blue-200 rounded transition-colors flex-shrink-0"
                         aria-label={`Show all ${dayEvents.length} events for ${date.toLocaleDateString()}`}
                       >
-                        <ChevronDown className="h-3 w-3 text-blue-700" />
+                        <ChevronDown className="h-2.5 w-2.5 text-blue-700" />
                       </button>
                     </div>
                   )}
