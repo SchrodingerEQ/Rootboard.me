@@ -8,6 +8,7 @@ interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
+  enabledCalendars?: Set<string>;
   onEventClick?: (event: CalendarEvent) => void;
 }
 
@@ -17,7 +18,7 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
   return `${hour} ${ampm}`;
 });
 
-export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekViewProps) {
+export function WeekView({ currentDate, events, isLoading, enabledCalendars, onEventClick }: WeekViewProps) {
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
   
   const getEventsForDay = (date: Date) => {
@@ -56,6 +57,11 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
   const getOverlappingEventsForTimeSlot = (date: Date, timeIndex: number) => {
     const dayEvents = getEventsForDay(date);
     return dayEvents.filter(event => {
+      // Only consider events from enabled calendars
+      if (enabledCalendars && !enabledCalendars.has(event.calendarId)) {
+        return false;
+      }
+      
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
       const eventStartHour = eventStart.getHours();
