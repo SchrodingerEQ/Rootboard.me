@@ -174,26 +174,64 @@ export default function CalendarPage() {
   };
 
   const handleAuth = () => {
-    // Open OAuth in a new window
-    const popup = window.open('/api/auth/google', 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+    // Create a manual auth URL that doesn't rely on the callback
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?access_type=offline&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fcalendar.readonly&prompt=consent&response_type=code&client_id=381282129214-1f837jgkt43qg4dkasv2hjgjd8jde20a.apps.googleusercontent.com&redirect_uri=urn:ietf:wg:oauth:2.0:oob`;
     
-    // Show instructions to user
+    // Open OAuth in a new window with manual redirect
+    const popup = window.open(authUrl, 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+    
+    // Show instructions for manual auth code
     toast({
       title: "Google Authentication",
-      description: "A popup window has opened for Google sign-in. If you see a DNS error after authorizing, copy the URL and refresh this page.",
-      duration: 10000,
+      description: "After authorizing, copy the authorization code from Google and enter it in the prompt that will appear.",
+      duration: 15000,
     });
     
-    // Check if popup is closed (user completed auth)
+    // Check if popup is closed and prompt for auth code
     const checkClosed = setInterval(() => {
       if (popup?.closed) {
         clearInterval(checkClosed);
-        // Refresh auth status after popup closes
+        
+        // Prompt user for the authorization code
+        setTimeout(() => {
+          const authCode = prompt("Please paste the authorization code from Google:");
+          if (authCode && authCode.trim()) {
+            handleManualAuth(authCode.trim());
+          }
+        }, 500);
+      }
+    }, 1000);
+  };
+
+  const handleManualAuth = async (code: string) => {
+    try {
+      const response = await fetch('/api/auth/google/manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ code }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Authentication Successful",
+          description: "Google Calendar connected successfully!",
+        });
+        // Refresh events after successful auth
         setTimeout(() => {
           refreshEvents();
         }, 1000);
+      } else {
+        throw new Error('Authentication failed');
       }
-    }, 1000);
+    } catch (error) {
+      toast({
+        title: "Authentication Failed", 
+        description: "Please try again or check the authorization code.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
