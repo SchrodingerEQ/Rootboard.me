@@ -35,22 +35,44 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
     const dayEvents = getEventsForDay(date);
     return dayEvents.filter(event => {
       const eventStart = new Date(event.startTime);
+      const eventStartHour = eventStart.getHours();
+      
+      // Only show event in its starting time slot
+      return eventStartHour === timeIndex;
+    });
+  };
+
+  const getEventHeight = (event: any, timeIndex: number) => {
+    const eventStart = new Date(event.startTime);
+    const eventEnd = new Date(event.endTime);
+    const eventStartHour = eventStart.getHours();
+    const eventEndHour = eventEnd.getHours();
+    
+    // Calculate how many time slots this event spans
+    const duration = Math.max(1, eventEndHour - eventStartHour);
+    return duration * 30; // 30px per time slot
+  };
+
+  const getOverlappingEventsForTimeSlot = (date: Date, timeIndex: number) => {
+    const dayEvents = getEventsForDay(date);
+    return dayEvents.filter(event => {
+      const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
       const eventStartHour = eventStart.getHours();
       const eventEndHour = eventEnd.getHours();
       
-      // Check if event spans this time slot
+      // Check if event overlaps with this time slot
       return eventStartHour <= timeIndex && eventEndHour > timeIndex;
     });
   };
 
-  const calculateEventLayout = (timeSlotEvents: any[], currentEvent: any) => {
-    if (timeSlotEvents.length === 1) {
+  const calculateEventLayout = (allOverlappingEvents: any[], currentEvent: any) => {
+    if (allOverlappingEvents.length === 1) {
       return { width: '100%', left: '0%', zIndex: 1 };
     }
     
     // Sort events by start time, then by duration (longer events first)
-    const sortedEvents = [...timeSlotEvents].sort((a, b) => {
+    const sortedEvents = [...allOverlappingEvents].sort((a, b) => {
       const startDiff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
       if (startDiff !== 0) return startDiff;
       
@@ -176,14 +198,16 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
                       <div key={timeIndex} className="time-slot relative">
                         {/* Events for this time slot */}
                         {timeSlotEvents.map(event => {
-                          const layout = calculateEventLayout(timeSlotEvents, event);
+                          const allOverlappingEvents = getOverlappingEventsForTimeSlot(date, timeIndex);
+                          const layout = calculateEventLayout(allOverlappingEvents, event);
+                          const height = getEventHeight(event, timeIndex);
                           return (
                             <EventItem 
                               key={event.id} 
                               event={event} 
                               timeSlot 
                               onClick={onEventClick}
-                              layout={layout}
+                              layout={{...layout, height: `${height}px`}}
                             />
                           );
                         })}

@@ -6,7 +6,7 @@ interface EventItemProps {
   compact?: boolean;
   timeSlot?: boolean;
   detailed?: boolean;
-  layout?: { width: string; left: string; zIndex: number };
+  layout?: { width: string; left: string; zIndex: number; height?: string };
   onClick?: (event: CalendarEvent) => void;
 }
 
@@ -65,7 +65,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
       left: layout.left,
       zIndex: layout.zIndex,
       top: '0',
-      bottom: '0'
+      height: layout.height || '100%'
     } : {
       ...baseStyle,
       width: 'calc(100% - 4px)'
