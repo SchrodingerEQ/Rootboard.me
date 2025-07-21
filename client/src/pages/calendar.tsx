@@ -174,34 +174,8 @@ export default function CalendarPage() {
   };
 
   const handleAuth = () => {
-    // Show manual instructions with direct auth URL
-    const clientId = "381282129214-1f837jgkt43qg4dkasv2hjgjd8jde20a.apps.googleusercontent.com";
-    const scope = "https://www.googleapis.com/auth/calendar.readonly";
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=urn:ietf:wg:oauth:2.0:oob&scope=${encodeURIComponent(scope)}&response_type=code&access_type=offline&prompt=consent`;
-    
-    // Copy URL to clipboard and show instructions
-    navigator.clipboard.writeText(authUrl).then(() => {
-      toast({
-        title: "Authentication Required",
-        description: "The authorization URL has been copied to your clipboard. Please paste it in a new browser tab to authorize the app.",
-        duration: 20000,
-      });
-    }).catch(() => {
-      // Fallback if clipboard doesn't work
-      toast({
-        title: "Manual Authorization Required",
-        description: `Please copy this URL and paste it in a new browser tab: ${authUrl}`,
-        duration: 30000,
-      });
-    });
-    
-    // Prompt for auth code after a delay
-    setTimeout(() => {
-      const authCode = prompt("After authorizing the app in the new tab, please paste the authorization code here:");
-      if (authCode && authCode.trim()) {
-        handleManualAuth(authCode.trim());
-      }
-    }, 3000);
+    // Use the normal OAuth flow now that redirect URIs are properly configured
+    window.location.href = '/api/auth/google';
   };
 
   const handleManualAuth = async (code: string) => {
