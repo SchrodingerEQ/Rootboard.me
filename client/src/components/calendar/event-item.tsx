@@ -6,10 +6,11 @@ interface EventItemProps {
   compact?: boolean;
   timeSlot?: boolean;
   detailed?: boolean;
+  layout?: { width: string; left: string; zIndex: number };
   onClick?: (event: CalendarEvent) => void;
 }
 
-export function EventItem({ event, compact = false, timeSlot = false, detailed = false, onClick }: EventItemProps) {
+export function EventItem({ event, compact = false, timeSlot = false, detailed = false, layout, onClick }: EventItemProps) {
   const getTextColor = (backgroundColor: string): string => {
     // Convert hex to RGB to determine if we need light or dark text
     const hex = backgroundColor.replace('#', '');
@@ -51,15 +52,29 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   }
 
   if (timeSlot) {
+    const baseStyle = {
+      backgroundColor,
+      color: textColor,
+      minHeight: '20px'
+    };
+
+    const layoutStyle = layout ? {
+      ...baseStyle,
+      position: 'absolute' as const,
+      width: layout.width,
+      left: layout.left,
+      zIndex: layout.zIndex,
+      top: '0',
+      bottom: '0'
+    } : {
+      ...baseStyle,
+      width: 'calc(100% - 4px)'
+    };
+
     return (
       <div 
-        className="event-item mx-0.5 px-0.5 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity text-xs block"
-        style={{ 
-          backgroundColor, 
-          color: textColor,
-          width: 'calc(100% - 4px)',
-          minHeight: '20px'
-        }}
+        className={`event-item ${layout ? 'absolute' : 'mx-0.5'} px-0.5 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity text-xs`}
+        style={layoutStyle}
         onClick={() => onClick?.(event)}
       >
         <div className="font-medium text-xs truncate">{event.title}</div>

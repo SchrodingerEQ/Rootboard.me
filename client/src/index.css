@@ -249,6 +249,12 @@
     height: 30px;
     border-bottom: 1px solid hsl(var(--border));
     position: relative;
+    overflow: visible; /* Allow overlapping events */
+  }
+  
+  .time-slot .event-item {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   }
   
   .time-slot:hover {

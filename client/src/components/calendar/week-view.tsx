@@ -31,6 +31,49 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
     });
   };
 
+  const getEventsForTimeSlot = (date: Date, timeIndex: number) => {
+    const dayEvents = getEventsForDay(date);
+    return dayEvents.filter(event => {
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      const eventStartHour = eventStart.getHours();
+      const eventEndHour = eventEnd.getHours();
+      
+      // Check if event spans this time slot
+      return eventStartHour <= timeIndex && eventEndHour > timeIndex;
+    });
+  };
+
+  const calculateEventLayout = (timeSlotEvents: any[], currentEvent: any) => {
+    if (timeSlotEvents.length === 1) {
+      return { width: '100%', left: '0%', zIndex: 1 };
+    }
+    
+    // Sort events by start time, then by duration (longer events first)
+    const sortedEvents = [...timeSlotEvents].sort((a, b) => {
+      const startDiff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+      if (startDiff !== 0) return startDiff;
+      
+      const aDuration = new Date(a.endTime).getTime() - new Date(a.startTime).getTime();
+      const bDuration = new Date(b.endTime).getTime() - new Date(b.startTime).getTime();
+      return bDuration - aDuration; // Longer events first
+    });
+    
+    const eventIndex = sortedEvents.findIndex(e => e.id === currentEvent.id);
+    const totalEvents = sortedEvents.length;
+    
+    // Calculate width and position with better spacing
+    const availableWidth = 98; // Leave 2% for margins
+    const eventWidth = availableWidth / totalEvents;
+    const leftOffset = (eventIndex * eventWidth) + 1; // 1% left margin
+    
+    return {
+      width: `${Math.max(eventWidth - 0.5, 15)}%`, // Minimum 15% width with small gap
+      left: `${leftOffset}%`,
+      zIndex: totalEvents - eventIndex // Earlier/longer events have higher z-index
+    };
+  };
+
   const getCurrentTimePosition = () => {
     const now = new Date();
     const hours = now.getHours();
@@ -126,20 +169,27 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
                     isTodayDate ? 'bg-blue-50' : ''
                   }`}
                 >
-                  {timeSlots.map((_, timeIndex) => (
-                    <div key={timeIndex} className="time-slot">
-                      {/* Events for this time slot */}
-                      {dayEvents
-                        .filter(event => {
-                          const eventHour = new Date(event.startTime).getHours();
-                          return eventHour === timeIndex;
-                        })
-                        .map(event => (
-                          <EventItem key={event.id} event={event} timeSlot onClick={onEventClick} />
-                        ))
-                      }
-                    </div>
-                  ))}
+                  {timeSlots.map((_, timeIndex) => {
+                    const timeSlotEvents = getEventsForTimeSlot(date, timeIndex);
+                    
+                    return (
+                      <div key={timeIndex} className="time-slot relative">
+                        {/* Events for this time slot */}
+                        {timeSlotEvents.map(event => {
+                          const layout = calculateEventLayout(timeSlotEvents, event);
+                          return (
+                            <EventItem 
+                              key={event.id} 
+                              event={event} 
+                              timeSlot 
+                              onClick={onEventClick}
+                              layout={layout}
+                            />
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
                   
                   {/* Current time indicator */}
                   {isTodayDate && (
