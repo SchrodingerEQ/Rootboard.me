@@ -53,16 +53,16 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   if (timeSlot) {
     return (
       <div 
-        className="event-item m-1 p-2 rounded cursor-pointer hover:opacity-90 transition-opacity"
+        className="event-item px-1 py-1 rounded cursor-pointer hover:opacity-90 transition-opacity w-full"
         style={{ backgroundColor, color: textColor }}
         onClick={() => onClick?.(event)}
       >
-        <div className="font-medium text-sm">{event.title}</div>
-        <div className="text-xs opacity-75">
+        <div className="font-medium text-xs truncate">{event.title}</div>
+        <div className="text-xs opacity-75 truncate">
           {formatTime(startTime)} - {formatTime(endTime)}
         </div>
         {event.location && (
-          <div className="text-xs opacity-75">{event.location}</div>
+          <div className="text-xs opacity-75 truncate">{event.location}</div>
         )}
       </div>
     );
