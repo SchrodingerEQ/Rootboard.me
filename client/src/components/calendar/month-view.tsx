@@ -92,9 +92,9 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
             return (
               <div 
                 key={index} 
-                className={`calendar-cell p-1 flex flex-col ${isTodayDate ? 'bg-blue-50' : ''}`}
+                className={`calendar-cell p-0.5 flex flex-col ${isTodayDate ? 'bg-blue-50' : ''}`}
               >
-                <div className={`text-sm mb-1 px-1 ${
+                <div className={`text-sm mb-0.5 px-1 ${
                   isCurrentMonth 
                     ? isTodayDate 
                       ? 'font-medium text-[hsl(var(--google-blue))]'
@@ -104,7 +104,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   {date.getDate()}
                 </div>
                 
-                <div className="flex flex-col h-full px-1">
+                <div className="flex flex-col h-full px-0.5">
                   <div className="space-y-0.5 flex-1 overflow-hidden">
                     {dayEvents.slice(0, 3).map((event) => (
                       <EventItem key={event.id} event={event} compact onClick={onEventClick} />
