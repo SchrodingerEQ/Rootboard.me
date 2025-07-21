@@ -176,9 +176,9 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Fixed Week Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex bg-white border-b border-border">
+      <div className="flex bg-white border-b border-border flex-shrink-0 z-10">
         <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 h-12"></div>
         {weekDays.map((date, i) => {
           const isTodayDate = isToday(date);
@@ -198,8 +198,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
       {/* Scrollable Content */}
       <div 
         ref={scrollContainerRef}
-        className="flex w-full h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100" 
-        style={{ paddingTop: '48px' }}
+        className="flex w-full flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
       >
         {/* Time Column */}
         <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
