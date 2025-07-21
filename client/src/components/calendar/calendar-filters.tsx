@@ -88,6 +88,8 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
   const visibleCalendars = calendars.filter((calendar: CalendarInfo) => 
     visibleCalendarsInHeader.has(calendar.id)
   );
+  
+
 
 
 
