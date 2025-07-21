@@ -301,7 +301,7 @@ export default function CalendarPage() {
         <div className={`view-container h-full ${currentView === 'month' ? 'active' : ''}`}>
           <MonthView 
             currentDate={currentDate} 
-            events={filteredEvents}
+            events={events}
             isLoading={isLoading}
             enabledCalendars={enabledCalendars}
             onEventClick={handleEventClick}

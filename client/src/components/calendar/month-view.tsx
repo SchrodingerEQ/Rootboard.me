@@ -111,8 +111,8 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                     ))}
                   </div>
                   {dayEvents.length > 3 && (
-                    <div className="flex items-center justify-between mt-auto pt-1">
-                      <div className="text-xs text-muted-foreground px-1">
+                    <div className="flex items-center justify-between mt-auto pt-1 bg-gray-50 rounded">
+                      <div className="text-xs text-gray-600 px-2 py-1">
                         +{dayEvents.length - 3} more
                       </div>
                       <button 
@@ -120,10 +120,10 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                           e.stopPropagation();
                           handleShowMoreEvents(date);
                         }}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                        className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0 mr-1"
                         aria-label={`Show all ${dayEvents.length} events for ${date.toLocaleDateString()}`}
                       >
-                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                        <ChevronDown className="h-4 w-4 text-gray-600" />
                       </button>
                     </div>
                   )}
