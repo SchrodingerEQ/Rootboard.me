@@ -149,6 +149,13 @@ Changelog:
   - ADDED: Individual calendar toggle functionality (show/hide specific calendars)
   - ADDED: Color-coded events matching their source calendar colors
   - FIXED: Calendar filtering logic to allow completely empty selection
+  - ADDED: Settings menu with gear icon access containing:
+    - Brightness adjustment slider (30-150% range) applying to entire application
+    - Calendar selection toggles for show/hide specific calendars
+    - Logout button with confirmation dialog clearing credentials
+  - ADDED: Dynamic header calendar filters that sync with settings menu selections
+  - RESOLVED: Google OAuth authentication using custom user credentials
+  - VERIFIED: Settings menu fully functional with real-time header synchronization
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
