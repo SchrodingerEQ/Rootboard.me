@@ -74,7 +74,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
       <div className="bg-[hsl(var(--google-light-gray))] border-b border-border">
         <div className="calendar-grid">
           {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
-            <div key={day} className="px-2 py-2 text-center text-sm font-medium text-[hsl(var(--google-gray))]">
+            <div key={day} className="px-2 py-1 text-center text-sm font-medium text-[hsl(var(--google-gray))]">
               {day}
             </div>
           ))}
@@ -92,7 +92,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
             return (
               <div 
                 key={index} 
-                className={`calendar-cell p-0.5 flex flex-col ${isTodayDate ? 'bg-blue-50' : ''}`}
+                className={`calendar-cell p-0.5 flex flex-col justify-start ${isTodayDate ? 'bg-blue-50' : ''}`}
               >
                 <div className={`text-sm mb-0.5 px-1 ${
                   isCurrentMonth 
@@ -104,8 +104,8 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   {date.getDate()}
                 </div>
                 
-                <div className="flex flex-col h-full px-0.5">
-                  <div className="space-y-0.5 flex-1 overflow-hidden">
+                <div className="flex flex-col flex-1 px-0.5">
+                  <div className="space-y-0.5 overflow-hidden">
                     {dayEvents.slice(0, 3).map((event) => (
                       <EventItem key={event.id} event={event} compact onClick={onEventClick} />
                     ))}
