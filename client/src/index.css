@@ -84,7 +84,7 @@
   .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 0.5px;
+    gap: 0.25px;
     background-color: hsl(var(--google-border));
   }
 

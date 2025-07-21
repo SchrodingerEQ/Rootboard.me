@@ -283,7 +283,7 @@ export default function CalendarPage() {
       
       {/* Calendar Filters and Settings */}
       {authStatus?.authenticated && (
-        <div className="flex items-center justify-between px-2 py-0.5 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between px-2 py-0 border-b border-gray-200 bg-white">
           <CalendarFilters 
 
             onCalendarToggle={handleCalendarEventToggle}

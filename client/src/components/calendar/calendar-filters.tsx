@@ -101,7 +101,7 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
   }
 
   return (
-    <div className="flex gap-1 px-2 py-1 bg-white border-b overflow-x-auto">
+    <div className="flex gap-1 px-2 py-0.5 bg-white border-b overflow-x-auto">
       {visibleCalendars.map((calendar: CalendarInfo) => {
         const isEnabled = enabledCalendars.has(calendar.id);
         const color = getCalendarColor(calendar);

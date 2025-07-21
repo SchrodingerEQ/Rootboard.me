@@ -71,7 +71,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
   return (
     <div className="h-full flex flex-col">
       {/* Days of Week Header */}
-      <div className="bg-[hsl(var(--google-light-gray))] border-b border-border">
+      <div className="bg-[hsl(var(--google-light-gray))]">
         <div className="calendar-grid">
           {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
             <div key={day} className="px-1 py-0.5 text-center text-xs font-medium text-[hsl(var(--google-gray))]">
@@ -93,7 +93,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                 key={index} 
                 className="calendar-cell p-0.5 flex flex-col justify-start pt-[0px] pb-[0px]"
               >
-                <div className={`text-sm mb-0.5 px-1 ${
+                <div className={`text-xs mb-0 px-1 ${
                   isCurrentMonth 
                     ? isTodayDate 
                       ? 'font-medium text-[hsl(var(--google-blue))]'
@@ -110,7 +110,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                     
                     {/* Show more indicator - inline with events */}
                     {dayEvents.length > 3 && (
-                      <div className="flex items-center justify-between bg-blue-100 border border-blue-300 rounded px-1 py-0.5 mt-0.5">
+                      <div className="flex items-center justify-between bg-blue-100 border border-blue-300 rounded px-1 py-0.5 mt-0">
                         <div className="text-xs text-blue-700 font-medium">
                           +{dayEvents.length - 3}
                         </div>
@@ -122,7 +122,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                           className="p-0.5 hover:bg-blue-200 rounded transition-colors flex-shrink-0"
                           aria-label={`Show all ${dayEvents.length} events for ${date.toLocaleDateString()}`}
                         >
-                          <ChevronDown className="h-2.5 w-2.5 text-blue-700" />
+                          <ChevronDown className="h-2 w-2 text-blue-700" />
                         </button>
                       </div>
                     )}
