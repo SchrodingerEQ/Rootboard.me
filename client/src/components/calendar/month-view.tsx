@@ -113,7 +113,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   
                   {/* Show more indicator - always at bottom if there are more events */}
                   {dayEvents.length > 3 && (
-                    <div className="flex items-center justify-between mt-0.5 bg-blue-100 border border-blue-300 rounded px-1 py-0.5 flex-shrink-0">
+                    <div className="flex items-center justify-between bg-blue-100 border border-blue-300 rounded px-1 py-0.5 flex-shrink-0">
                       <div className="text-xs text-blue-700 font-medium">
                         +{dayEvents.length - 3}
                       </div>
