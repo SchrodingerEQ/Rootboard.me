@@ -80,7 +80,6 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
           ))}
         </div>
       </div>
-      
       {/* Calendar Grid */}
       <div className="flex-1 overflow-hidden">
         <div className="calendar-grid h-full">
@@ -92,7 +91,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
             return (
               <div 
                 key={index} 
-                className={`calendar-cell p-0.5 flex flex-col justify-start ${isTodayDate ? 'bg-blue-50' : ''}`}
+                className="calendar-cell p-0.5 flex flex-col justify-start pt-[0px] pb-[0px]"
               >
                 <div className={`text-sm mb-0.5 px-1 ${
                   isCurrentMonth 
@@ -103,7 +102,6 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                 }`}>
                   {date.getDate()}
                 </div>
-                
                 <div className="flex flex-col flex-1 px-0.5">
                   <div className="space-y-0.5 overflow-hidden">
                     {dayEvents.slice(0, 3).map((event) => (
@@ -135,7 +133,6 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
           })}
         </div>
       </div>
-      
       {/* Day Events Dialog */}
       {selectedDate && (
         <DayEventsDialog
