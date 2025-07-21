@@ -82,9 +82,21 @@ export default function CalendarPage() {
     });
   };
 
-  // Handle settings menu toggles - controls header visibility
+  // Handle settings menu toggles - controls both header visibility AND event visibility
   const handleCalendarHeaderToggle = (calendarId: string, visible: boolean) => {
+    // Update header visibility
     setVisibleCalendarsInHeader(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
+        newSet.add(calendarId);
+      } else {
+        newSet.delete(calendarId);
+      }
+      return newSet;
+    });
+    
+    // Also update event visibility to match
+    setEnabledCalendars(prev => {
       const newSet = new Set(prev);
       if (visible) {
         newSet.add(calendarId);
