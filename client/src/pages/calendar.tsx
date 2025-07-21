@@ -273,6 +273,7 @@ export default function CalendarPage() {
       {authStatus?.authenticated && (
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
           <CalendarFilters 
+
             onCalendarToggle={handleCalendarEventToggle}
             enabledCalendars={enabledCalendars}
             visibleCalendarsInHeader={visibleCalendarsInHeader}
