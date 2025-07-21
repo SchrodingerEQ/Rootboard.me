@@ -45,38 +45,38 @@ export function CalendarHeader({
   };
 
   return (
-    <header className="bg-white border-b border-border px-4 py-2 flex items-center justify-between shadow-sm">
-      <div className="flex items-center space-x-6">
+    <header className="bg-white border-b border-border px-3 py-1 flex items-center justify-between shadow-sm">
+      <div className="flex items-center space-x-4">
         {/* Logo and Title */}
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-[hsl(var(--google-blue))] rounded-lg flex items-center justify-center">
-            <CalendarIcon className="text-white text-lg" size={20} />
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-[hsl(var(--google-blue))] rounded-lg flex items-center justify-center">
+            <CalendarIcon className="text-white text-sm" size={16} />
           </div>
-          <h1 className="text-xl font-medium text-[hsl(var(--google-gray))]">Calendar</h1>
+          <h1 className="text-lg font-medium text-[hsl(var(--google-gray))]">Calendar</h1>
         </div>
         
         {/* Navigation Controls */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1">
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button px-4 py-2 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))]"
+            className="touch-button px-2 py-1 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))]"
             onClick={() => onNavigate(-1)}
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={14} />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button px-4 py-2 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))]"
+            className="touch-button px-2 py-1 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))]"
             onClick={() => onNavigate(1)}
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={14} />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button px-4 py-2 text-[hsl(var(--google-blue))] hover:bg-blue-50 font-medium"
+            className="touch-button px-3 py-1 text-[hsl(var(--google-blue))] hover:bg-blue-50 font-medium text-sm"
             onClick={onToday}
           >
             Today
@@ -86,19 +86,19 @@ export function CalendarHeader({
       
       {/* Current Date Display */}
       <div className="flex-1 text-center">
-        <h2 className="text-lg font-medium text-[hsl(var(--google-gray))]">
+        <h2 className="text-base font-medium text-[hsl(var(--google-gray))]">
           {getDateTitle()}
         </h2>
       </div>
       
       {/* View Toggle and Actions */}
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-2">
         {/* View Toggle Buttons */}
-        <div className="flex items-center space-x-2 bg-[hsl(var(--google-light-gray))] rounded-lg p-1">
+        <div className="flex items-center space-x-1 bg-[hsl(var(--google-light-gray))] rounded-lg p-0.5">
           <Button
             variant={currentView === 'day' ? 'default' : 'ghost'}
             size="sm"
-            className={`touch-button px-4 py-2 rounded-md transition-colors ${
+            className={`touch-button px-2 py-1 rounded-md transition-colors text-sm ${
               currentView === 'day' 
                 ? 'bg-white text-[hsl(var(--google-blue))] shadow-sm' 
                 : 'text-[hsl(var(--google-gray))] hover:bg-white'
@@ -110,7 +110,7 @@ export function CalendarHeader({
           <Button
             variant={currentView === 'week' ? 'default' : 'ghost'}
             size="sm"
-            className={`touch-button px-4 py-2 rounded-md transition-colors ${
+            className={`touch-button px-2 py-1 rounded-md transition-colors text-sm ${
               currentView === 'week' 
                 ? 'bg-white text-[hsl(var(--google-blue))] shadow-sm' 
                 : 'text-[hsl(var(--google-gray))] hover:bg-white'
@@ -122,7 +122,7 @@ export function CalendarHeader({
           <Button
             variant={currentView === 'month' ? 'default' : 'ghost'}
             size="sm"
-            className={`touch-button px-4 py-2 rounded-md transition-colors ${
+            className={`touch-button px-2 py-1 rounded-md transition-colors text-sm ${
               currentView === 'month' 
                 ? 'bg-white text-[hsl(var(--google-blue))] shadow-sm' 
                 : 'text-[hsl(var(--google-gray))] hover:bg-white'
@@ -137,10 +137,10 @@ export function CalendarHeader({
         {needsAuth && (
           <Button
             size="sm"
-            className="touch-button bg-green-600 hover:bg-green-700 text-white"
+            className="touch-button bg-green-600 hover:bg-green-700 text-white px-2 py-1 text-sm"
             onClick={onAuth}
           >
-            <Key className="mr-2" size={16} />
+            <Key className="mr-1" size={14} />
             Connect Google
           </Button>
         )}
@@ -148,11 +148,11 @@ export function CalendarHeader({
         {/* Refresh Button */}
         <Button
           size="sm"
-          className="touch-button bg-[hsl(var(--google-blue))] text-white hover:bg-[hsl(var(--google-blue-hover))]"
+          className="touch-button bg-[hsl(var(--google-blue))] text-white hover:bg-[hsl(var(--google-blue-hover))] px-2 py-1 text-sm"
           onClick={onRefresh}
           disabled={isRefreshing}
         >
-          <RefreshCw className={`mr-2 ${isRefreshing ? 'animate-spin' : ''}`} size={16} />
+          <RefreshCw className={`mr-1 ${isRefreshing ? 'animate-spin' : ''}`} size={14} />
           Refresh
         </Button>
       </div>

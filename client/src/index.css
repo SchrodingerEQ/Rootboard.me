@@ -90,7 +90,7 @@
 
   .calendar-cell {
     background-color: white;
-    min-height: 120px;
+    min-height: 110px;
     overflow: hidden;
     position: relative;
   }
@@ -193,11 +193,7 @@
     line-height: 1.2 !important;
   }
   
-  .calendar-cell {
-    background-color: white;
-    min-height: 100px;
-    position: relative;
-  }
+
   
   .calendar-cell:hover {
     background-color: hsl(var(--google-light-gray));
