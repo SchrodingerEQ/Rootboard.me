@@ -174,8 +174,27 @@ export default function CalendarPage() {
   };
 
   const handleAuth = () => {
-    // Use the normal OAuth flow now that redirect URIs are properly configured
-    window.location.href = '/api/auth/google';
+    // Open OAuth in a popup to avoid redirect issues
+    const popup = window.open('/api/auth/google', 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+    
+    if (popup) {
+      // Poll to check if popup closes (indicating completion)
+      const checkClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(checkClosed);
+          // Refresh to check auth status
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        }
+      }, 1000);
+    } else {
+      toast({
+        title: "Popup Blocked",
+        description: "Please allow popups and try again, or use direct navigation.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleManualAuth = async (code: string) => {
