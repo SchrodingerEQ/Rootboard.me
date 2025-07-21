@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { EventItem } from "./event-item";
+import { DayEventsDialog } from "./day-events-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMonthCalendar, isSameDay, isToday } from "@/lib/date-utils";
+import { ChevronDown } from "lucide-react";
 import type { CalendarEvent } from "@shared/schema";
 
 interface MonthViewProps {
@@ -13,12 +15,19 @@ interface MonthViewProps {
 
 export function MonthView({ currentDate, events, isLoading, onEventClick }: MonthViewProps) {
   const monthDays = useMemo(() => getMonthCalendar(currentDate), [currentDate]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
   
   const getEventsForDate = (date: Date) => {
     return events.filter(event => 
       isSameDay(new Date(event.startTime), date) ||
       (new Date(event.startTime) <= date && new Date(event.endTime) >= date)
     );
+  };
+
+  const handleShowMoreEvents = (date: Date) => {
+    setSelectedDate(date);
+    setDayDialogOpen(true);
   };
 
   if (isLoading) {
@@ -75,7 +84,7 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
             return (
               <div 
                 key={index} 
-                className={`calendar-cell p-2 ${isTodayDate ? 'bg-blue-50' : ''}`}
+                className={`calendar-cell p-2 flex flex-col ${isTodayDate ? 'bg-blue-50' : ''}`}
               >
                 <div className={`text-sm mb-1 ${
                   isCurrentMonth 
@@ -87,13 +96,27 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
                   {date.getDate()}
                 </div>
                 
-                <div className="space-y-1">
-                  {dayEvents.slice(0, 4).map((event) => (
-                    <EventItem key={event.id} event={event} compact onClick={onEventClick} />
-                  ))}
+                <div className="space-y-1 flex flex-col h-full">
+                  <div className="space-y-1 flex-1">
+                    {dayEvents.slice(0, 4).map((event) => (
+                      <EventItem key={event.id} event={event} compact onClick={onEventClick} />
+                    ))}
+                  </div>
                   {dayEvents.length > 4 && (
-                    <div className="text-xs text-muted-foreground px-1">
-                      +{dayEvents.length - 4} more
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="text-xs text-muted-foreground px-1">
+                        +{dayEvents.length - 4} more
+                      </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleShowMoreEvents(date);
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        aria-label={`Show all ${dayEvents.length} events for ${date.toLocaleDateString()}`}
+                      >
+                        <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -102,6 +125,17 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
           })}
         </div>
       </div>
+      
+      {/* Day Events Dialog */}
+      {selectedDate && (
+        <DayEventsDialog
+          open={dayDialogOpen}
+          onOpenChange={setDayDialogOpen}
+          date={selectedDate}
+          events={getEventsForDate(selectedDate)}
+          onEventClick={onEventClick}
+        />
+      )}
     </div>
   );
 }
