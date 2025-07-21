@@ -23,14 +23,14 @@ export function DayEventsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-96 overflow-hidden">
+      <DialogContent className="max-w-md max-h-[32rem] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="text-lg font-medium">
             {dayName}, {monthName} {dayNumber}
           </DialogTitle>
         </DialogHeader>
         
-        <div className="overflow-y-auto max-h-80 space-y-2 pr-2">
+        <div className="overflow-y-auto max-h-96 space-y-2 pr-2 pb-2">
           {events.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No events for this day
