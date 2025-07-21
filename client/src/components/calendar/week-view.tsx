@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { EventItem } from "./event-item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWeekDays, isToday, formatTime } from "@/lib/date-utils";
@@ -20,6 +20,17 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
 
 export function WeekView({ currentDate, events, isLoading, enabledCalendars, onEventClick }: WeekViewProps) {
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to current time when component mounts
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const currentHour = new Date().getHours();
+      // Scroll to current time minus 2 hours to show some context
+      const scrollPosition = Math.max(0, (currentHour - 2) * 30);
+      scrollContainerRef.current.scrollTop = scrollPosition;
+    }
+  }, []);
   
   const getEventsForDay = (date: Date) => {
     return events.filter(event => {
@@ -166,49 +177,52 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Time Column */}
-      <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
-        <div className="h-12 border-b border-border"></div>
-        {timeSlots.map((time, i) => (
-          <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '30px'}}>
-            {time}
-          </div>
-        ))}
+      {/* Fixed Week Header */}
+      <div className="absolute top-0 left-0 right-0 z-10 flex bg-white border-b border-border">
+        <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 h-12"></div>
+        {weekDays.map((date, i) => {
+          const isTodayDate = isToday(date);
+          return (
+            <div 
+              key={i} 
+              className={`flex-1 text-center py-3 text-sm font-medium border-r border-border bg-[hsl(var(--google-light-gray))] ${
+                isTodayDate ? 'bg-blue-50 text-[hsl(var(--google-blue))]' : ''
+              }`}
+            >
+              {date.toLocaleDateString('en-US', { weekday: 'short' })} {date.getDate()}
+            </div>
+          );
+        })}
       </div>
-      
-      {/* Days Grid */}
-      <div className="flex-1 overflow-hidden">
-        {/* Week Header */}
-        <div className="h-12 flex border-b border-border bg-[hsl(var(--google-light-gray))]">
-          {weekDays.map((date, i) => {
-            const isTodayDate = isToday(date);
-            return (
-              <div 
-                key={i} 
-                className={`flex-1 text-center py-3 text-sm font-medium border-r border-border ${
-                  isTodayDate ? 'bg-blue-50 text-[hsl(var(--google-blue))]' : ''
-                }`}
-              >
-                {date.toLocaleDateString('en-US', { weekday: 'short' })} {date.getDate()}
-              </div>
-            );
-          })}
+
+      {/* Scrollable Content */}
+      <div 
+        ref={scrollContainerRef}
+        className="flex w-full h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100" 
+        style={{ paddingTop: '48px' }}
+      >
+        {/* Time Column */}
+        <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
+          {timeSlots.map((time, i) => (
+            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '30px'}}>
+              {time}
+            </div>
+          ))}
         </div>
         
-        {/* Time Grid */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="flex relative">
-            {weekDays.map((date, dayIndex) => {
-              const dayEvents = getEventsForDay(date);
-              const isTodayDate = isToday(date);
-              
-              return (
-                <div 
-                  key={dayIndex} 
-                  className={`flex-1 border-r border-border relative overflow-hidden ${
-                    isTodayDate ? 'bg-blue-50' : ''
-                  }`}
-                >
+        {/* Events Grid */}
+        <div className="flex-1 flex relative">
+          {weekDays.map((date, dayIndex) => {
+            const dayEvents = getEventsForDay(date);
+            const isTodayDate = isToday(date);
+            
+            return (
+              <div 
+                key={dayIndex} 
+                className={`flex-1 border-r border-border relative overflow-hidden ${
+                  isTodayDate ? 'bg-blue-50' : ''
+                }`}
+              >
                   {timeSlots.map((_, timeIndex) => {
                     const timeSlotEvents = getEventsForTimeSlot(date, timeIndex);
                     
@@ -240,10 +254,9 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
                       style={{ top: `${getCurrentTimePosition()}%` }}
                     />
                   )}
-                </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
