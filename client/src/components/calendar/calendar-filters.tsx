@@ -16,9 +16,10 @@ interface CalendarInfo {
 interface CalendarFiltersProps {
   onCalendarToggle: (calendarId: string, enabled: boolean) => void;
   enabledCalendars: Set<string>;
+  visibleCalendarsInHeader: Set<string>;
 }
 
-export function CalendarFilters({ onCalendarToggle, enabledCalendars }: CalendarFiltersProps) {
+export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCalendarsInHeader }: CalendarFiltersProps) {
   const { data: calendars, isLoading, error } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
     enabled: true,
@@ -83,8 +84,15 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars }: Calendar
     return null; // Hide filter if only one calendar
   }
 
-  // Show ALL calendars in header, regardless of enabled state
-  const visibleCalendars = calendars;
+  // Show only calendars that are marked as visible in the header
+  const visibleCalendars = calendars.filter((calendar: CalendarInfo) => 
+    visibleCalendarsInHeader.has(calendar.id)
+  );
+
+  // If no calendars are visible in header, don't show the filter bar
+  if (visibleCalendars.length === 0) {
+    return null;
+  }
 
   return (
     <div className="flex gap-2 px-4 py-2 bg-white border-b overflow-x-auto">

@@ -18,6 +18,7 @@ export default function CalendarPage() {
   const [currentView, setCurrentView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set());
+  const [visibleCalendarsInHeader, setVisibleCalendarsInHeader] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -43,7 +44,8 @@ export default function CalendarPage() {
   useEffect(() => {
     if (calendars && calendars.length > 0 && !hasInitialized) {
       const allCalendarIds = new Set(calendars.map(cal => cal.id));
-      setEnabledCalendars(allCalendarIds); // All calendars enabled by default
+      setEnabledCalendars(allCalendarIds); // All calendars enabled by default for events
+      setVisibleCalendarsInHeader(allCalendarIds); // All calendars visible in header by default
       setHasInitialized(true);
     }
   }, [calendars, hasInitialized]);
@@ -56,10 +58,24 @@ export default function CalendarPage() {
     return events.filter(event => enabledCalendars.has(event.calendarId));
   }, [events, enabledCalendars]);
 
-  const handleCalendarToggle = (calendarId: string, enabled: boolean) => {
+  // Handle header button clicks - toggles event visibility
+  const handleCalendarEventToggle = (calendarId: string, enabled: boolean) => {
     setEnabledCalendars(prev => {
       const newSet = new Set(prev);
       if (enabled) {
+        newSet.add(calendarId);
+      } else {
+        newSet.delete(calendarId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle settings menu toggles - controls header visibility
+  const handleCalendarHeaderToggle = (calendarId: string, visible: boolean) => {
+    setVisibleCalendarsInHeader(prev => {
+      const newSet = new Set(prev);
+      if (visible) {
         newSet.add(calendarId);
       } else {
         newSet.delete(calendarId);
@@ -246,12 +262,13 @@ export default function CalendarPage() {
       {authStatus?.authenticated && (
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
           <CalendarFilters 
-            onCalendarToggle={handleCalendarToggle}
+            onCalendarToggle={handleCalendarEventToggle}
             enabledCalendars={enabledCalendars}
+            visibleCalendarsInHeader={visibleCalendarsInHeader}
           />
           <SettingsMenu 
-            enabledCalendars={enabledCalendars}
-            onCalendarToggle={handleCalendarToggle}
+            visibleCalendarsInHeader={visibleCalendarsInHeader}
+            onCalendarToggle={handleCalendarHeaderToggle}
           />
         </div>
       )}

@@ -31,11 +31,11 @@ interface CalendarInfo {
 }
 
 interface SettingsMenuProps {
-  enabledCalendars: Set<string>;
-  onCalendarToggle: (calendarId: string, enabled: boolean) => void;
+  visibleCalendarsInHeader: Set<string>;
+  onCalendarToggle: (calendarId: string, visible: boolean) => void;
 }
 
-export function SettingsMenu({ enabledCalendars, onCalendarToggle }: SettingsMenuProps) {
+export function SettingsMenu({ visibleCalendarsInHeader, onCalendarToggle }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem('calendar-brightness');
@@ -174,7 +174,7 @@ export function SettingsMenu({ enabledCalendars, onCalendarToggle }: SettingsMen
                   <div className="text-xs text-gray-500">Loading calendars...</div>
                 ) : calendars && calendars.length > 0 ? (
                   calendars.map((calendar) => {
-                    const isEnabled = enabledCalendars.has(calendar.id);
+                    const isVisible = visibleCalendarsInHeader.has(calendar.id);
                     const color = getCalendarColor(calendar);
                     
                     return (
@@ -187,7 +187,7 @@ export function SettingsMenu({ enabledCalendars, onCalendarToggle }: SettingsMen
                           <span className="text-sm truncate">{calendar.summary}</span>
                         </div>
                         <Switch
-                          checked={isEnabled}
+                          checked={isVisible}
                           onCheckedChange={(checked) => 
                             onCalendarToggle(calendar.id, checked)
                           }
