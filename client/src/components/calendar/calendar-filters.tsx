@@ -89,6 +89,8 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
     visibleCalendarsInHeader.has(calendar.id)
   );
 
+
+
   // If no calendars are visible in header, don't show the filter bar
   if (visibleCalendars.length === 0) {
     return null;

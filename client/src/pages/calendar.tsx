@@ -39,16 +39,27 @@ export default function CalendarPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Initialize calendars when data is loaded (only once)
-  const [hasInitialized, setHasInitialized] = useState(false);
+  // Initialize calendars when data is loaded
   useEffect(() => {
-    if (calendars && calendars.length > 0 && !hasInitialized) {
+    if (calendars && calendars.length > 0) {
       const allCalendarIds = new Set(calendars.map(cal => cal.id));
-      setEnabledCalendars(allCalendarIds); // All calendars enabled by default for events
-      setVisibleCalendarsInHeader(allCalendarIds); // All calendars visible in header by default
-      setHasInitialized(true);
+      setEnabledCalendars(prev => {
+        // Only initialize if empty
+        if (prev.size === 0) {
+          return allCalendarIds;
+        }
+        return prev;
+      });
+      
+      setVisibleCalendarsInHeader(prev => {
+        // Only initialize if empty
+        if (prev.size === 0) {
+          return allCalendarIds;
+        }
+        return prev;
+      });
     }
-  }, [calendars, hasInitialized]);
+  }, [calendars]);
 
   // Filter events based on enabled calendars
   const filteredEvents = useMemo(() => {
