@@ -195,8 +195,10 @@
   
   .calendar-cell {
     background-color: white;
-    min-height: 100px;
+    min-height: 95px;
+    max-height: 95px;
     position: relative;
+    overflow: hidden;
   }
   
   .calendar-cell:hover {
