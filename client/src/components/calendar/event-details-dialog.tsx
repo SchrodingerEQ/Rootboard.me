@@ -1,7 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, X } from "lucide-react";
+import { Calendar, Clock, MapPin } from "lucide-react";
 import { CalendarEvent } from "@shared/schema";
 import { formatDate, formatTime } from "@/lib/date-utils";
 
@@ -30,19 +29,9 @@ export function EventDetailsDialog({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-semibold text-gray-900 pr-8">
-              {event.title}
-            </DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="absolute right-4 top-4 h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle className="text-lg font-semibold text-gray-900">
+            {event.title}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
