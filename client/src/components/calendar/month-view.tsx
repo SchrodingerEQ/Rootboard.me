@@ -74,7 +74,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
       <div className="bg-[hsl(var(--google-light-gray))] border-b border-border">
         <div className="calendar-grid">
           {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
-            <div key={day} className="px-4 py-3 text-center text-sm font-medium text-[hsl(var(--google-gray))]">
+            <div key={day} className="px-2 py-2 text-center text-sm font-medium text-[hsl(var(--google-gray))]">
               {day}
             </div>
           ))}

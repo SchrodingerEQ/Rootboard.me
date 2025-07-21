@@ -45,14 +45,14 @@ export function CalendarHeader({
   };
 
   return (
-    <header className="bg-white border-b border-border px-6 py-4 flex items-center justify-between shadow-sm">
+    <header className="bg-white border-b border-border px-4 py-2 flex items-center justify-between shadow-sm">
       <div className="flex items-center space-x-6">
         {/* Logo and Title */}
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-[hsl(var(--google-blue))] rounded-lg flex items-center justify-center">
             <CalendarIcon className="text-white text-lg" size={20} />
           </div>
-          <h1 className="text-2xl font-medium text-[hsl(var(--google-gray))]">Calendar</h1>
+          <h1 className="text-xl font-medium text-[hsl(var(--google-gray))]">Calendar</h1>
         </div>
         
         {/* Navigation Controls */}
