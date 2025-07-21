@@ -161,6 +161,12 @@ Changelog:
     - Header button clicks provide fine-grained control for enabled calendars only
     - Calendar events disappear from monthly grid when toggled off in settings
     - Immediate visual updates for both header and calendar grid when toggling
+  - ADDED: "Show more events" functionality for busy calendar days:
+    - Down arrow appears when days have more than 3 events (prevents 4th event cutoff)
+    - Arrow positioned at bottom-right of calendar cells with "+X more" text
+    - Clicking arrow opens dialog showing all events for that specific day
+    - Dialog maintains full event selection functionality for viewing event details
+    - Optimized dialog sizing to prevent bottom event cutoff issues
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
