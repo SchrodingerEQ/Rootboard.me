@@ -156,6 +156,11 @@ Changelog:
   - ADDED: Dynamic header calendar filters that sync with settings menu selections
   - RESOLVED: Google OAuth authentication using custom user credentials
   - VERIFIED: Settings menu fully functional with real-time header synchronization
+  - COMPLETED: Two-level calendar control system implementation:
+    - Settings menu toggles control both header button visibility AND calendar event display
+    - Header button clicks provide fine-grained control for enabled calendars only
+    - Calendar events disappear from monthly grid when toggled off in settings
+    - Immediate visual updates for both header and calendar grid when toggling
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
