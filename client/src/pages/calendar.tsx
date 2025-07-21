@@ -270,6 +270,7 @@ export default function CalendarPage() {
   return (
     <div className="h-screen flex flex-col bg-background">
       <div className="bg-white border-b border-border shadow-sm">
+        {/* Main header row */}
         <CalendarHeader
           currentView={currentView}
           currentDate={currentDate}
@@ -282,15 +283,18 @@ export default function CalendarPage() {
           needsAuth={authStatus?.needsAuth}
         />
         
-        {/* Second row with Calendar Filters and Settings */}
+        {/* Second row with Calendar Filters and Settings button aligned under Refresh */}
         {authStatus?.authenticated && (
-          <div className="flex items-center justify-between px-3 py-0.5 border-t border-gray-100">
-            <CalendarFilters 
-              onCalendarToggle={handleCalendarEventToggle}
-              enabledCalendars={enabledCalendars}
-              visibleCalendarsInHeader={visibleCalendarsInHeader}
-            />
-            <div className="flex justify-end pr-0">
+          <div className="relative px-3 py-0.5 border-t border-gray-100">
+            <div className="flex items-center justify-start">
+              <CalendarFilters 
+                onCalendarToggle={handleCalendarEventToggle}
+                enabledCalendars={enabledCalendars}
+                visibleCalendarsInHeader={visibleCalendarsInHeader}
+              />
+            </div>
+            {/* Settings positioned absolutely to align with refresh button */}
+            <div className="absolute right-3 top-0.5">
               <SettingsMenu 
                 visibleCalendarsInHeader={visibleCalendarsInHeader}
                 onCalendarToggle={handleCalendarHeaderToggle}
