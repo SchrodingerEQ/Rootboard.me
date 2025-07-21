@@ -10,19 +10,27 @@ interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
+  enabledCalendars?: Set<string>;
   onEventClick?: (event: CalendarEvent) => void;
 }
 
-export function MonthView({ currentDate, events, isLoading, onEventClick }: MonthViewProps) {
+export function MonthView({ currentDate, events, isLoading, enabledCalendars, onEventClick }: MonthViewProps) {
   const monthDays = useMemo(() => getMonthCalendar(currentDate), [currentDate]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => 
+    const dateEvents = events.filter(event => 
       isSameDay(new Date(event.startTime), date) ||
       (new Date(event.startTime) <= date && new Date(event.endTime) >= date)
     );
+    
+    // Filter by enabled calendars if provided
+    if (enabledCalendars && enabledCalendars.size > 0) {
+      return dateEvents.filter(event => enabledCalendars.has(event.calendarId));
+    }
+    
+    return dateEvents;
   };
 
   const handleShowMoreEvents = (date: Date) => {

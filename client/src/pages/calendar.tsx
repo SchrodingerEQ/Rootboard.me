@@ -303,6 +303,7 @@ export default function CalendarPage() {
             currentDate={currentDate} 
             events={filteredEvents}
             isLoading={isLoading}
+            enabledCalendars={enabledCalendars}
             onEventClick={handleEventClick}
           />
         </div>
