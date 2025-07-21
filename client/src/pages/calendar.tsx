@@ -269,33 +269,36 @@ export default function CalendarPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
-      <CalendarHeader
-        currentView={currentView}
-        currentDate={currentDate}
-        onViewChange={setCurrentView}
-        onNavigate={navigateCalendar}
-        onToday={goToToday}
-        onRefresh={handleRefresh}
-        onAuth={handleAuth}
-        isRefreshing={isRefreshing}
-        needsAuth={authStatus?.needsAuth}
-      />
-      
-      {/* Calendar Filters and Settings */}
-      {authStatus?.authenticated && (
-        <div className="flex items-center justify-between px-2 py-0 border-b border-gray-200 bg-white">
-          <CalendarFilters 
-
-            onCalendarToggle={handleCalendarEventToggle}
-            enabledCalendars={enabledCalendars}
-            visibleCalendarsInHeader={visibleCalendarsInHeader}
-          />
-          <SettingsMenu 
-            visibleCalendarsInHeader={visibleCalendarsInHeader}
-            onCalendarToggle={handleCalendarHeaderToggle}
-          />
-        </div>
-      )}
+      <div className="bg-white border-b border-border shadow-sm">
+        <CalendarHeader
+          currentView={currentView}
+          currentDate={currentDate}
+          onViewChange={setCurrentView}
+          onNavigate={navigateCalendar}
+          onToday={goToToday}
+          onRefresh={handleRefresh}
+          onAuth={handleAuth}
+          isRefreshing={isRefreshing}
+          needsAuth={authStatus?.needsAuth}
+        />
+        
+        {/* Second row with Calendar Filters and Settings */}
+        {authStatus?.authenticated && (
+          <div className="flex items-center justify-between px-3 py-0.5 border-t border-gray-100">
+            <CalendarFilters 
+              onCalendarToggle={handleCalendarEventToggle}
+              enabledCalendars={enabledCalendars}
+              visibleCalendarsInHeader={visibleCalendarsInHeader}
+            />
+            <div className="flex justify-end pr-0">
+              <SettingsMenu 
+                visibleCalendarsInHeader={visibleCalendarsInHeader}
+                onCalendarToggle={handleCalendarHeaderToggle}
+              />
+            </div>
+          </div>
+        )}
+      </div>
       
       <main className="flex-1 overflow-hidden">
         <div className={`view-container h-full ${currentView === 'month' ? 'active' : ''}`}>
