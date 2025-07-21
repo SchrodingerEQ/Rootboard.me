@@ -43,7 +43,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     });
   };
 
-  const getEventHeight = (event: any, timeIndex: number) => {
+  const getEventHeight = (event: CalendarEvent, timeIndex: number) => {
     const eventStart = new Date(event.startTime);
     const eventEnd = new Date(event.endTime);
     const eventStartHour = eventStart.getHours();
@@ -54,25 +54,37 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     return duration * 30; // 30px per time slot
   };
 
-  const getOverlappingEventsForTimeSlot = (date: Date, timeIndex: number) => {
-    const dayEvents = getEventsForDay(date);
-    return dayEvents.filter(event => {
-      // Only consider events from enabled calendars
-      if (enabledCalendars && !enabledCalendars.has(event.calendarId)) {
-        return false;
-      }
-      
+  const getOverlappingEventsForTimeSlot = (date: Date, timeIndex: number, currentEvent: CalendarEvent) => {
+    const dayEvents = getEventsForDay(date).filter(event => 
+      !enabledCalendars || enabledCalendars.has(event.calendarId)
+    );
+    
+    // Get all events that overlap with the current time slot
+    const timeSlotEvents = dayEvents.filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
       const eventStartHour = eventStart.getHours();
       const eventEndHour = eventEnd.getHours();
       
-      // Check if event overlaps with this time slot
       return eventStartHour <= timeIndex && eventEndHour > timeIndex;
     });
+    
+    // Find all events that have any time overlap with the current event
+    const currentEventStart = new Date(currentEvent.startTime);
+    const currentEventEnd = new Date(currentEvent.endTime);
+    
+    const overlappingEvents = timeSlotEvents.filter(event => {
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      
+      // Check if events overlap in time at all
+      return currentEventStart < eventEnd && currentEventEnd > eventStart;
+    });
+    
+    return overlappingEvents.length > 0 ? overlappingEvents : [currentEvent];
   };
 
-  const calculateEventLayout = (allOverlappingEvents: any[], currentEvent: any) => {
+  const calculateEventLayout = (allOverlappingEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
     if (allOverlappingEvents.length === 1) {
       return { width: '100%', left: '0%', zIndex: 1 };
     }
@@ -87,7 +99,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
       return bDuration - aDuration; // Longer events first
     });
     
-    const eventIndex = sortedEvents.findIndex(e => e.id === currentEvent.id);
+    const eventIndex = sortedEvents.findIndex(e => e?.id === currentEvent?.id);
     const totalEvents = sortedEvents.length;
     
     // Calculate width and position with better spacing
@@ -204,7 +216,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
                       <div key={timeIndex} className="time-slot relative">
                         {/* Events for this time slot */}
                         {timeSlotEvents.map(event => {
-                          const allOverlappingEvents = getOverlappingEventsForTimeSlot(date, timeIndex);
+                          const allOverlappingEvents = getOverlappingEventsForTimeSlot(date, timeIndex, event);
                           const layout = calculateEventLayout(allOverlappingEvents, event);
                           const height = getEventHeight(event, timeIndex);
                           return (
