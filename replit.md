@@ -167,6 +167,13 @@ Changelog:
     - Clicking arrow opens dialog showing all events for that specific day
     - Dialog maintains full event selection functionality for viewing event details
     - Optimized dialog sizing to prevent bottom event cutoff issues
+  - COMPLETED: Advanced overlapping events functionality in weekly view:
+    - Events with overlapping times display side-by-side in staggered columns
+    - Equal width distribution for all overlapping events within time slots
+    - Dynamic event height based on duration (events span multiple time slots vertically)
+    - Real-time layout updates when calendar views are toggled on/off
+    - Simplified overlap detection algorithm for consistent positioning
+    - Events maintain proper alignment within day columns while overlapping horizontally
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
