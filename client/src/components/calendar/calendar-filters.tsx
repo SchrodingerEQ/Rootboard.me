@@ -101,7 +101,7 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
   }
 
   return (
-    <div className="flex gap-2 px-4 py-2 bg-white border-b overflow-x-auto">
+    <div className="flex gap-1 px-2 py-1 bg-white border-b overflow-x-auto">
       {visibleCalendars.map((calendar: CalendarInfo) => {
         const isEnabled = enabledCalendars.has(calendar.id);
         const color = getCalendarColor(calendar);
@@ -113,8 +113,8 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
             variant="outline"
             size="sm"
             className={`
-              flex items-center gap-2 whitespace-nowrap min-w-fit rounded-full px-3 py-1 text-xs font-medium
-              transition-all duration-200 border-2
+              flex items-center gap-1 whitespace-nowrap min-w-fit rounded-full px-2 py-0.5 text-xs font-medium h-6
+              transition-all duration-200 border
               ${isEnabled 
                 ? 'opacity-100 shadow-sm' 
                 : 'opacity-50 hover:opacity-75'
@@ -130,7 +130,7 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
           >
             <div 
               className={`
-                w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold
+                w-3 h-3 rounded-full flex items-center justify-center text-xs font-bold
                 ${isEnabled ? 'bg-white/20' : ''}
               `}
               style={{
@@ -140,7 +140,7 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
             >
               {initials}
             </div>
-            <span className="font-medium">{calendar.summary}</span>
+            <span className="font-medium text-xs">{calendar.summary}</span>
           </Button>
         );
       })}
