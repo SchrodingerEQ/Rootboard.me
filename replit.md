@@ -174,6 +174,14 @@ Changelog:
     - Real-time layout updates when calendar views are toggled on/off
     - Simplified overlap detection algorithm for consistent positioning
     - Events maintain proper alignment within day columns while overlapping horizontally
+  - OPTIMIZED: UI spacing to prevent "+x more" element cutoff in bottom calendar row:
+    - Reduced header padding from py-2 to py-1 and px-4 to px-3
+    - Made logo smaller (8x8 instead of 10x10) with compact navigation buttons
+    - Reduced day-of-week header spacing and removed border for visual compactness
+    - Optimized calendar grid gap from 0.5px to 0.25px for less white space
+    - Made day numbers and "+x more" elements smaller with tighter spacing
+    - Reduced calendar filters padding for maximum vertical space utilization
+    - VERIFIED: "+x more" elements now fully visible in pop-out view without cutoff
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
