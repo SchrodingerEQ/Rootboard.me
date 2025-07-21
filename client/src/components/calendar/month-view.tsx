@@ -92,9 +92,9 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
             return (
               <div 
                 key={index} 
-                className={`calendar-cell p-2 flex flex-col ${isTodayDate ? 'bg-blue-50' : ''}`}
+                className={`calendar-cell p-1 pb-2 flex flex-col ${isTodayDate ? 'bg-blue-50' : ''}`}
               >
-                <div className={`text-sm mb-1 ${
+                <div className={`text-sm mb-1 px-1 ${
                   isCurrentMonth 
                     ? isTodayDate 
                       ? 'font-medium text-[hsl(var(--google-blue))]'
@@ -104,8 +104,8 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   {date.getDate()}
                 </div>
                 
-                <div className="space-y-1 flex flex-col h-full">
-                  <div className="space-y-1">
+                <div className="space-y-1 flex flex-col h-full px-1">
+                  <div className="space-y-1 flex-1 overflow-hidden">
                     {dayEvents.slice(0, 3).map((event) => (
                       <EventItem key={event.id} event={event} compact onClick={onEventClick} />
                     ))}
@@ -113,19 +113,19 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   
                   {/* Show more indicator - always at bottom if there are more events */}
                   {dayEvents.length > 3 && (
-                    <div className="flex items-center justify-between mt-auto pt-1 bg-red-100 border border-red-300 rounded px-2 py-1">
-                      <div className="text-xs text-red-700 font-medium">
-                        +{dayEvents.length - 3} more events (total: {dayEvents.length})
+                    <div className="flex items-center justify-between mt-1 bg-blue-100 border border-blue-300 rounded px-2 py-1 flex-shrink-0">
+                      <div className="text-xs text-blue-700 font-medium">
+                        +{dayEvents.length - 3} more
                       </div>
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           handleShowMoreEvents(date);
                         }}
-                        className="p-1 hover:bg-red-200 rounded transition-colors flex-shrink-0"
+                        className="p-1 hover:bg-blue-200 rounded transition-colors flex-shrink-0"
                         aria-label={`Show all ${dayEvents.length} events for ${date.toLocaleDateString()}`}
                       >
-                        <ChevronDown className="h-4 w-4 text-red-700" />
+                        <ChevronDown className="h-3 w-3 text-blue-700" />
                       </button>
                     </div>
                   )}
