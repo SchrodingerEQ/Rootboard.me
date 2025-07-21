@@ -83,15 +83,8 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars }: Calendar
     return null; // Hide filter if only one calendar
   }
 
-  // Only show calendars that are enabled in the settings menu
-  const visibleCalendars = calendars.filter((calendar: CalendarInfo) => 
-    enabledCalendars.has(calendar.id)
-  );
-
-  // If no calendars are enabled, don't show the filter bar
-  if (visibleCalendars.length === 0) {
-    return null;
-  }
+  // Show ALL calendars in header, regardless of enabled state
+  const visibleCalendars = calendars;
 
   return (
     <div className="flex gap-2 px-4 py-2 bg-white border-b overflow-x-auto">
