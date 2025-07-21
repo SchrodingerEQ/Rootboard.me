@@ -25,6 +25,7 @@ export interface IStorage {
   getGoogleCredentials(): Promise<GoogleCredentials | undefined>;
   createGoogleCredentials(credentials: InsertGoogleCredentials): Promise<GoogleCredentials>;
   updateGoogleCredentials(credentials: Partial<InsertGoogleCredentials>): Promise<GoogleCredentials | undefined>;
+  clearGoogleCredentials(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -172,6 +173,35 @@ export class MemStorage implements IStorage {
     this.googleCredentials = updated;
     this.saveCredentialsToFile();
     return updated;
+  }
+
+  async clearGoogleCredentials(): Promise<void> {
+    this.googleCredentials = undefined;
+    try {
+      const fs = require('fs');
+      if (fs.existsSync(this.credentialsFile)) {
+        fs.unlinkSync(this.credentialsFile);
+        console.log('Deleted Google credentials file');
+      }
+    } catch (error) {
+      console.error('Failed to delete credentials file:', error);
+    }
+  }
+
+  async saveGoogleCredentials(credentials: any): Promise<void> {
+    const insertCredentials: InsertGoogleCredentials = {
+      accessToken: credentials.access_token,
+      refreshToken: credentials.refresh_token,
+      scope: credentials.scope || 'https://www.googleapis.com/auth/calendar.readonly',
+      tokenType: credentials.token_type || 'Bearer',
+      expiryDate: credentials.expiry_date ? new Date(credentials.expiry_date) : new Date(Date.now() + 3600000) // 1 hour default
+    };
+    
+    if (this.googleCredentials) {
+      await this.updateGoogleCredentials(insertCredentials);
+    } else {
+      await this.createGoogleCredentials(insertCredentials);
+    }
   }
 }
 

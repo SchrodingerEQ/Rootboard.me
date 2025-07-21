@@ -189,6 +189,11 @@ export class GoogleCalendarService {
     return colorMap[colorId || '1'] || '#1a73e8';
   }
 
+  clearCredentials(): void {
+    this.oauth2Client.setCredentials({});
+    this.isInitialized = false;
+  }
+
   private getCalendarColorById(calendarId: string): string {
     // Generate a consistent color based on calendar ID
     const colors = [

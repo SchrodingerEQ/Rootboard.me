@@ -98,6 +98,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Logout route
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      // Clear the stored Google credentials
+      await storage.clearGoogleCredentials();
+      
+      // Reset the Google Calendar service
+      googleCalendarService.clearCredentials();
+      
+      res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ message: 'Failed to logout' });
+    }
+  });
+
   // Calendar events routes
   app.get("/api/calendar/events", async (req, res) => {
     try {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { CalendarFilters } from "@/components/calendar/calendar-filters";
+import { SettingsMenu } from "@/components/calendar/settings-menu";
 import { MonthView } from "@/components/calendar/month-view";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
@@ -209,12 +210,18 @@ export default function CalendarPage() {
         needsAuth={authStatus?.needsAuth}
       />
       
-      {/* Calendar Filters */}
+      {/* Calendar Filters and Settings */}
       {authStatus?.authenticated && (
-        <CalendarFilters 
-          onCalendarToggle={handleCalendarToggle}
-          enabledCalendars={enabledCalendars}
-        />
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 bg-white">
+          <CalendarFilters 
+            onCalendarToggle={handleCalendarToggle}
+            enabledCalendars={enabledCalendars}
+          />
+          <SettingsMenu 
+            enabledCalendars={enabledCalendars}
+            onCalendarToggle={handleCalendarToggle}
+          />
+        </div>
       )}
       
       <main className="flex-1 overflow-hidden">
