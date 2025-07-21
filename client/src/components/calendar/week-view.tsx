@@ -42,10 +42,10 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
     return (
       <div className="flex h-full overflow-hidden">
         {/* Time Column */}
-        <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
+        <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
           <div className="h-12 border-b border-border"></div>
           {timeSlots.map((time, i) => (
-            <div key={i} className="flex items-center text-xs text-muted-foreground px-2 border-b border-border" style={{height: '40px'}}>
+            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '30px'}}>
               {time}
             </div>
           ))}
@@ -84,10 +84,10 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
   return (
     <div className="flex h-full overflow-hidden">
       {/* Time Column */}
-      <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
+      <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
         <div className="h-12 border-b border-border"></div>
         {timeSlots.map((time, i) => (
-          <div key={i} className="flex items-center text-xs text-muted-foreground px-2 border-b border-border" style={{height: '40px'}}>
+          <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '30px'}}>
             {time}
           </div>
         ))}
