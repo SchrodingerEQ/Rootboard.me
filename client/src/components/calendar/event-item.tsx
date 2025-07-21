@@ -53,8 +53,13 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
   if (timeSlot) {
     return (
       <div 
-        className="event-item mx-1 px-1 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity"
-        style={{ backgroundColor, color: textColor }}
+        className="event-item mx-0.5 px-0.5 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity text-xs block"
+        style={{ 
+          backgroundColor, 
+          color: textColor,
+          width: 'calc(100% - 4px)',
+          minHeight: '20px'
+        }}
         onClick={() => onClick?.(event)}
       >
         <div className="font-medium text-xs truncate">{event.title}</div>

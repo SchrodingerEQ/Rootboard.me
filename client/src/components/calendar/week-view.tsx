@@ -122,7 +122,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
               return (
                 <div 
                   key={dayIndex} 
-                  className={`flex-1 border-r border-border relative ${
+                  className={`flex-1 border-r border-border relative overflow-hidden ${
                     isTodayDate ? 'bg-blue-50' : ''
                   }`}
                 >
