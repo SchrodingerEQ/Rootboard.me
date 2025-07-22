@@ -182,6 +182,11 @@ Changelog:
     - Made day numbers and "+x more" elements smaller with tighter spacing
     - Reduced calendar filters padding for maximum vertical space utilization
     - VERIFIED: "+x more" elements now fully visible in pop-out view without cutoff
+  - REPOSITIONED: Settings button moved to the right of the refresh button:
+    - Modified CalendarHeader component to accept settingsButton as prop
+    - Positioned settings gear icon directly adjacent to refresh button in header row
+    - Simplified calendar filters layout by removing settings from second row
+    - Maintained consistent spacing and alignment with other header elements
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
