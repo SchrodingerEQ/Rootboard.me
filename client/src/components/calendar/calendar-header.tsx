@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key } from "lucide-react";
 import type { CalendarView } from "@/pages/calendar";
-import logoImage from "@assets/McMurry_Hurricane_Logo_v1_1753142677897.png";
+import logoImage from "@assets/image_1753142842256.png";
 
 interface CalendarHeaderProps {
   currentView: CalendarView;
@@ -55,7 +55,7 @@ export function CalendarHeader({
           <img 
             src={logoImage} 
             alt="McMurry Hurricane Logo" 
-            className="h-10 w-auto"
+            className="h-12 w-auto"
           />
         </div>
         
