@@ -187,6 +187,11 @@ Changelog:
     - Positioned settings gear icon directly adjacent to refresh button in header row
     - Simplified calendar filters layout by removing settings from second row
     - Maintained consistent spacing and alignment with other header elements
+  - CUSTOMIZED: Replaced default calendar logo with McMurry Hurricane custom logo:
+    - Removed default calendar icon and "Calendar" text from header
+    - Added custom McMurry Hurricane logo with blue hurricane spiral design
+    - Set logo size to h-16 for optimal visibility without changing header height
+    - Imported logo using proper assets system for build optimization
   - STATUS: Application fully functional and production-ready for kiosk deployment
 ```
 
