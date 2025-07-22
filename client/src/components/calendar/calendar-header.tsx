@@ -55,7 +55,7 @@ export function CalendarHeader({
           <img 
             src={logoImage} 
             alt="McMurry Hurricane Logo" 
-            className="h-12 w-auto"
+            className="h-16 w-auto"
           />
         </div>
         
