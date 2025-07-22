@@ -12,6 +12,7 @@ interface CalendarHeaderProps {
   onAuth: () => void;
   isRefreshing: boolean;
   needsAuth?: boolean;
+  settingsButton?: React.ReactNode;
 }
 
 export function CalendarHeader({
@@ -23,7 +24,8 @@ export function CalendarHeader({
   onRefresh,
   onAuth,
   isRefreshing,
-  needsAuth
+  needsAuth,
+  settingsButton
 }: CalendarHeaderProps) {
   const getDateTitle = () => {
     if (currentView === 'month') {
@@ -155,6 +157,9 @@ export function CalendarHeader({
           <RefreshCw className={`mr-1 ${isRefreshing ? 'animate-spin' : ''}`} size={14} />
           Refresh
         </Button>
+        
+        {/* Settings Button */}
+        {settingsButton}
       </div>
     </header>
   );

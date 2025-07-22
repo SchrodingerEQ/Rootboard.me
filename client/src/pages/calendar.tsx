@@ -281,23 +281,22 @@ export default function CalendarPage() {
           onAuth={handleAuth}
           isRefreshing={isRefreshing}
           needsAuth={authStatus?.needsAuth}
+          settingsButton={authStatus?.authenticated ? (
+            <SettingsMenu 
+              visibleCalendarsInHeader={visibleCalendarsInHeader}
+              onCalendarToggle={handleCalendarHeaderToggle}
+            />
+          ) : undefined}
         />
         
-        {/* Second row with Calendar Filters and Settings button aligned under Refresh */}
+        {/* Second row with Calendar Filters */}
         {authStatus?.authenticated && (
-          <div className="flex items-center justify-between px-3 py-0.5 border-t border-gray-100">
+          <div className="flex items-center px-3 py-0.5 border-t border-gray-100">
             <CalendarFilters 
               onCalendarToggle={handleCalendarEventToggle}
               enabledCalendars={enabledCalendars}
               visibleCalendarsInHeader={visibleCalendarsInHeader}
             />
-            {/* Settings button positioned to align with refresh button */}
-            <div className="flex justify-end">
-              <SettingsMenu 
-                visibleCalendarsInHeader={visibleCalendarsInHeader}
-                onCalendarToggle={handleCalendarHeaderToggle}
-              />
-            </div>
           </div>
         )}
       </div>
