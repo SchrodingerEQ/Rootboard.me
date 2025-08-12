@@ -211,6 +211,11 @@ Changelog:
     - Integrated brightness control between settings menu and screensaver system
     - Persistent brightness settings stored in localStorage across sessions
     - Smooth CSS transitions for brightness changes and screensaver overlay
+  - ENHANCED: Monthly view day number styling for improved visual clarity:
+    - Days from previous/next months now appear in light gray (text-gray-300) with reduced opacity
+    - Current month days remain bold black for clear distinction from adjacent months
+    - Today's date maintains blue highlighting for easy identification
+    - Fixed month comparison logic to handle year boundaries correctly
   - STATUS: Application fully functional and production-ready for 21.5-inch kiosk deployment
 ```
 
