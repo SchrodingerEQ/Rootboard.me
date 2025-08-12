@@ -98,7 +98,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                     ? isTodayDate 
                       ? 'font-medium text-[hsl(var(--google-blue))]'
                       : 'font-medium text-foreground'
-                    : 'text-muted-foreground'
+                    : 'font-normal text-gray-400'
                 }`}>
                   {date.getDate()}
                 </div>
