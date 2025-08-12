@@ -201,6 +201,16 @@ Changelog:
     - Added high-DPI display support for crisp text and UI elements
     - Adjusted font sizes and spacing for optimal visibility on smaller display
   - VERIFIED: 21.5-inch touchscreen optimization confirmed working properly
+  - ADDED: Energy-saving screensaver mode with comprehensive power management:
+    - Automatic activation after 2 minutes of inactivity detection
+    - Screen brightness automatically dims to 20% during screensaver mode
+    - Floating McMurry Hurricane logo with gentle animation and blue glow effect
+    - Current time and date display during screensaver for reference
+    - Instant wake-up on any touch, click, or keyboard interaction
+    - Automatic return to monthly calendar view of current month on wake-up
+    - Integrated brightness control between settings menu and screensaver system
+    - Persistent brightness settings stored in localStorage across sessions
+    - Smooth CSS transitions for brightness changes and screensaver overlay
   - STATUS: Application fully functional and production-ready for 21.5-inch kiosk deployment
 ```
 
