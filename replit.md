@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a full-stack calendar application built with React and Express, designed to mimic Google Calendar's interface and functionality. The application is optimized for fullscreen kiosk mode on a 23-inch touchscreen, particularly for Raspberry Pi deployments. It integrates with Google Calendar API to display real-time calendar events with day, week, and month views.
+This is a full-stack calendar application built with React and Express, designed to mimic Google Calendar's interface and functionality. The application is optimized for fullscreen kiosk mode on a 21.5-inch touchscreen, particularly for Raspberry Pi deployments. It integrates with Google Calendar API to display real-time calendar events with day, week, and month views.
 
 ## System Architecture
 
@@ -118,11 +118,12 @@ Required environment variables:
 - `GOOGLE_REDIRECT_URI`: OAuth callback URL
 
 ### Kiosk Optimization
-- Fullscreen meta viewport configuration
-- Touch-optimized interactions
-- Disabled user selection and right-click
+- Fullscreen meta viewport configuration optimized for 21.5-inch displays
+- Touch-optimized interactions with proper touch targets (44px minimum)
+- Disabled user selection and right-click for kiosk environment
 - Google Sans font loading for authentic appearance
-- Responsive breakpoints for various screen sizes
+- Responsive breakpoints specifically tuned for 21.5-inch touchscreens
+- Media queries for both standard and high-DPI 21.5-inch displays
 
 ## Changelog
 
@@ -192,7 +193,14 @@ Changelog:
     - Added custom McMurry Hurricane logo with blue hurricane spiral design
     - Set logo size to h-16 for optimal visibility without changing header height
     - Imported logo using proper assets system for build optimization
-  - STATUS: Application fully functional and production-ready for kiosk deployment
+  - OPTIMIZED: Hardware upgrade for 21.5-inch touchscreen display:
+    - Updated meta description and documentation for 21.5-inch screen size
+    - Reduced calendar cell height from 110px to 100px for better space utilization
+    - Added responsive breakpoints and media queries for 21.5-inch displays
+    - Optimized touch targets to minimum 44px for touchscreen interaction
+    - Added high-DPI display support for crisp text and UI elements
+    - Adjusted font sizes and spacing for optimal visibility on smaller display
+  - STATUS: Application fully functional and production-ready for 21.5-inch kiosk deployment
 ```
 
 ## User Preferences

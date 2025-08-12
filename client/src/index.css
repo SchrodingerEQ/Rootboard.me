@@ -90,7 +90,7 @@
 
   .calendar-cell {
     background-color: white;
-    min-height: 110px;
+    min-height: 100px;
     overflow: hidden;
     position: relative;
   }
@@ -152,6 +152,54 @@
   /* Button text contrast */
   button {
     font-weight: 500 !important;
+  }
+
+  /* 21.5-inch touchscreen optimizations */
+  @media (min-width: 1920px) and (pointer: coarse) {
+    .calendar-cell {
+      min-height: 95px;
+    }
+    
+    .touch-button {
+      min-height: 44px;
+      min-width: 44px;
+      font-size: 14px;
+    }
+    
+    .calendar-event {
+      font-size: 13px;
+      padding: 2px 4px;
+      margin-bottom: 1px;
+    }
+    
+    .day-number {
+      font-size: 16px;
+    }
+    
+    /* Optimize header for 21.5-inch display */
+    header {
+      padding: 8px 12px;
+    }
+    
+    /* Adjust logo size for 21.5-inch screen */
+    header img {
+      height: 60px;
+    }
+  }
+  
+  /* High DPI 21.5-inch displays */
+  @media (min-width: 1920px) and (min-resolution: 150dpi) {
+    .calendar-event {
+      font-size: 14px;
+    }
+    
+    .day-number {
+      font-size: 18px;
+    }
+    
+    .touch-button {
+      font-size: 16px;
+    }
   }
 
   /* Make sure event colors are visible */
