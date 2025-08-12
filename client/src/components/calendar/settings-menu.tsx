@@ -33,13 +33,20 @@ interface CalendarInfo {
 interface SettingsMenuProps {
   visibleCalendarsInHeader: Set<string>;
   onCalendarToggle: (calendarId: string, visible: boolean) => void;
+  setBrightness?: (brightness: number) => void;
+  currentBrightness?: number;
 }
 
-export function SettingsMenu({ visibleCalendarsInHeader, onCalendarToggle }: SettingsMenuProps) {
+export function SettingsMenu({ 
+  visibleCalendarsInHeader, 
+  onCalendarToggle,
+  setBrightness: externalSetBrightness,
+  currentBrightness = 1.0
+}: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem('calendar-brightness');
-    return saved ? parseInt(saved) : 100;
+    return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
   });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { toast } = useToast();
@@ -56,8 +63,13 @@ export function SettingsMenu({ visibleCalendarsInHeader, onCalendarToggle }: Set
     setBrightness(newBrightness);
     localStorage.setItem('calendar-brightness', newBrightness.toString());
     
-    // Apply brightness to the entire app
-    document.documentElement.style.filter = `brightness(${newBrightness}%)`;
+    // Use external brightness control if available (screensaver integration)
+    if (externalSetBrightness) {
+      externalSetBrightness(newBrightness / 100); // Convert to 0-1 scale
+    } else {
+      // Fallback to direct DOM manipulation
+      document.documentElement.style.filter = `brightness(${newBrightness}%)`;
+    }
   };
 
   const handleLogout = async () => {

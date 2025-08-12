@@ -7,8 +7,10 @@ import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { LoadingIndicator } from "@/components/calendar/loading-indicator";
 import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
+import { ScreensaverOverlay } from "@/components/screensaver/screensaver-overlay";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useToast } from "@/hooks/use-toast";
+import { useScreensaver } from "@/hooks/useScreensaver";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarEvent } from "@shared/schema";
 
@@ -22,6 +24,16 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  
+  // Initialize screensaver with 2-minute timeout and brightness control
+  const screensaver = useScreensaver({
+    inactivityTimeout: 2 * 60 * 1000, // 2 minutes
+    dimBrightness: 0.2, // 20% brightness during screensaver
+    originalBrightness: (() => {
+      const saved = localStorage.getItem('calendar-brightness');
+      return saved ? parseInt(saved) / 100 : 1.0;
+    })() // Load saved brightness or default to 100%
+  });
   
   const {
     events,
@@ -60,6 +72,19 @@ export default function CalendarPage() {
       });
     }
   }, [calendars]);
+
+  // Handle screensaver exit - return to month view of current month
+  useEffect(() => {
+    const handleScreensaverExit = () => {
+      setCurrentView('month');
+      setCurrentDate(new Date());
+      // Refresh calendar data when exiting screensaver
+      refreshEvents();
+    };
+
+    window.addEventListener('screensaver-exit', handleScreensaverExit);
+    return () => window.removeEventListener('screensaver-exit', handleScreensaverExit);
+  }, [refreshEvents]);
 
   // Filter events based on enabled calendars
   const filteredEvents = useMemo(() => {
@@ -285,6 +310,8 @@ export default function CalendarPage() {
             <SettingsMenu 
               visibleCalendarsInHeader={visibleCalendarsInHeader}
               onCalendarToggle={handleCalendarHeaderToggle}
+              setBrightness={screensaver.setBrightness}
+              currentBrightness={screensaver.currentBrightness}
             />
           ) : undefined}
         />
@@ -340,6 +367,12 @@ export default function CalendarPage() {
         onClose={handleDialogClose}
         calendarName={selectedEvent ? calendars?.find((cal: any) => cal.id === selectedEvent.calendarId)?.summary : undefined}
         calendarColor={selectedEvent?.color ?? undefined}
+      />
+
+      {/* Screensaver Overlay */}
+      <ScreensaverOverlay 
+        isActive={screensaver.isActive}
+        onExit={screensaver.exitScreensaver}
       />
     </div>
   );

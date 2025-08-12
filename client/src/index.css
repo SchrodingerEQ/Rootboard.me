@@ -202,6 +202,41 @@
     }
   }
 
+  /* Screensaver and energy saving mode styles */
+  html {
+    transition: filter 0.5s ease-in-out;
+  }
+
+  .screensaver-overlay {
+    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
+    backdrop-filter: blur(2px);
+  }
+
+  .screensaver-logo {
+    animation: float 6s ease-in-out infinite;
+    filter: drop-shadow(0 0 20px rgba(70, 130, 180, 0.3));
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    25% { transform: translateY(-10px) rotate(2deg); }
+    50% { transform: translateY(-5px) rotate(-1deg); }
+    75% { transform: translateY(-8px) rotate(1deg); }
+  }
+
+  /* Energy saving mode indicator */
+  .energy-saving-mode {
+    transition: all 0.3s ease-in-out;
+  }
+  
+  /* Prevent text selection during screensaver */
+  .screensaver-overlay * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+  }
+
   /* Make sure event colors are visible */
   .event-blue { background-color: var(--google-blue) !important; color: white !important; }
   .event-green { background-color: var(--google-green) !important; color: white !important; }
