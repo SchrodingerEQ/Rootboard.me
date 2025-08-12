@@ -216,6 +216,13 @@ Changelog:
     - Current month days remain bold black for clear distinction from adjacent months
     - Today's date maintains blue highlighting for easy identification
     - Fixed month comparison logic to handle year boundaries correctly
+  - FIXED: Resolved recurring Google OAuth authentication issues causing flashing sync dialogs:
+    - Invalid stored credentials were causing continuous "invalid_grant" errors
+    - Improved authentication status checking to properly detect invalid tokens
+    - Added proper authentication dialog that appears when login is needed
+    - Created endpoint to clear credentials when they become invalid
+    - Fixed authentication loop that prevented proper login flow
+    - Authentication dialog now shows instead of flashing "Syncing calendar" message
   - STATUS: Application fully functional and production-ready for 21.5-inch kiosk deployment
 ```
 
