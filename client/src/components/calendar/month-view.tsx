@@ -85,7 +85,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
         <div className="calendar-grid h-full">
           {monthDays.map((date, index) => {
             const dayEvents = getEventsForDate(date);
-            const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+            const isCurrentMonth = date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear();
             const isTodayDate = isToday(date);
             
             return (
@@ -97,8 +97,8 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   isCurrentMonth 
                     ? isTodayDate 
                       ? 'font-medium text-[hsl(var(--google-blue))]'
-                      : 'font-medium text-foreground'
-                    : 'font-normal text-gray-400'
+                      : 'font-medium text-black'
+                    : 'font-normal text-gray-300 opacity-60'
                 }`}>
                   {date.getDate()}
                 </div>
