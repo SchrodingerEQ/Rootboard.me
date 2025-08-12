@@ -178,7 +178,7 @@ export class MemStorage implements IStorage {
   async clearGoogleCredentials(): Promise<void> {
     this.googleCredentials = undefined;
     try {
-      const fs = require('fs');
+      const fs = await import('node:fs');
       if (fs.existsSync(this.credentialsFile)) {
         fs.unlinkSync(this.credentialsFile);
         console.log('Deleted Google credentials file');

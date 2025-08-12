@@ -35,6 +35,13 @@ export class GoogleCalendarService {
       return true;
     } catch (error) {
       console.error('Failed to initialize Google credentials:', error);
+      
+      // If credentials are invalid, clear them so auth status is correct
+      if (error instanceof Error && error.message.includes('invalid_grant')) {
+        console.log('Clearing invalid credentials');
+        await storage.clearGoogleCredentials();
+      }
+      
       return false;
     }
   }
@@ -51,6 +58,13 @@ export class GoogleCalendarService {
       this.oauth2Client.setCredentials(credentials);
     } catch (error) {
       console.error('Failed to refresh access token:', error);
+      
+      // If refresh fails with invalid_grant, clear the stored credentials
+      if (error instanceof Error && error.message.includes('invalid_grant')) {
+        console.log('Refresh token is invalid, clearing stored credentials');
+        await storage.clearGoogleCredentials();
+      }
+      
       throw error;
     }
   }

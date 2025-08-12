@@ -7,6 +7,7 @@ import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { LoadingIndicator } from "@/components/calendar/loading-indicator";
 import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
+import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { ScreensaverOverlay } from "@/components/screensaver/screensaver-overlay";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +24,7 @@ export default function CalendarPage() {
   const [visibleCalendarsInHeader, setVisibleCalendarsInHeader] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const { toast } = useToast();
   
   // Initialize screensaver with 2-minute timeout and brightness control
@@ -72,6 +74,15 @@ export default function CalendarPage() {
       });
     }
   }, [calendars]);
+
+  // Show auth dialog when not authenticated
+  useEffect(() => {
+    if (authStatus?.needsAuth === true) {
+      setAuthDialogOpen(true);
+    } else {
+      setAuthDialogOpen(false);
+    }
+  }, [authStatus?.needsAuth]);
 
   // Handle screensaver exit - return to month view of current month
   useEffect(() => {
@@ -367,6 +378,12 @@ export default function CalendarPage() {
         onClose={handleDialogClose}
         calendarName={selectedEvent ? calendars?.find((cal: any) => cal.id === selectedEvent.calendarId)?.summary : undefined}
         calendarColor={selectedEvent?.color ?? undefined}
+      />
+
+      {/* Authentication Dialog */}
+      <AuthDialog 
+        open={authDialogOpen && !screensaver.isActive}
+        onOpenChange={setAuthDialogOpen}
       />
 
       {/* Screensaver Overlay */}

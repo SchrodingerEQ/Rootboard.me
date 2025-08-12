@@ -198,9 +198,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const credentials = await storage.getGoogleCredentials();
       console.log('Auth status check - credentials found:', !!credentials);
+      
+      // If we have credentials, try to initialize them to verify they're valid
+      let isAuthenticated = false;
+      if (credentials) {
+        isAuthenticated = await googleCalendarService.initializeCredentials();
+      }
+      
       res.json({ 
-        authenticated: !!credentials,
-        needsAuth: !credentials 
+        authenticated: isAuthenticated,
+        needsAuth: !isAuthenticated 
       });
     } catch (error) {
       console.error('Failed to check auth status:', error);
@@ -217,25 +224,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Simplified test endpoint to complete auth manually
-  app.get("/api/test/complete-auth", async (req, res) => {
+  // Endpoint to clear invalid credentials
+  app.post("/api/auth/clear", async (req, res) => {
     try {
-      // For testing purposes, create dummy credentials to test the calendar sync
-      await storage.createGoogleCredentials({
-        accessToken: "test_token",
-        refreshToken: "test_refresh",
-        expiryDate: new Date(Date.now() + 3600000), // 1 hour from now
-      });
-      
-      const credentials = await storage.getGoogleCredentials();
+      await storage.clearGoogleCredentials();
+      console.log('Manually cleared Google credentials');
       res.json({ 
         success: true, 
-        hasCredentials: !!credentials,
-        message: "Test authentication completed" 
+        message: "Credentials cleared successfully" 
       });
     } catch (error) {
-      console.error('Test auth failed:', error);
-      res.status(500).json({ message: "Test authentication failed" });
+      console.error('Failed to clear credentials:', error);
+      res.status(500).json({ message: "Failed to clear credentials" });
     }
   });
 
