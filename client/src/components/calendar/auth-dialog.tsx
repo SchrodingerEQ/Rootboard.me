@@ -14,7 +14,15 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
   const queryClient = useQueryClient();
 
   const handleGoogleLogin = () => {
-    window.location.href = '/api/auth/google';
+    // Try opening in a new tab first to see the error more clearly
+    const authWindow = window.open('/api/auth/google', '_blank');
+    
+    // Fallback to current window if popup is blocked
+    setTimeout(() => {
+      if (!authWindow || authWindow.closed) {
+        window.location.href = '/api/auth/google';
+      }
+    }, 1000);
   };
 
   const handleClearCredentials = async () => {
@@ -63,13 +71,13 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
           <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
             <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
             <div className="text-sm text-blue-700">
-              <p className="font-medium mb-1">If you see "refused to connect" error:</p>
-              <p className="text-xs">
-                Add this URL to your Google Cloud Console OAuth settings:<br/>
-                <code className="bg-blue-100 px-1 rounded text-xs">
-                  {window.location.origin}/api/auth/google/callback
-                </code>
-              </p>
+              <p className="font-medium mb-1">Troubleshooting OAuth Issues:</p>
+              <ul className="text-xs space-y-1">
+                <li>• <strong>Publish your OAuth consent screen</strong> (most common fix)</li>
+                <li>• Add <code className="bg-blue-100 px-1 rounded">{window.location.origin}</code> to Authorized JavaScript origins</li>
+                <li>• If testing mode, add your email as a test user</li>
+                <li>• Wait 5-10 minutes for changes to take effect</li>
+              </ul>
             </div>
           </div>
           
