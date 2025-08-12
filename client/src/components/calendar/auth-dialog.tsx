@@ -60,6 +60,19 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
             Sign in with Google
           </Button>
           
+          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+            <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <div className="text-sm text-blue-700">
+              <p className="font-medium mb-1">If you see "refused to connect" error:</p>
+              <p className="text-xs">
+                Add this URL to your Google Cloud Console OAuth settings:<br/>
+                <code className="bg-blue-100 px-1 rounded text-xs">
+                  {window.location.origin}/api/auth/google/callback
+                </code>
+              </p>
+            </div>
+          </div>
+          
           <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
             <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
             <p className="text-sm text-yellow-700">
