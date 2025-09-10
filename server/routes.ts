@@ -8,8 +8,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google OAuth routes
   app.get("/api/auth/google", async (req, res) => {
     try {
-      const authUrl = googleCalendarService.getAuthUrl();
-      console.log('Generated OAuth URL:', authUrl);
+      // Generate and store state for CSRF protection using crypto-secure random
+      const crypto = await import('node:crypto');
+      const state = crypto.randomBytes(16).toString('hex');
+      if ((req as any).session) {
+        (req as any).session.oauthState = state;
+      }
+      
+      const authUrl = googleCalendarService.getAuthUrl(state);
+      console.log('Generated OAuth URL with state protection');
       res.redirect(authUrl);
     } catch (error) {
       console.error('Failed to get Google auth URL:', error);
@@ -18,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/auth/google/callback", async (req, res) => {
-    console.log('Google OAuth callback received:', req.query);
+    console.log('Google OAuth callback received');
     try {
       const { code, error: authError, state } = req.query;
       
@@ -40,7 +47,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         `);
       }
 
-      console.log('Processing authorization code...', code.substring(0, 20) + '...');
+      // Verify state parameter to prevent CSRF attacks
+      if (!state || typeof state !== 'string') {
+        console.log('No state parameter provided');
+        return res.status(400).send(`
+          <html>
+            <body>
+              <h1>Security Error</h1>
+              <p>Invalid authentication request (missing state)</p>
+              <a href="/">Return to Calendar</a>
+            </body>
+          </html>
+        `);
+      }
+
+      const expectedState = req.session?.oauthState;
+      if (state !== expectedState) {
+        console.error('OAuth state mismatch - possible CSRF attack');
+        return res.status(400).send(`
+          <html>
+            <body>
+              <h1>Security Error</h1>
+              <p>Authentication request rejected for security reasons</p>
+              <a href="/">Return to Calendar</a>
+            </body>
+          </html>
+        `);
+      }
+
+      // Clear the stored state after successful verification
+      if (req.session) {
+        delete req.session.oauthState;
+      }
+
+      console.log('Processing authorization code...');
       await googleCalendarService.handleAuthCallback(code);
       console.log('Google authentication successful');
       
@@ -201,28 +241,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If we have credentials, try to initialize them to verify they're valid
       let isAuthenticated = false;
+      let authError = null;
+      
       if (credentials) {
-        isAuthenticated = await googleCalendarService.initializeCredentials();
+        try {
+          isAuthenticated = await googleCalendarService.initializeCredentials();
+          console.log('Credential validation result:', isAuthenticated);
+        } catch (validationError) {
+          console.log('Credential validation failed:', validationError);
+          authError = validationError instanceof Error ? validationError.message : 'Unknown validation error';
+          // Credentials were invalid and have been automatically cleared
+          isAuthenticated = false;
+        }
       }
       
-      res.json({ 
+      const response: any = { 
         authenticated: isAuthenticated,
         needsAuth: !isAuthenticated 
+      };
+      
+      // Include helpful error information for debugging (non-sensitive)
+      if (authError && process.env.NODE_ENV === 'development') {
+        response.debugInfo = {
+          error: authError,
+          hasCredentials: !!credentials,
+          timestamp: new Date().toISOString()
+        };
+      }
+      
+      // Prevent caching to ensure real-time auth status
+      res.set({
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store'
       });
+      
+      res.json(response);
     } catch (error) {
       console.error('Failed to check auth status:', error);
-      res.status(500).json({ message: "Failed to check authentication status" });
+      res.status(500).json({ 
+        message: "Failed to check authentication status",
+        debugInfo: process.env.NODE_ENV === 'development' ? {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        } : undefined
+      });
     }
   });
 
-  // Test endpoint to check OAuth configuration
-  app.get("/api/test/oauth-config", async (req, res) => {
-    res.json({
-      clientId: process.env.GOOGLE_CLIENT_ID?.substring(0, 20) + '...',
-      redirectUri: process.env.GOOGLE_REDIRECT_URI,
-      hasCredentials: !!(await storage.getGoogleCredentials())
+  // OAuth configuration test endpoint (development only)
+  if (process.env.NODE_ENV === 'development') {
+    app.get("/api/test/oauth-config", async (req, res) => {
+      res.json({
+        hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+        hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+        hasRedirectUri: !!process.env.GOOGLE_REDIRECT_URI,
+        hasCredentials: !!(await storage.getGoogleCredentials()),
+        environment: process.env.NODE_ENV
+      });
     });
-  });
+  }
 
   // Endpoint to clear invalid credentials
   app.post("/api/auth/clear", async (req, res) => {
