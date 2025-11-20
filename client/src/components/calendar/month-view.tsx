@@ -19,18 +19,31 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   
+  // Memoize events by date to avoid re-filtering on every render (energy optimization)
+  const eventsByDate = useMemo(() => {
+    const eventsMap = new Map<string, CalendarEvent[]>();
+    
+    // Pre-filter by enabled calendars once
+    const filteredEvents = enabledCalendars && enabledCalendars.size > 0
+      ? events.filter(event => enabledCalendars.has(event.calendarId))
+      : events;
+    
+    // Group events by date
+    monthDays.forEach(date => {
+      const dateKey = date.toDateString();
+      const dateEvents = filteredEvents.filter(event => {
+        const eventStart = new Date(event.startTime);
+        const eventEnd = new Date(event.endTime);
+        return isSameDay(eventStart, date) || (eventStart <= date && eventEnd >= date);
+      });
+      eventsMap.set(dateKey, dateEvents);
+    });
+    
+    return eventsMap;
+  }, [events, enabledCalendars, monthDays]);
+  
   const getEventsForDate = (date: Date) => {
-    const dateEvents = events.filter(event => 
-      isSameDay(new Date(event.startTime), date) ||
-      (new Date(event.startTime) <= date && new Date(event.endTime) >= date)
-    );
-    
-    // Filter by enabled calendars if provided
-    if (enabledCalendars && enabledCalendars.size > 0) {
-      return dateEvents.filter(event => enabledCalendars.has(event.calendarId));
-    }
-    
-    return dateEvents;
+    return eventsByDate.get(date.toDateString()) || [];
   };
 
   const handleShowMoreEvents = (date: Date) => {

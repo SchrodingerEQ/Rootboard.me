@@ -13,6 +13,13 @@ interface ScreensaverState {
   lastActivity: number;
 }
 
+// Custom event to notify components when screensaver state changes
+const dispatchScreensaverEvent = (isActive: boolean) => {
+  window.dispatchEvent(new CustomEvent('screensaver-state-change', {
+    detail: { isActive }
+  }));
+};
+
 export const useScreensaver = (config: ScreensaverConfig) => {
   const [state, setState] = useState<ScreensaverState>({
     isActive: false,
@@ -49,6 +56,9 @@ export const useScreensaver = (config: ScreensaverConfig) => {
       }));
       applyBrightness(config.originalBrightness);
       
+      // Notify components that screensaver has exited (resume activity)
+      dispatchScreensaverEvent(false);
+      
       // Trigger calendar refresh to current month view
       window.dispatchEvent(new CustomEvent('screensaver-exit'));
     }
@@ -61,6 +71,9 @@ export const useScreensaver = (config: ScreensaverConfig) => {
         isIdle: true
       }));
       applyBrightness(config.dimBrightness);
+      
+      // Notify components that screensaver has activated (pause activity)
+      dispatchScreensaverEvent(true);
     }, config.inactivityTimeout);
   }, [state.isActive, config.inactivityTimeout, config.dimBrightness, config.originalBrightness, applyBrightness]);
 

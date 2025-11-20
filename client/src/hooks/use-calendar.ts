@@ -1,18 +1,29 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/pages/calendar";
+import { useOnlineStatus } from "./useOnlineStatus";
+import { useScreensaverState } from "./useScreensaverState";
 
 interface AuthStatus {
   authenticated: boolean;
   needsAuth: boolean;
 }
 
+// Minimum time between refreshes (5 minutes) for energy efficiency
+const MIN_REFRESH_INTERVAL = 5 * 60 * 1000;
+
 export function useCalendar(currentDate: Date, currentView: CalendarView) {
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
+  const isScreensaverActive = useScreensaverState();
+  const lastRefreshTime = useRef<number>(0);
+  
+  // Only perform queries when online AND screensaver is not active (energy optimization)
+  const shouldPerformQueries = isOnline && !isScreensaverActive;
 
-  // Calculate date range based on current view
+  // Calculate date range based on current view (memoized to reduce recalculation)
   const getDateRange = useCallback(() => {
     const start = new Date(currentDate);
     const end = new Date(currentDate);
@@ -32,9 +43,9 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     return { start, end };
   }, [currentDate, currentView]);
 
-  const { start, end } = getDateRange();
+  const { start, end } = useMemo(() => getDateRange(), [getDateRange]);
 
-  // Check authentication status
+  // Check authentication status (with offline detection, screensaver pause, and backoff)
   const {
     data: authStatus,
     refetch: checkAuthStatus
@@ -47,9 +58,14 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
       }
       return response.json();
     },
+    enabled: shouldPerformQueries, // Pause when offline or screensaver active
+    retry: isOnline ? 3 : false,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    refetchOnWindowFocus: false,
+    staleTime: 60 * 1000,
   });
 
-  // Fetch calendar events (enabled only when authenticated)
+  // Fetch calendar events (enabled only when authenticated, paused during screensaver)
   const {
     data: events = [],
     isLoading,
@@ -66,7 +82,11 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
       }
       return response.json();
     },
-    enabled: authStatus?.authenticated === true,
+    enabled: authStatus?.authenticated === true && shouldPerformQueries,
+    retry: isOnline ? 3 : false,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes for energy efficiency
   });
 
   // Sync calendar events mutation
@@ -85,9 +105,28 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     },
   });
 
+  // Throttled refresh to prevent excessive API calls (energy optimization)
   const refreshEvents = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTime.current;
+    
+    // If we're offline, don't even attempt to sync
+    if (!isOnline) {
+      console.log('Skipping refresh - device is offline');
+      return;
+    }
+    
+    // Enforce minimum 5-minute interval between refreshes
+    if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+      const remainingTime = Math.ceil((MIN_REFRESH_INTERVAL - timeSinceLastRefresh) / 1000);
+      console.log(`Refresh throttled. Next refresh available in ${remainingTime} seconds`);
+      return;
+    }
+    
+    console.log('Executing calendar refresh');
+    lastRefreshTime.current = now;
     syncMutation.mutate();
-  }, [syncMutation]);
+  }, [syncMutation, isOnline]);
 
   // Auto-sync events when authentication is detected and no events exist
   const hasTriggeredSync = useRef(false);

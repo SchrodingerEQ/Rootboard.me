@@ -32,15 +32,33 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     }
   }, []);
   
-  const getEventsForDay = (date: Date) => {
-    return events.filter(event => {
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
-      return (
-        eventStart.toDateString() === date.toDateString() ||
-        (eventStart <= date && eventEnd >= date)
-      );
+  // Memoize events by day to avoid re-filtering on every render (energy optimization)
+  const eventsByDay = useMemo(() => {
+    const eventsMap = new Map<string, CalendarEvent[]>();
+    
+    // Pre-filter by enabled calendars once
+    const filteredEvents = enabledCalendars && enabledCalendars.size > 0
+      ? events.filter(event => enabledCalendars.has(event.calendarId))
+      : events;
+    
+    weekDays.forEach(date => {
+      const dateKey = date.toDateString();
+      const dayEvents = filteredEvents.filter(event => {
+        const eventStart = new Date(event.startTime);
+        const eventEnd = new Date(event.endTime);
+        return (
+          eventStart.toDateString() === dateKey ||
+          (eventStart <= date && eventEnd >= date)
+        );
+      });
+      eventsMap.set(dateKey, dayEvents);
     });
+    
+    return eventsMap;
+  }, [events, enabledCalendars, weekDays]);
+  
+  const getEventsForDay = (date: Date) => {
+    return eventsByDay.get(date.toDateString()) || [];
   };
 
   const getEventsForTimeSlot = (date: Date, timeIndex: number) => {

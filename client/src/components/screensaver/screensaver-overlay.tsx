@@ -10,33 +10,53 @@ export const ScreensaverOverlay = ({ isActive, onExit }: ScreensaverOverlayProps
   const [logoPosition, setLogoPosition] = useState({ x: 50, y: 50 });
   const [direction, setDirection] = useState({ x: 1, y: 1 });
 
-  // Floating logo animation
+  // Floating logo animation with requestAnimationFrame for better energy efficiency
   useEffect(() => {
     if (!isActive) return;
 
-    const interval = setInterval(() => {
-      setLogoPosition(prev => {
-        let newX = prev.x + direction.x * 0.5;
-        let newY = prev.y + direction.y * 0.3;
-        let newDirectionX = direction.x;
-        let newDirectionY = direction.y;
+    let animationFrameId: number;
+    let lastUpdate = Date.now();
+    const updateInterval = 100; // Update every 100ms (same as before, but more efficient)
+    
+    const animate = () => {
+      const now = Date.now();
+      const elapsed = now - lastUpdate;
+      
+      // Only update position every 100ms to reduce CPU usage
+      if (elapsed >= updateInterval) {
+        lastUpdate = now;
+        
+        setLogoPosition(prev => {
+          let newX = prev.x + direction.x * 0.5;
+          let newY = prev.y + direction.y * 0.3;
+          let newDirectionX = direction.x;
+          let newDirectionY = direction.y;
 
-        // Bounce off edges (leaving some margin)
-        if (newX <= 10 || newX >= 85) {
-          newDirectionX = -direction.x;
-          newX = Math.max(10, Math.min(85, newX));
-        }
-        if (newY <= 10 || newY >= 80) {
-          newDirectionY = -direction.y;
-          newY = Math.max(10, Math.min(80, newY));
-        }
+          // Bounce off edges (leaving some margin)
+          if (newX <= 10 || newX >= 85) {
+            newDirectionX = -direction.x;
+            newX = Math.max(10, Math.min(85, newX));
+          }
+          if (newY <= 10 || newY >= 80) {
+            newDirectionY = -direction.y;
+            newY = Math.max(10, Math.min(80, newY));
+          }
 
-        setDirection({ x: newDirectionX, y: newDirectionY });
-        return { x: newX, y: newY };
-      });
-    }, 100);
+          setDirection({ x: newDirectionX, y: newDirectionY });
+          return { x: newX, y: newY };
+        });
+      }
+      
+      animationFrameId = requestAnimationFrame(animate);
+    };
+    
+    animationFrameId = requestAnimationFrame(animate);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, [isActive, direction]);
 
   // Handle click to exit screensaver
