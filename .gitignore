@@ -4,3 +4,6 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Google OAuth credentials - keep these private!
+google_credentials.json
