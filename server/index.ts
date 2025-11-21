@@ -12,14 +12,28 @@ app.use(express.urlencoded({ extended: false }));
 // Configure PostgreSQL-backed session store for reliable OAuth state management
 const PgSession = connectPgSimple(session);
 
-// Create PostgreSQL session store
-const sessionStore = process.env.DATABASE_URL 
-  ? new PgSession({
+// Create PostgreSQL session store with error handling
+let sessionStore: any = undefined;
+if (process.env.DATABASE_URL) {
+  try {
+    sessionStore = new PgSession({
       conString: process.env.DATABASE_URL,
       createTableIfMissing: true,
       tableName: 'session'
-    })
-  : undefined;
+    });
+    console.log('PostgreSQL session store initialized successfully');
+    
+    // Handle store errors
+    sessionStore.on('error', (err: Error) => {
+      console.error('Session store error:', err);
+    });
+  } catch (error) {
+    console.error('Failed to initialize PostgreSQL session store:', error);
+    console.log('Falling back to memory session store');
+  }
+} else {
+  console.log('No DATABASE_URL found, using memory session store');
+}
 
 // Configure session middleware for OAuth state management
 app.use(session({
