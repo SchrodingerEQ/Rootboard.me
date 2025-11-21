@@ -48,27 +48,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify state parameter to prevent CSRF attacks
-      if (!state || typeof state !== 'string') {
-        console.log('No state parameter provided');
-        return res.status(400).send(`
-          <html>
-            <body>
-              <h1>Security Error</h1>
-              <p>Invalid authentication request (missing state)</p>
-              <a href="/">Return to Calendar</a>
-            </body>
-          </html>
-        `);
-      }
-
-      const expectedState = req.session?.oauthState;
-      if (state !== expectedState) {
-        console.error('OAuth state mismatch - possible CSRF attack');
+      const expectedState = (req as any).session?.oauthState;
+      if (!expectedState || state !== expectedState) {
+        console.error('OAuth state mismatch - expected:', expectedState, 'got:', state);
         return res.status(400).send(`
           <html>
             <body>
               <h1>Security Error</h1>
               <p>Authentication request rejected for security reasons</p>
+              <p>This may be due to session expiry. Please try again.</p>
               <a href="/">Return to Calendar</a>
             </body>
           </html>
@@ -76,8 +64,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Clear the stored state after successful verification
-      if (req.session) {
-        delete req.session.oauthState;
+      if ((req as any).session) {
+        delete (req as any).session.oauthState;
       }
 
       console.log('Processing authorization code...');
