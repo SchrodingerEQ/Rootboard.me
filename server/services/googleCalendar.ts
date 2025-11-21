@@ -8,13 +8,21 @@ export class GoogleCalendarService {
   private isInitialized: boolean = false;
 
   constructor() {
+    // Initialize OAuth2 client without redirect URI (will be set per-request)
     this.oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID_ENV_VAR || "default_client_id",
-      process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET_ENV_VAR || "default_client_secret",
-      process.env.GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI_ENV_VAR || "http://localhost:5000/api/auth/google/callback"
+      process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET_ENV_VAR || "default_client_secret"
     );
     
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+  }
+  
+  private getRedirectUri(host?: string): string {
+    // Use the host from the request if provided, otherwise fall back to environment variable
+    if (host) {
+      return `https://${host}/api/auth/google/callback`;
+    }
+    return process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/api/auth/google/callback";
   }
 
   async initializeCredentials(): Promise<boolean> {
@@ -118,11 +126,11 @@ export class GoogleCalendarService {
     throw lastError || new Error('Token refresh failed after all retries');
   }
 
-  getAuthUrl(state?: string): string {
+  getAuthUrl(state?: string, host?: string): string {
     // Validate OAuth configuration before generating URL
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+    const redirectUri = this.getRedirectUri(host);
     
     if (!clientId || clientId === 'default_client_id') {
       throw new Error('Google Client ID not configured. Please set GOOGLE_CLIENT_ID environment variable.');
@@ -130,9 +138,9 @@ export class GoogleCalendarService {
     if (!clientSecret || clientSecret === 'default_client_secret') {
       throw new Error('Google Client Secret not configured. Please set GOOGLE_CLIENT_SECRET environment variable.');
     }
-    if (!redirectUri) {
-      throw new Error('Google Redirect URI not configured. Please set GOOGLE_REDIRECT_URI environment variable.');
-    }
+    
+    // Temporarily set the redirect URI for this auth request
+    this.oauth2Client.redirectUri = redirectUri;
     
     const scopes = ['https://www.googleapis.com/auth/calendar.readonly'];
     const authUrl = this.oauth2Client.generateAuthUrl({
@@ -140,15 +148,14 @@ export class GoogleCalendarService {
       scope: scopes,
       prompt: 'consent', // Forces consent to get refresh token
       include_granted_scopes: true, // Incremental authorization
-      state: state || Date.now().toString() // CSRF protection - use provided state or generate one
+      state: state || Date.now().toString(), // CSRF protection - use provided state or generate one
+      redirect_uri: redirectUri // Explicitly set redirect URI for this request
     });
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('OAuth Client Configuration:');
-      console.log('Client ID:', clientId.substring(0, 20) + '...');
-      console.log('Redirect URI:', redirectUri);
-      console.log('Auth URL generated successfully');
-    }
+    console.log('OAuth Client Configuration:');
+    console.log('Client ID:', clientId.substring(0, 20) + '...');
+    console.log('Redirect URI:', redirectUri);
+    console.log('Auth URL generated successfully');
     return authUrl;
   }
 

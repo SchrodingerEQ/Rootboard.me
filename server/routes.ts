@@ -35,7 +35,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const authUrl = googleCalendarService.getAuthUrl(state);
+      // Pass the request host to generate the correct redirect URI
+      const host = req.get('host');
+      const authUrl = googleCalendarService.getAuthUrl(state, host);
       console.log('Redirecting to OAuth URL');
       res.redirect(authUrl);
     } catch (error) {
