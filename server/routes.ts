@@ -8,6 +8,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google OAuth routes
   app.get("/api/auth/google", async (req, res) => {
     try {
+      // Debug environment variables
+      console.log('OAuth environment check:');
+      console.log('- GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
+      console.log('- GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
+      console.log('- GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI || 'Missing');
+      
       // Generate and store state for CSRF protection using crypto-secure random
       const crypto = await import('node:crypto');
       const state = crypto.randomBytes(16).toString('hex');
