@@ -223,6 +223,12 @@ Changelog:
     - Created endpoint to clear credentials when they become invalid
     - Fixed authentication loop that prevented proper login flow
     - Authentication dialog now shows instead of flashing "Syncing calendar" message
+  - IMPLEMENTED: PostgreSQL-backed session storage for reliable OAuth state management:
+    - Replaced in-memory sessions with connect-pg-simple PostgreSQL session store
+    - Sessions now persist across server instances and deployments
+    - Added explicit session.save() before OAuth redirect to ensure state is persisted
+    - Enhanced OAuth callback logging for debugging session state verification
+    - Maintains CSRF protection via state parameter while supporting multi-instance deployments
   - STATUS: Application fully functional and production-ready for 21.5-inch kiosk deployment
 ```
 

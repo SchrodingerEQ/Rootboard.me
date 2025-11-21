@@ -11,12 +11,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate and store state for CSRF protection using crypto-secure random
       const crypto = await import('node:crypto');
       const state = crypto.randomBytes(16).toString('hex');
+      
       if ((req as any).session) {
         (req as any).session.oauthState = state;
+        
+        // Explicitly save session to PostgreSQL before redirecting
+        await new Promise<void>((resolve, reject) => {
+          (req as any).session.save((err: any) => {
+            if (err) {
+              console.error('Failed to save session:', err);
+              reject(err);
+            } else {
+              console.log('Session saved with state:', state);
+              resolve();
+            }
+          });
+        });
       }
       
       const authUrl = googleCalendarService.getAuthUrl(state);
-      console.log('Generated OAuth URL with state protection');
+      console.log('Redirecting to OAuth URL');
       res.redirect(authUrl);
     } catch (error) {
       console.error('Failed to get Google auth URL:', error);
@@ -48,15 +62,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify state parameter to prevent CSRF attacks
+      console.log('Callback session ID:', (req as any).session?.id);
+      console.log('Callback session data:', (req as any).session);
       const expectedState = (req as any).session?.oauthState;
+      console.log('State verification - expected:', expectedState, 'received:', state);
+      
       if (!expectedState || state !== expectedState) {
-        console.error('OAuth state mismatch - expected:', expectedState, 'got:', state);
+        console.error('OAuth state mismatch!');
         return res.status(400).send(`
           <html>
             <body>
               <h1>Security Error</h1>
               <p>Authentication request rejected for security reasons</p>
               <p>This may be due to session expiry. Please try again.</p>
+              <p style="font-size: 12px; color: gray;">Debug: Session ${(req as any).session ? 'exists' : 'missing'}, Expected state: ${expectedState ? 'present' : 'missing'}</p>
               <a href="/">Return to Calendar</a>
             </body>
           </html>
