@@ -229,6 +229,21 @@ Changelog:
     - Added explicit session.save() before OAuth redirect to ensure state is persisted
     - Enhanced OAuth callback logging for debugging session state verification
     - Maintains CSRF protection via state parameter while supporting multi-instance deployments
+  - FIXED: Calendar event pagination to fetch all events from Google Calendar API:
+    - Added maxResults=2500 (Google's maximum per page) to events.list calls
+    - Implemented pageToken handling to fetch all pages of results
+    - Now syncing 3,500+ events across all calendars vs previous ~560
+  - FIXED: Event date range filtering using overlapping logic:
+    - Changed from "fully contained" to "overlapping" date range filter
+    - Events that span across date boundaries now display correctly
+    - Multi-day events and cross-boundary events properly visible
+  - EXPANDED: Sync date range to 3 months past + 12 months future:
+    - Ensures all relevant events are captured regardless of current view
+    - Prevents missing events due to narrow sync windows
+  - FIXED: Shared calendar events now appear on all associated calendars:
+    - Changed event storage key from googleEventId to composite (googleEventId + calendarId)
+    - Events shared across multiple calendars now display on each calendar correctly
+    - Previously, shared events would only appear on one calendar due to ID collision
   - STATUS: Application fully functional and production-ready for 21.5-inch kiosk deployment
 ```
 

@@ -264,20 +264,7 @@ export class GoogleCalendarService {
             const googleEvents = response.data.items || [];
             totalEventsForCalendar += googleEvents.length;
 
-            // Debug logging for zmcmurry@gmail.com calendar to investigate missing events
-            if (calendar.id === 'zmcmurry@gmail.com' && googleEvents.length > 0) {
-              console.log(`[DEBUG] First 10 events from ${calendar.id}:`);
-              googleEvents.slice(0, 10).forEach((e: any, i: number) => {
-                console.log(`  ${i + 1}. "${e.summary}" on ${e.start?.dateTime || e.start?.date}`);
-              });
-            }
-
             for (const googleEvent of googleEvents) {
-              // Log events with "test" in the title to help debug
-              if (googleEvent.summary?.toLowerCase().includes('test')) {
-                console.log(`[DEBUG] Found event with 'test': "${googleEvent.summary}" from calendar ${calendar.id}`);
-              }
-              
               // Use composite key (googleEventId + calendarId) to allow same event on multiple calendars
               const existingEvent = await storage.getCalendarEventByGoogleIdAndCalendar(googleEvent.id!, calendar.id);
               
