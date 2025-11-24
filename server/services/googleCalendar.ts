@@ -245,47 +245,63 @@ export class GoogleCalendarService {
       // Fetch events from each calendar
       for (const calendar of calendars) {
         try {
-          const response = await this.calendar.events.list({
-            calendarId: calendar.id,
-            timeMin: startDate.toISOString(),
-            timeMax: endDate.toISOString(),
-            singleEvents: true,
-            orderBy: 'startTime',
-          });
+          let pageToken: string | undefined = undefined;
+          let totalEventsForCalendar = 0;
+          let response: any;
 
-          const googleEvents = response.data.items || [];
-
-          for (const googleEvent of googleEvents) {
-            const existingEvent = await storage.getCalendarEventByGoogleId(googleEvent.id!);
-            
-            const eventData: InsertCalendarEvent = {
-              googleEventId: googleEvent.id!,
+          // Paginate through all events for this calendar
+          do {
+            response = await this.calendar.events.list({
               calendarId: calendar.id,
-              calendarName: calendar.summary || 'Unknown Calendar',
-              title: googleEvent.summary || 'Untitled Event',
-              description: googleEvent.description || '',
-              startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date!),
-              endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date!),
-              location: googleEvent.location || '',
-              color: calendar.backgroundColor || this.getCalendarColorById(calendar.id),
-              isAllDay: !!googleEvent.start?.date,
-            };
+              timeMin: startDate.toISOString(),
+              timeMax: endDate.toISOString(),
+              singleEvents: true,
+              orderBy: 'startTime',
+              maxResults: 2500, // Google's maximum per page
+              pageToken: pageToken, // Continue from previous page if exists
+            });
 
-            let event: CalendarEvent;
-            if (existingEvent) {
-              event = await storage.updateCalendarEvent(existingEvent.id, eventData) || existingEvent;
-            } else {
-              event = await storage.createCalendarEvent(eventData);
+            const googleEvents = response.data.items || [];
+            totalEventsForCalendar += googleEvents.length;
+
+            for (const googleEvent of googleEvents) {
+              const existingEvent = await storage.getCalendarEventByGoogleId(googleEvent.id!);
+              
+              const eventData: InsertCalendarEvent = {
+                googleEventId: googleEvent.id!,
+                calendarId: calendar.id,
+                calendarName: calendar.summary || 'Unknown Calendar',
+                title: googleEvent.summary || 'Untitled Event',
+                description: googleEvent.description || '',
+                startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date!),
+                endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date!),
+                location: googleEvent.location || '',
+                color: calendar.backgroundColor || this.getCalendarColorById(calendar.id),
+                isAllDay: !!googleEvent.start?.date,
+              };
+
+              let event: CalendarEvent;
+              if (existingEvent) {
+                event = await storage.updateCalendarEvent(existingEvent.id, eventData) || existingEvent;
+              } else {
+                event = await storage.createCalendarEvent(eventData);
+              }
+
+              syncedEvents.push(event);
             }
 
-            syncedEvents.push(event);
-          }
+            // Get next page token if there are more results
+            pageToken = response.data.nextPageToken;
+          } while (pageToken); // Continue while there are more pages
+
+          console.log(`Synced ${totalEventsForCalendar} events from calendar: ${calendar.summary}`);
         } catch (calendarError) {
           console.warn(`Failed to sync events from calendar ${calendar.summary}:`, calendarError);
           // Continue with other calendars even if one fails
         }
       }
 
+      console.log(`Total events synced across all calendars: ${syncedEvents.length}`);
       return syncedEvents;
     } catch (error) {
       console.error('Failed to sync calendar events:', error);
