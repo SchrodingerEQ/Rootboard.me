@@ -89,12 +89,22 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     staleTime: 5 * 60 * 1000, // 5 minutes for energy efficiency
   });
 
-  // Sync calendar events mutation
+  // Sync calendar events mutation - uses expanded date range to capture all events
   const syncMutation = useMutation({
     mutationFn: async () => {
+      // Use a much wider sync window: 3 months in the past + 12 months in the future
+      // This ensures all events are captured regardless of current view
+      const syncStart = new Date();
+      syncStart.setMonth(syncStart.getMonth() - 3);
+      syncStart.setDate(1);
+      
+      const syncEnd = new Date();
+      syncEnd.setMonth(syncEnd.getMonth() + 12);
+      syncEnd.setDate(0); // Last day of that month
+      
       const response = await apiRequest('POST', '/api/calendar/sync', {
-        startDate: start.toISOString(),
-        endDate: end.toISOString(),
+        startDate: syncStart.toISOString(),
+        endDate: syncEnd.toISOString(),
       });
       return response.json();
     },

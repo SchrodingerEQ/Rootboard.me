@@ -94,8 +94,9 @@ export class MemStorage implements IStorage {
   }
 
   async getCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
+    // Use overlapping logic: event overlaps the window if it starts before the window ends AND ends after the window starts
     return Array.from(this.calendarEvents.values()).filter(
-      (event) => event.startTime >= startDate && event.endTime <= endDate
+      (event) => event.startTime < endDate && event.endTime > startDate
     );
   }
 
