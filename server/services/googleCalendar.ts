@@ -278,7 +278,8 @@ export class GoogleCalendarService {
                 console.log(`[DEBUG] Found event with 'test': "${googleEvent.summary}" from calendar ${calendar.id}`);
               }
               
-              const existingEvent = await storage.getCalendarEventByGoogleId(googleEvent.id!);
+              // Use composite key (googleEventId + calendarId) to allow same event on multiple calendars
+              const existingEvent = await storage.getCalendarEventByGoogleIdAndCalendar(googleEvent.id!, calendar.id);
               
               const eventData: InsertCalendarEvent = {
                 googleEventId: googleEvent.id!,

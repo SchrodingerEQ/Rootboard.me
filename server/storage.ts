@@ -20,7 +20,7 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEvent(id: number, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent | undefined>;
   deleteCalendarEvent(id: number): Promise<boolean>;
-  getCalendarEventByGoogleId(googleEventId: string): Promise<CalendarEvent | undefined>;
+  getCalendarEventByGoogleIdAndCalendar(googleEventId: string, calendarId: string): Promise<CalendarEvent | undefined>;
   
   getGoogleCredentials(): Promise<GoogleCredentials | undefined>;
   createGoogleCredentials(credentials: InsertGoogleCredentials): Promise<GoogleCredentials>;
@@ -139,9 +139,9 @@ export class MemStorage implements IStorage {
     return this.calendarEvents.delete(id);
   }
 
-  async getCalendarEventByGoogleId(googleEventId: string): Promise<CalendarEvent | undefined> {
+  async getCalendarEventByGoogleIdAndCalendar(googleEventId: string, calendarId: string): Promise<CalendarEvent | undefined> {
     return Array.from(this.calendarEvents.values()).find(
-      (event) => event.googleEventId === googleEventId
+      (event) => event.googleEventId === googleEventId && event.calendarId === calendarId
     );
   }
 
