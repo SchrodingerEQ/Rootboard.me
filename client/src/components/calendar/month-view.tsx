@@ -28,6 +28,17 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
       ? events.filter(event => enabledCalendars.has(event.calendarId))
       : events;
     
+    // Debug: Check if "Test this" events exist after filtering
+    const testFiltered = filteredEvents.filter(e => e.title?.toLowerCase().includes('test'));
+    if (testFiltered.length > 0) {
+      console.log('[DEBUG MonthView] Filtered events with "test":', testFiltered.map(e => ({
+        id: e.id,
+        title: e.title,
+        calendarId: e.calendarId,
+        startTime: e.startTime
+      })));
+    }
+    
     // Group events by date
     monthDays.forEach(date => {
       const dateKey = date.toDateString();
@@ -36,6 +47,18 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
         const eventEnd = new Date(event.endTime);
         return isSameDay(eventStart, date) || (eventStart <= date && eventEnd >= date);
       });
+      
+      // Debug: Log when we find "Test this" events for a date
+      const testEvents = dateEvents.filter(e => e.title?.toLowerCase() === 'test this');
+      if (testEvents.length > 0) {
+        console.log(`[DEBUG MonthView] Date ${dateKey} has ${testEvents.length} "Test this" events:`, testEvents.map(e => ({
+          id: e.id,
+          calendarId: e.calendarId
+        })));
+        console.log(`[DEBUG MonthView] ${dateKey} total events: ${dateEvents.length}, first 3 ids:`, 
+          dateEvents.slice(0, 3).map(e => ({ id: e.id, title: e.title, calendarId: e.calendarId })));
+      }
+      
       eventsMap.set(dateKey, dateEvents);
     });
     

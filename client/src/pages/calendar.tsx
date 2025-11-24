@@ -102,7 +102,26 @@ export default function CalendarPage() {
     if (enabledCalendars.size === 0) {
       return []; // Show no events when no calendars are selected
     }
-    return events.filter(event => enabledCalendars.has(event.calendarId));
+    const filtered = events.filter(event => enabledCalendars.has(event.calendarId));
+    
+    // Debug: Log events with 'test' in title to trace data flow
+    const testEvents = events.filter(e => e.title?.toLowerCase().includes('test'));
+    if (testEvents.length > 0) {
+      console.log('[DEBUG] All events with "test" in title:', testEvents.map(e => ({
+        id: e.id,
+        title: e.title,
+        calendarId: e.calendarId,
+        googleEventId: e.googleEventId
+      })));
+      console.log('[DEBUG] Enabled calendars:', Array.from(enabledCalendars));
+      console.log('[DEBUG] Filtered test events:', filtered.filter(e => e.title?.toLowerCase().includes('test')).map(e => ({
+        id: e.id,
+        title: e.title,
+        calendarId: e.calendarId
+      })));
+    }
+    
+    return filtered;
   }, [events, enabledCalendars]);
 
   // Handle header button clicks - toggles event visibility

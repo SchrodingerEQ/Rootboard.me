@@ -21,6 +21,19 @@ export function DayEventsDialog({
   const dayNumber = date.getDate();
   const monthName = date.toLocaleDateString('en-US', { month: 'long' });
 
+  // Debug: Log events passed to dialog
+  if (open) {
+    const testEvents = events.filter(e => e.title?.toLowerCase() === 'test this');
+    if (testEvents.length > 0) {
+      console.log('[DEBUG DayEventsDialog] "Test this" events in popup:', testEvents.map(e => ({
+        id: e.id,
+        calendarId: e.calendarId,
+        color: e.color
+      })));
+    }
+    console.log(`[DEBUG DayEventsDialog] Total events for ${date.toDateString()}: ${events.length}`);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[32rem] overflow-hidden">

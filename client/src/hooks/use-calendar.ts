@@ -80,7 +80,20 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
       if (!response.ok) {
         throw new Error('Failed to fetch calendar events');
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Debug: Log events with 'test' in title from API response
+      const testEvents = data.filter((e: any) => e.title?.toLowerCase().includes('test'));
+      if (testEvents.length > 0) {
+        console.log('[DEBUG useCalendar] API returned test events:', testEvents.map((e: any) => ({
+          id: e.id,
+          title: e.title,
+          calendarId: e.calendarId,
+          googleEventId: e.googleEventId
+        })));
+      }
+      
+      return data;
     },
     enabled: authStatus?.authenticated === true && shouldPerformQueries,
     retry: isOnline ? 3 : false,
