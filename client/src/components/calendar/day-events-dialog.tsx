@@ -21,18 +21,20 @@ export function DayEventsDialog({
   const dayNumber = date.getDate();
   const monthName = date.toLocaleDateString('en-US', { month: 'long' });
 
-  // Debug: Log events passed to dialog
-  if (open) {
-    const testEvents = events.filter(e => e.title?.toLowerCase() === 'test this');
-    if (testEvents.length > 0) {
-      console.log('[DEBUG DayEventsDialog] "Test this" events in popup:', testEvents.map(e => ({
-        id: e.id,
-        calendarId: e.calendarId,
-        color: e.color
-      })));
-    }
-    console.log(`[DEBUG DayEventsDialog] Total events for ${date.toDateString()}: ${events.length}`);
-  }
+  // Sort events: all-day first, then by start time, then by calendar ID
+  const sortedEvents = [...events].sort((a, b) => {
+    // All-day events come first
+    if (a.isAllDay && !b.isAllDay) return -1;
+    if (!a.isAllDay && b.isAllDay) return 1;
+    
+    // Then sort by start time
+    const startA = new Date(a.startTime).getTime();
+    const startB = new Date(b.startTime).getTime();
+    if (startA !== startB) return startA - startB;
+    
+    // If same start time, sort by calendar ID for stable ordering
+    return a.calendarId.localeCompare(b.calendarId);
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -44,12 +46,12 @@ export function DayEventsDialog({
         </DialogHeader>
         
         <div className="overflow-y-auto max-h-96 space-y-2 pr-2 pb-2">
-          {events.length === 0 ? (
+          {sortedEvents.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No events for this day
             </p>
           ) : (
-            events.map((event) => (
+            sortedEvents.map((event) => (
               <EventItem 
                 key={event.id} 
                 event={event} 
