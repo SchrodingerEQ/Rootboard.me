@@ -55,7 +55,7 @@ export function DayEventsDialog({
               <EventItem 
                 key={event.id} 
                 event={event} 
-                compact={false}
+                detailed
                 onClick={onEventClick} 
               />
             ))
