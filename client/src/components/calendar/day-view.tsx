@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { EventItem } from "./event-item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isToday } from "@/lib/date-utils";
@@ -18,12 +18,23 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
 });
 
 export function DayView({ currentDate, events, isLoading, onEventClick }: DayViewProps) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const TIME_SLOT_HEIGHT = 65; // Height in pixels for each hour slot (12 hours visible)
+
   const dayEvents = useMemo(() => {
     return events.filter(event => {
       const eventDate = new Date(event.startTime);
       return eventDate.toDateString() === currentDate.toDateString();
     });
   }, [events, currentDate]);
+
+  // Auto-scroll to 7 AM when loading completes and scroll container exists
+  useEffect(() => {
+    if (!isLoading && scrollContainerRef.current) {
+      const scrollPosition = 7 * TIME_SLOT_HEIGHT; // Scroll to 7 AM
+      scrollContainerRef.current.scrollTop = scrollPosition;
+    }
+  }, [isLoading]);
 
   const getCurrentTimePosition = () => {
     const now = new Date();
@@ -36,27 +47,32 @@ export function DayView({ currentDate, events, isLoading, onEventClick }: DayVie
 
   if (isLoading) {
     return (
-      <div className="flex h-full">
-        {/* Time Column */}
-        <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border">
-          {timeSlots.map((time, i) => (
-            <div key={i} className="text-xs text-muted-foreground px-2 py-4 border-b border-border">
-              {time}
-            </div>
-          ))}
-        </div>
-        
-        {/* Loading Day Column */}
-        <div className="flex-1 relative">
-          <div className="h-12 bg-blue-50 border-b border-border flex items-center justify-center">
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Fixed Day Header */}
+        <div className="flex bg-white border-b border-border flex-shrink-0 z-10">
+          <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 h-12"></div>
+          <div className="flex-1 h-12 bg-blue-50 border-b border-border flex items-center justify-center">
             <Skeleton className="h-6 w-48" />
           </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex w-full flex-1 overflow-y-auto">
+          {/* Time Column */}
+          <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
+            {timeSlots.map((time, i) => (
+              <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-2 border-b border-border" style={{height: '65px'}}>
+                {time}
+              </div>
+            ))}
+          </div>
           
-          <div className="overflow-y-auto">
+          {/* Loading Day Column */}
+          <div className="flex-1 relative">
             {timeSlots.map((_, i) => (
               <div key={i} className="time-slot">
                 {i % 3 === 0 && (
-                  <Skeleton className="h-16 w-5/6 m-2 rounded-lg" />
+                  <Skeleton className="h-12 w-5/6 m-2 rounded-lg" />
                 )}
               </div>
             ))}
@@ -70,20 +86,11 @@ export function DayView({ currentDate, events, isLoading, onEventClick }: DayVie
   const timePosition = getCurrentTimePosition();
 
   return (
-    <div className="flex h-full">
-      {/* Time Column */}
-      <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border">
-        {timeSlots.map((time, i) => (
-          <div key={i} className="text-xs text-muted-foreground px-2 py-4 border-b border-border">
-            {time}
-          </div>
-        ))}
-      </div>
-      
-      {/* Single Day Column */}
-      <div className="flex-1 relative">
-        {/* Day Header */}
-        <div className={`h-12 border-b border-border flex items-center justify-center ${
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Fixed Day Header */}
+      <div className="flex bg-white border-b border-border flex-shrink-0 z-10">
+        <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 h-12"></div>
+        <div className={`flex-1 h-12 border-b border-border flex items-center justify-center ${
           isTodayDate ? 'bg-blue-50' : 'bg-[hsl(var(--google-light-gray))]'
         }`}>
           <h3 className={`text-lg font-medium ${
@@ -97,22 +104,35 @@ export function DayView({ currentDate, events, isLoading, onEventClick }: DayVie
             })}
           </h3>
         </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div 
+        ref={scrollContainerRef}
+        className="flex w-full flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
+      >
+        {/* Time Column */}
+        <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
+          {timeSlots.map((time, i) => (
+            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-2 border-b border-border" style={{height: '65px'}}>
+              {time}
+            </div>
+          ))}
+        </div>
         
         {/* Day Time Slots */}
-        <div className="overflow-y-auto relative">
+        <div className="flex-1 relative">
           {timeSlots.map((_, timeIndex) => {
             const timeEvents = dayEvents.filter(event => {
               const eventStart = new Date(event.startTime);
-              const eventEnd = new Date(event.endTime);
               const eventStartHour = eventStart.getHours();
-              const eventEndHour = eventEnd.getHours();
               
               // Show event in the time slot where it starts
               return eventStartHour === timeIndex;
             });
 
             return (
-              <div key={timeIndex} className="time-slot relative min-h-[60px] border-b border-border/30">
+              <div key={timeIndex} className="time-slot relative">
                 {timeEvents.map(event => (
                   <EventItem key={event.id} event={event} detailed timeSlot onClick={onEventClick} />
                 ))}

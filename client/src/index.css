@@ -374,7 +374,7 @@
   }
   
   .time-slot {
-    height: 30px;
+    height: 65px;
     border-bottom: 1px solid hsl(var(--border));
     position: relative;
     overflow: visible; /* Allow overlapping events */
@@ -420,7 +420,7 @@
   }
   
   .time-slot {
-    height: 35px;
+    height: 65px;
   }
   
   .touch-button {

@@ -22,15 +22,15 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to current time when component mounts
+  const TIME_SLOT_HEIGHT = 65; // Height in pixels for each hour slot (12 hours visible)
+
+  // Auto-scroll to 7 AM when loading completes and scroll container exists
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      const currentHour = new Date().getHours();
-      // Scroll to current time minus 2 hours to show some context
-      const scrollPosition = Math.max(0, (currentHour - 2) * 30);
+    if (!isLoading && scrollContainerRef.current) {
+      const scrollPosition = 7 * TIME_SLOT_HEIGHT; // Scroll to 7 AM
       scrollContainerRef.current.scrollTop = scrollPosition;
     }
-  }, []);
+  }, [isLoading]);
   
   // Memoize events by day to avoid re-filtering on every render (energy optimization)
   const eventsByDay = useMemo(() => {
@@ -80,7 +80,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     
     // Calculate how many time slots this event spans
     const duration = Math.max(1, eventEndHour - eventStartHour);
-    return duration * 30; // 30px per time slot
+    return duration * TIME_SLOT_HEIGHT; // 65px per time slot
   };
 
   const getOverlappingEventsForTimeSlot = (date: Date, timeIndex: number, currentEvent: CalendarEvent) => {
@@ -157,7 +157,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
         <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
           <div className="h-12 border-b border-border"></div>
           {timeSlots.map((time, i) => (
-            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '30px'}}>
+            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '65px'}}>
               {time}
             </div>
           ))}
@@ -221,7 +221,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
         {/* Time Column */}
         <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
           {timeSlots.map((time, i) => (
-            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '30px'}}>
+            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '65px'}}>
               {time}
             </div>
           ))}
