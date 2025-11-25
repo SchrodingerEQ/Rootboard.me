@@ -91,17 +91,10 @@ export function CalendarHeader({
       </div>
       
       {/* Current Date Display */}
-      <div className="flex-1 flex items-center justify-center gap-3">
+      <div className="flex-1 text-center">
         <h2 className="text-base font-medium text-[hsl(var(--google-gray))]">
           {getDateTitle()}
         </h2>
-        <button
-          onClick={onSleep}
-          className="touch-button px-4 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium rounded-full transition-colors"
-          data-testid="button-sleep"
-        >
-          SLEEP
-        </button>
       </div>
       
       {/* View Toggle and Actions */}
@@ -145,6 +138,15 @@ export function CalendarHeader({
             Month
           </Button>
         </div>
+        
+        {/* Sleep Button */}
+        <button
+          onClick={onSleep}
+          className="touch-button px-4 py-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-medium rounded-full transition-colors"
+          data-testid="button-sleep"
+        >
+          SLEEP
+        </button>
         
         {/* Auth Button */}
         {needsAuth && (

@@ -38,7 +38,7 @@ export function PowerSavingOverlay({ isActive, onWake }: PowerSavingOverlayProps
         <img
           src={logoImage}
           alt="McMurry Hurricane Logo"
-          className="w-48 h-48 opacity-40 select-none pointer-events-none"
+          className="w-[768px] h-[768px] opacity-40 select-none pointer-events-none"
         />
         <p className="text-white text-opacity-30 text-sm mt-8 font-light">
           Press any key or touch to wake
