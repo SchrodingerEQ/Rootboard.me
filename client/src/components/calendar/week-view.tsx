@@ -236,9 +236,10 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
             return (
               <div 
                 key={i} 
-                className={`flex-1 border-r border-border p-1 min-h-[40px] ${
+                className={`flex-1 border-r border-border p-1 min-h-[40px] overflow-hidden ${
                   isTodayDate ? 'bg-blue-50/50' : ''
                 }`}
+                style={{ minWidth: 0 }}
               >
                 {allDayEvents.map(event => (
                   <EventItem 
@@ -277,9 +278,10 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
             return (
               <div 
                 key={dayIndex} 
-                className={`flex-1 border-r border-border relative overflow-hidden ${
+                className={`flex-1 border-r border-border relative overflow-x-hidden overflow-y-visible ${
                   isTodayDate ? 'bg-blue-50' : ''
                 }`}
+                style={{ minWidth: 0 }}
               >
                   {timeSlots.map((_, timeIndex) => {
                     const timeSlotEvents = getEventsForTimeSlot(date, timeIndex);

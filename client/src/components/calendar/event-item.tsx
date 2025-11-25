@@ -85,7 +85,9 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
       left: layout.left,
       zIndex: layout.zIndex,
       top: '0',
-      height: layout.height || '100%'
+      height: layout.height || '100%',
+      maxWidth: '100%',
+      boxSizing: 'border-box' as const
     } : {
       ...baseStyle,
       width: 'calc(100% - 4px)'
@@ -93,16 +95,17 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
 
     return (
       <div 
-        className={`event-item ${layout ? 'absolute' : 'mx-0.5'} px-0.5 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity text-xs`}
+        className={`event-item ${layout ? 'absolute' : 'mx-0.5'} px-1 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity text-xs overflow-hidden`}
         style={layoutStyle}
         onClick={() => onClick?.(event)}
+        title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ''}`}
       >
-        <div className="font-medium text-xs truncate">{event.title}</div>
-        <div className="text-xs opacity-75 truncate">
+        <div className="font-medium text-xs truncate w-full">{event.title}</div>
+        <div className="text-xs opacity-75 truncate w-full">
           {formatTime(startTime)} - {formatTime(endTime)}
         </div>
         {event.location && (
-          <div className="text-xs opacity-75 truncate">{event.location}</div>
+          <div className="text-xs opacity-75 truncate w-full">{event.location}</div>
         )}
       </div>
     );
