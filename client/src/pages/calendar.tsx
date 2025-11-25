@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { CalendarFilters } from "@/components/calendar/calendar-filters";
 import { SettingsMenu } from "@/components/calendar/settings-menu";
@@ -9,6 +9,7 @@ import { LoadingIndicator } from "@/components/calendar/loading-indicator";
 import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { ScreensaverOverlay } from "@/components/screensaver/screensaver-overlay";
+import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useScreensaver } from "@/hooks/useScreensaver";
@@ -25,7 +26,16 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [isPowerSaving, setIsPowerSaving] = useState(false);
   const { toast } = useToast();
+  
+  const handleSleep = useCallback(() => {
+    setIsPowerSaving(true);
+  }, []);
+  
+  const handleWake = useCallback(() => {
+    setIsPowerSaving(false);
+  }, []);
   
   // Initialize screensaver with 2-minute timeout and brightness control
   const screensaver = useScreensaver({
@@ -315,6 +325,7 @@ export default function CalendarPage() {
           onToday={goToToday}
           onRefresh={handleRefresh}
           onAuth={handleAuth}
+          onSleep={handleSleep}
           isRefreshing={isRefreshing}
           needsAuth={authStatus?.needsAuth}
           settingsButton={authStatus?.authenticated ? (
@@ -390,6 +401,12 @@ export default function CalendarPage() {
       <ScreensaverOverlay 
         isActive={screensaver.isActive}
         onExit={screensaver.exitScreensaver}
+      />
+      
+      {/* Power Saving Overlay (manual sleep mode) */}
+      <PowerSavingOverlay 
+        isActive={isPowerSaving}
+        onWake={handleWake}
       />
     </div>
   );

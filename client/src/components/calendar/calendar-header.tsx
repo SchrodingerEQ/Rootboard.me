@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key, Moon } from "lucide-react";
 import type { CalendarView } from "@/pages/calendar";
 import logoImage from "@assets/image_1753142842256.png";
 
@@ -11,6 +11,7 @@ interface CalendarHeaderProps {
   onToday: () => void;
   onRefresh: () => void;
   onAuth: () => void;
+  onSleep: () => void;
   isRefreshing: boolean;
   needsAuth?: boolean;
   settingsButton?: React.ReactNode;
@@ -24,6 +25,7 @@ export function CalendarHeader({
   onToday,
   onRefresh,
   onAuth,
+  onSleep,
   isRefreshing,
   needsAuth,
   settingsButton
@@ -89,10 +91,17 @@ export function CalendarHeader({
       </div>
       
       {/* Current Date Display */}
-      <div className="flex-1 text-center">
+      <div className="flex-1 flex items-center justify-center gap-3">
         <h2 className="text-base font-medium text-[hsl(var(--google-gray))]">
           {getDateTitle()}
         </h2>
+        <button
+          onClick={onSleep}
+          className="touch-button px-4 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-sm font-medium rounded-full transition-colors"
+          data-testid="button-sleep"
+        >
+          SLEEP
+        </button>
       </div>
       
       {/* View Toggle and Actions */}
