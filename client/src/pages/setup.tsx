@@ -7,8 +7,8 @@ import { APP_VERSION } from "@shared/version";
 
 export default function SetupPage() {
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="h-screen bg-gray-50 overflow-y-auto">
+      <div className="max-w-4xl mx-auto space-y-8 py-8 px-4">
         <div className="flex items-center justify-between">
           <Link href="/">
             <Button variant="ghost" size="sm" data-testid="button-back-to-calendar">
