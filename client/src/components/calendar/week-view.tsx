@@ -67,90 +67,92 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     return dayEvents.filter(event => event.isAllDay);
   };
 
-  // Get timed (non-all-day) events for a specific time slot
-  const getEventsForTimeSlot = (date: Date, timeIndex: number) => {
+  // Get timed (non-all-day) events for a day
+  const getTimedEventsForDay = (date: Date) => {
     const dayEvents = getEventsForDay(date);
-    return dayEvents.filter(event => {
-      // Skip all-day events - they go in the all-day section
-      if (event.isAllDay) return false;
-      
-      const eventStart = new Date(event.startTime);
-      const eventStartHour = eventStart.getHours();
-      
-      // Only show event in its starting time slot
-      return eventStartHour === timeIndex;
-    });
+    return dayEvents.filter(event => !event.isAllDay);
   };
 
-  const getEventHeight = (event: CalendarEvent, timeIndex: number) => {
+  // Calculate event position and height relative to a specific day column (in pixels)
+  // Clamps event to day boundaries for multi-day events
+  // Returns null if the event has no duration on this day (e.g., ends at midnight)
+  const getEventPosition = (event: CalendarEvent, date: Date): { top: number; height: number } | null => {
     const eventStart = new Date(event.startTime);
     const eventEnd = new Date(event.endTime);
-    const eventStartHour = eventStart.getHours();
-    const eventEndHour = eventEnd.getHours();
     
-    // Calculate how many time slots this event spans
-    const duration = Math.max(1, eventEndHour - eventStartHour);
-    return duration * TIME_SLOT_HEIGHT; // 65px per time slot
+    // Create day boundaries (midnight to midnight)
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    
+    // Clamp event times to this day's boundaries
+    const clampedStart = eventStart < dayStart ? dayStart : eventStart;
+    const clampedEnd = eventEnd > dayEnd ? dayEnd : eventEnd;
+    
+    // Skip if clamped range has no duration (e.g., event ends exactly at midnight)
+    if (clampedEnd <= clampedStart) {
+      return null;
+    }
+    
+    // Calculate top position based on clamped start time
+    const startHour = clampedStart.getHours();
+    const startMinutes = clampedStart.getMinutes();
+    const top = (startHour + startMinutes / 60) * TIME_SLOT_HEIGHT;
+    
+    // Calculate height based on clamped duration
+    const endHour = clampedEnd.getHours();
+    const endMinutes = clampedEnd.getMinutes();
+    
+    // Handle end-of-day case (23:59:59)
+    const endPosition = endHour === 23 && endMinutes === 59 ? 24 : (endHour + endMinutes / 60);
+    const durationHours = endPosition - (startHour + startMinutes / 60);
+    const height = Math.max(durationHours * TIME_SLOT_HEIGHT, TIME_SLOT_HEIGHT / 2); // Minimum half-hour height
+    
+    return { top, height };
   };
 
-  const getOverlappingEventsForTimeSlot = (date: Date, timeIndex: number, currentEvent: CalendarEvent) => {
-    const dayEvents = getEventsForDay(date).filter(event => 
-      // Filter out all-day events and apply calendar filter
-      !event.isAllDay && (!enabledCalendars || enabledCalendars.has(event.calendarId))
-    );
+  // Find all events that overlap with a given event
+  const getOverlappingEvents = (timedEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
+    const currentStart = new Date(currentEvent.startTime);
+    const currentEnd = new Date(currentEvent.endTime);
     
-    // Get all timed events that overlap with the current time slot
-    const timeSlotEvents = dayEvents.filter(event => {
+    return timedEvents.filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
-      const eventStartHour = eventStart.getHours();
-      const eventEndHour = eventEnd.getHours();
-      
-      return eventStartHour <= timeIndex && eventEndHour > timeIndex;
+      return currentStart < eventEnd && currentEnd > eventStart;
     });
-    
-    // Find all events that have any time overlap with the current event
-    const currentEventStart = new Date(currentEvent.startTime);
-    const currentEventEnd = new Date(currentEvent.endTime);
-    
-    const overlappingEvents = timeSlotEvents.filter(event => {
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
-      
-      // Check if events overlap in time at all
-      return currentEventStart < eventEnd && currentEventEnd > eventStart;
-    });
-    
-    return overlappingEvents.length > 0 ? overlappingEvents : [currentEvent];
   };
 
-  const calculateEventLayout = (allOverlappingEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
-    if (allOverlappingEvents.length === 1) {
+  // Calculate horizontal layout for overlapping events
+  const calculateEventLayout = (timedEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
+    const overlappingEvents = getOverlappingEvents(timedEvents, currentEvent);
+    
+    if (overlappingEvents.length === 1) {
       return { width: '100%', left: '0%', zIndex: 1 };
     }
     
     // Sort events by start time, then by duration (longer events first)
-    const sortedEvents = [...allOverlappingEvents].sort((a, b) => {
+    const sortedEvents = [...overlappingEvents].sort((a, b) => {
       const startDiff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
       if (startDiff !== 0) return startDiff;
       
       const aDuration = new Date(a.endTime).getTime() - new Date(a.startTime).getTime();
       const bDuration = new Date(b.endTime).getTime() - new Date(b.startTime).getTime();
-      return bDuration - aDuration; // Longer events first
+      return bDuration - aDuration;
     });
     
     const eventIndex = sortedEvents.findIndex(e => e?.id === currentEvent?.id);
     const totalEvents = sortedEvents.length;
     
-    // Calculate width and position with better spacing
-    const availableWidth = 98; // Leave 2% for margins
+    const availableWidth = 98;
     const eventWidth = availableWidth / totalEvents;
-    const leftOffset = (eventIndex * eventWidth) + 1; // 1% left margin
+    const leftOffset = (eventIndex * eventWidth) + 1;
     
     return {
-      width: `${Math.max(eventWidth - 0.5, 15)}%`, // Minimum 15% width with small gap
+      width: `${Math.max(eventWidth - 0.5, 15)}%`,
       left: `${leftOffset}%`,
-      zIndex: totalEvents - eventIndex // Earlier/longer events have higher z-index
+      zIndex: totalEvents - eventIndex
     };
   };
 
@@ -255,68 +257,82 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
         </div>
       )}
 
-      {/* Scrollable Content */}
+      {/* Scrollable Content - single scroll container for time + events */}
       <div 
         ref={scrollContainerRef}
-        className="flex w-full flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
+        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
       >
-        {/* Time Column */}
-        <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
-          {timeSlots.map((time, i) => (
-            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '65px'}}>
-              {time}
-            </div>
-          ))}
-        </div>
-        
-        {/* Events Grid - no overflow to let parent scroll container handle it */}
-        <div className="flex-1 flex">
-          {weekDays.map((date, dayIndex) => {
-            const dayEvents = getEventsForDay(date);
-            const isTodayDate = isToday(date);
-            
-            return (
-              <div 
-                key={dayIndex} 
-                className={`flex-1 border-r border-border relative overflow-x-hidden ${
-                  isTodayDate ? 'bg-blue-50' : ''
-                }`}
-                style={{ minWidth: 0 }}
-              >
-                  {timeSlots.map((_, timeIndex) => {
-                    const timeSlotEvents = getEventsForTimeSlot(date, timeIndex);
-                    
-                    return (
-                      <div key={timeIndex} className="time-slot relative">
-                        {/* Events for this time slot */}
-                        {timeSlotEvents.map(event => {
-                          const allOverlappingEvents = getOverlappingEventsForTimeSlot(date, timeIndex, event);
-                          const layout = calculateEventLayout(allOverlappingEvents, event);
-                          const height = getEventHeight(event, timeIndex);
-                          return (
-                            <EventItem 
-                              key={event.id} 
-                              event={event} 
-                              timeSlot 
-                              onClick={onEventClick}
-                              layout={{...layout, height: `${height}px`}}
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                  
-                  {/* Current time indicator */}
-                  {isTodayDate && (
-                    <div 
-                      className="current-time-indicator"
-                      style={{ top: `${getCurrentTimePosition()}%` }}
-                    />
-                  )}
+        {/* Inner container - flex row with fixed height based on time slots */}
+        <div className="flex w-full" style={{ height: `${24 * TIME_SLOT_HEIGHT}px` }}>
+          {/* Time Column */}
+          <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 flex flex-col">
+            {timeSlots.map((time, i) => (
+              <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border flex-shrink-0" style={{height: `${TIME_SLOT_HEIGHT}px`}}>
+                {time}
               </div>
-            );
-          })}
+            ))}
+          </div>
+          
+          {/* Events Grid - day columns stretch to match time column height */}
+          <div className="flex-1 flex">
+            {weekDays.map((date, dayIndex) => {
+              const timedEvents = getTimedEventsForDay(date);
+              const isTodayDate = isToday(date);
+              
+              return (
+                <div 
+                  key={dayIndex} 
+                  className={`flex-1 border-r border-border relative ${
+                    isTodayDate ? 'bg-blue-50' : ''
+                  }`}
+                  style={{ minWidth: 0 }}
+                >
+                    {/* Time slot grid lines - using background gradient */}
+                    <div 
+                      className="absolute inset-0"
+                      style={{
+                        backgroundImage: `repeating-linear-gradient(
+                          to bottom,
+                          transparent 0px,
+                          transparent ${TIME_SLOT_HEIGHT - 1}px,
+                          hsl(var(--border)) ${TIME_SLOT_HEIGHT - 1}px,
+                          hsl(var(--border)) ${TIME_SLOT_HEIGHT}px
+                        )`,
+                        backgroundSize: `100% ${TIME_SLOT_HEIGHT}px`
+                      }}
+                    />
+                    
+                    {/* Events - absolutely positioned relative to day column */}
+                    {timedEvents.map(event => {
+                      const position = getEventPosition(event, date);
+                      if (!position) return null;
+                      const layout = calculateEventLayout(timedEvents, event);
+                      return (
+                        <EventItem 
+                          key={event.id}
+                          event={event} 
+                          timeSlot 
+                          onClick={onEventClick}
+                          layout={{
+                            ...layout, 
+                            height: `${position.height}px`,
+                            top: `${position.top}px`
+                          }}
+                        />
+                      );
+                    })}
+                    
+                    {/* Current time indicator */}
+                    {isTodayDate && (
+                      <div 
+                        className="current-time-indicator"
+                        style={{ top: `${getCurrentTimePosition()}%` }}
+                      />
+                    )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
