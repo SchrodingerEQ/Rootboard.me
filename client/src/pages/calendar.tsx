@@ -382,6 +382,7 @@ export default function CalendarPage() {
             events={filteredEvents}
             isLoading={isLoading}
             onEventClick={handleEventClick}
+            enabledCalendars={enabledCalendars}
           />
         </div>
       </main>
