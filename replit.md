@@ -20,7 +20,7 @@ The application features a Google Calendar-inspired design, utilizing Radix UI c
 -   **Settings**: A settings menu provides brightness adjustment, individual calendar toggles, and a logout option.
 
 ### Feature Specifications
--   **Calendar Display**: Displays events with event colors, all-day event support, and location data. Includes chronological sorting in views and dialogs. Today's date is highlighted with an amber/gold background in month view. Event items in month view show compact time format (e.g., "4p" for on-hour, "4:30" for off-hour) followed by title for timed events; all-day events show title only.
+-   **Calendar Display**: Displays events with event colors, all-day event support, and location data. Includes chronological sorting in views and dialogs. Today's date is highlighted with an amber/gold background in month view. Event items in month view show compact time format (e.g., "4p" for on-hour, "4:30" for off-hour) followed by title for timed events; all-day events show title only. Day and Week views show 12 hours visible with scrolling (auto-scrolls to 7 AM), and all-day events appear in a dedicated section at the top of the view.
 -   **Kiosk Optimization**: Fullscreen meta viewport, 44px minimum touch targets, disabled user selection/right-click, Google Sans font, responsive breakpoints for 21.5-inch displays.
 -   **Power Saving Mode**: Activates automatically after 2 minutes of inactivity OR manually via SLEEP button in header. Shows black background with centered logo and very low brightness. Wakes on any key press, touch, or click. Automatic calendar refreshes do not count as user activity.
 -   **Environment Configuration**: Uses environment variables for database and Google OAuth credentials.
