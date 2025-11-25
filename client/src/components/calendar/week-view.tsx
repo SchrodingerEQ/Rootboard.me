@@ -152,7 +152,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     return {
       width: `${Math.max(eventWidth - 0.5, 15)}%`,
       left: `${leftOffset}%`,
-      zIndex: totalEvents - eventIndex
+      zIndex: eventIndex + 1
     };
   };
 

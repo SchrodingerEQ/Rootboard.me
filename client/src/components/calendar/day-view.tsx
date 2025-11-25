@@ -125,7 +125,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
     return {
       width: `${Math.max(eventWidth - 0.5, 15)}%`,
       left: `${leftOffset}%`,
-      zIndex: totalEvents - eventIndex
+      zIndex: eventIndex + 1
     };
   };
 
