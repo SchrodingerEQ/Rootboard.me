@@ -136,15 +136,15 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                 </div>
                 <div className="flex flex-col flex-1 px-0.5">
                   <div className="space-y-0.5 overflow-hidden">
-                    {dayEvents.slice(0, 3).map((event) => (
+                    {dayEvents.slice(0, 5).map((event) => (
                       <EventItem key={event.id} event={event} compact onClick={onEventClick} />
                     ))}
                     
                     {/* Show more indicator - inline with events */}
-                    {dayEvents.length > 3 && (
+                    {dayEvents.length > 5 && (
                       <div className="flex items-center justify-between bg-blue-100 border border-blue-300 rounded px-1 py-0.5 mt-0">
                         <div className="text-xs text-blue-700 font-medium">
-                          +{dayEvents.length - 3}
+                          +{dayEvents.length - 5}
                         </div>
                         <button 
                           onClick={(e) => {

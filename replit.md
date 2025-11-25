@@ -16,7 +16,7 @@ The application features a Google Calendar-inspired design, utilizing Radix UI c
 -   **Backend**: Node.js with Express.js, TypeScript, Drizzle ORM for PostgreSQL.
 -   **Authentication**: Google OAuth 2.0 with persistent session management using `connect-pg-simple`.
 -   **Data Synchronization**: Real-time Google Calendar event synchronization, fetching up to 3 months past and 12 months future, with `maxResults=2500` and `pageToken` handling for comprehensive event retrieval. Shared events are handled by a composite `googleEventId + calendarId` key.
--   **Calendar Views**: Month, Week, and Day views with touch-optimized navigation. Overlapping events in the weekly view are displayed side-by-side in staggered columns with dynamic height. A "Show more events" feature with a dialog handles busy days in the month view.
+-   **Calendar Views**: Month, Week, and Day views with touch-optimized navigation. Overlapping events in the weekly view are displayed side-by-side in staggered columns with dynamic height. Month view shows up to 5 events per day before collapsing with a "Show more events" dialog for busy days.
 -   **Settings**: A settings menu provides brightness adjustment, individual calendar toggles, and a logout option.
 
 ### Feature Specifications
