@@ -66,18 +66,18 @@ export function CalendarHeader({
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button px-3 py-2 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))] h-10 w-10"
+            className="touch-button px-2 py-1 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))] h-14 w-14"
             onClick={() => onNavigate(-1)}
           >
-            <ChevronLeft size={20} />
+            <ChevronLeft size={30} />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button px-3 py-2 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))] h-10 w-10"
+            className="touch-button px-2 py-1 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))] h-14 w-14"
             onClick={() => onNavigate(1)}
           >
-            <ChevronRight size={20} />
+            <ChevronRight size={30} />
           </Button>
           <Button
             variant="ghost"
