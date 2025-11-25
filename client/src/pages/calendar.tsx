@@ -57,7 +57,8 @@ export default function CalendarPage() {
     isLoading,
     isRefreshing,
     authStatus,
-    refreshEvents,
+    manualRefresh,
+    autoRefresh,
     checkAuthStatus
   } = useCalendar(currentDate, currentView);
   
@@ -105,12 +106,12 @@ export default function CalendarPage() {
       setCurrentView('month');
       setCurrentDate(new Date());
       // Refresh calendar data when exiting screensaver
-      refreshEvents();
+      manualRefresh();
     };
 
     window.addEventListener('screensaver-exit', handleScreensaverExit);
     return () => window.removeEventListener('screensaver-exit', handleScreensaverExit);
-  }, [refreshEvents]);
+  }, [manualRefresh]);
 
   // Filter events based on enabled calendars
   const filteredEvents = useMemo(() => {
@@ -176,9 +177,9 @@ export default function CalendarPage() {
   useEffect(() => {
     if (authStatus?.authenticated && events.length === 0 && !isRefreshing) {
       console.log('Auto-syncing calendar events on authentication');
-      refreshEvents();
+      manualRefresh();
     }
-  }, [authStatus?.authenticated, events.length, isRefreshing, refreshEvents]);
+  }, [authStatus?.authenticated, events.length, isRefreshing, manualRefresh]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -198,14 +199,14 @@ export default function CalendarPage() {
     }
   }, [toast]);
 
-  // Auto-refresh every 5 minutes
+  // Auto-refresh every 10 minutes
   useEffect(() => {
     const interval = setInterval(() => {
-      refreshEvents();
-    }, 300000);
+      autoRefresh();
+    }, 600000); // 10 minutes
 
     return () => clearInterval(interval);
-  }, [refreshEvents]);
+  }, [autoRefresh]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -260,7 +261,7 @@ export default function CalendarPage() {
   };
 
   const handleRefresh = () => {
-    refreshEvents();
+    manualRefresh();
   };
 
   const handleAuth = () => {
@@ -304,7 +305,7 @@ export default function CalendarPage() {
         });
         // Refresh events after successful auth
         setTimeout(() => {
-          refreshEvents();
+          manualRefresh();
         }, 1000);
       } else {
         throw new Error('Authentication failed');

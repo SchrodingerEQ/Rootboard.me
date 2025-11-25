@@ -11,8 +11,8 @@ interface AuthStatus {
   needsAuth: boolean;
 }
 
-// Minimum time between refreshes (5 minutes) for energy efficiency
-const MIN_REFRESH_INTERVAL = 5 * 60 * 1000;
+// Minimum time between auto-refreshes (10 minutes) for energy efficiency
+const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
 
 export function useCalendar(currentDate: Date, currentView: CalendarView) {
   const queryClient = useQueryClient();
@@ -115,25 +115,40 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     },
   });
 
-  // Throttled refresh to prevent excessive API calls (energy optimization)
-  const refreshEvents = useCallback(() => {
-    const now = Date.now();
-    const timeSinceLastRefresh = now - lastRefreshTime.current;
-    
-    // If we're offline, don't even attempt to sync
+  // Manual refresh - always available when not already refreshing
+  const manualRefresh = useCallback(() => {
     if (!isOnline) {
       console.log('Skipping refresh - device is offline');
       return;
     }
     
-    // Enforce minimum 5-minute interval between refreshes
-    if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-      const remainingTime = Math.ceil((MIN_REFRESH_INTERVAL - timeSinceLastRefresh) / 1000);
-      console.log(`Refresh throttled. Next refresh available in ${remainingTime} seconds`);
+    if (syncMutation.isPending) {
+      console.log('Refresh already in progress');
       return;
     }
     
-    console.log('Executing calendar refresh');
+    console.log('Executing manual calendar refresh');
+    lastRefreshTime.current = Date.now();
+    syncMutation.mutate();
+  }, [syncMutation, isOnline]);
+
+  // Auto-refresh with throttling for energy efficiency
+  const autoRefresh = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTime.current;
+    
+    if (!isOnline) {
+      console.log('Skipping auto-refresh - device is offline');
+      return;
+    }
+    
+    // Enforce minimum interval between auto-refreshes
+    if (timeSinceLastRefresh < AUTO_REFRESH_INTERVAL) {
+      console.log('Auto-refresh skipped - too soon since last refresh');
+      return;
+    }
+    
+    console.log('Executing auto calendar refresh');
     lastRefreshTime.current = now;
     syncMutation.mutate();
   }, [syncMutation, isOnline]);
@@ -153,7 +168,8 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     isLoading,
     isRefreshing: syncMutation.isPending,
     authStatus,
-    refreshEvents,
+    manualRefresh,
+    autoRefresh,
     checkAuthStatus,
     refetch,
   };
