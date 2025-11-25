@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Monitor, Key, Play, RefreshCw, ExternalLink, Cpu, Terminal } from "lucide-react";
+import { ArrowLeft, Download, Monitor, Key, Play, RefreshCw, ExternalLink, Cpu, Terminal, Star, Usb, Wifi, HardDrive } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,21 +30,99 @@ export default function SetupPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-blue-600" />
-              Step 1: Download the Application
+              Step 1: Get the Application onto Your Raspberry Pi
             </CardTitle>
             <CardDescription>
-              Get the calendar app code from Replit
+              Choose the method that works best for you
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <ol className="list-decimal list-inside space-y-3 text-gray-700">
-              <li>Visit the Replit project page</li>
-              <li>Click the three-dot menu (⋮) in the top right</li>
-              <li>Select "Download as zip"</li>
-              <li>Extract the zip file to your preferred location</li>
-            </ol>
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-700">
-              <strong>Tip:</strong> You can also use Git to clone the repository for easier updates.
+          <CardContent className="space-y-6">
+            {/* Recommended Option */}
+            <div className="border-2 border-green-200 bg-green-50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Star className="h-5 w-5 text-green-600 fill-green-600" />
+                <h4 className="font-semibold text-green-800">Recommended: USB Drive Method</h4>
+                <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full">Easiest</span>
+              </div>
+              <p className="text-sm text-green-700">
+                Best for beginners - no coding knowledge required!
+              </p>
+              <ol className="list-decimal list-inside space-y-2 text-gray-700 text-sm">
+                <li>On your regular computer, visit the Replit project page</li>
+                <li>Click the three-dot menu (⋮) in the top right corner</li>
+                <li>Select <strong>"Download as zip"</strong></li>
+                <li>Copy the downloaded zip file to a USB drive</li>
+                <li>Plug the USB drive into your Raspberry Pi</li>
+                <li>Open File Manager on the Pi and navigate to the USB drive</li>
+                <li>Copy the zip file to your home folder (usually <code className="bg-green-100 px-1 rounded">/home/pi</code>)</li>
+                <li>Right-click the zip file and select "Extract Here"</li>
+                <li>Rename the extracted folder to <code className="bg-green-100 px-1 rounded">calendar-app</code></li>
+              </ol>
+            </div>
+
+            <Separator />
+
+            {/* Alternative Option 1: Direct Download */}
+            <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Wifi className="h-5 w-5 text-blue-600" />
+                <h4 className="font-semibold text-gray-900">Option 2: Direct Download on Pi</h4>
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Requires Internet</span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Download directly on your Raspberry Pi if it's connected to the internet.
+              </p>
+              <ol className="list-decimal list-inside space-y-2 text-gray-700 text-sm">
+                <li>Open the web browser (Chromium) on your Raspberry Pi</li>
+                <li>Go to the Replit project page</li>
+                <li>Click the three-dot menu (⋮) → "Download as zip"</li>
+                <li>The file will download to your Downloads folder</li>
+                <li>Open File Manager and extract the zip file</li>
+                <li>Move the extracted folder to <code className="bg-gray-100 px-1 rounded">/home/pi/calendar-app</code></li>
+              </ol>
+            </div>
+
+            {/* Alternative Option 2: Git Clone */}
+            <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Terminal className="h-5 w-5 text-purple-600" />
+                <h4 className="font-semibold text-gray-900">Option 3: Git Clone</h4>
+                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Advanced</span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Best for easy updates - recommended if you're comfortable with the command line.
+              </p>
+              <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
+                <div># Open Terminal on your Raspberry Pi and run:</div>
+                <div>cd /home/pi</div>
+                <div>git clone [REPLIT_GIT_URL] calendar-app</div>
+              </div>
+              <p className="text-xs text-gray-500">
+                To find the Git URL: On Replit, click "Git" in the left sidebar, then copy the clone URL.
+              </p>
+            </div>
+
+            {/* Alternative Option 3: SCP/SFTP */}
+            <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-5 w-5 text-orange-600" />
+                <h4 className="font-semibold text-gray-900">Option 4: Network Transfer (SCP/SFTP)</h4>
+                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Advanced</span>
+              </div>
+              <p className="text-sm text-gray-600">
+                Transfer files over your local network using SSH.
+              </p>
+              <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
+                <div># From your computer (replace PI_IP with your Pi's IP address):</div>
+                <div>scp -r calendar-app pi@PI_IP:/home/pi/</div>
+              </div>
+              <p className="text-xs text-gray-500">
+                You can also use FileZilla or WinSCP for a graphical interface.
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+              <strong>Note:</strong> After transferring the files, make sure the folder is named <code className="bg-amber-100 px-1 rounded">calendar-app</code> and is located in <code className="bg-amber-100 px-1 rounded">/home/pi/</code> for the rest of these instructions to work correctly.
             </div>
           </CardContent>
         </Card>
