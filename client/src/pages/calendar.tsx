@@ -8,7 +8,6 @@ import { DayView } from "@/components/calendar/day-view";
 import { LoadingIndicator } from "@/components/calendar/loading-indicator";
 import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
-import { ScreensaverOverlay } from "@/components/screensaver/screensaver-overlay";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useToast } from "@/hooks/use-toast";
@@ -29,23 +28,29 @@ export default function CalendarPage() {
   const [isPowerSaving, setIsPowerSaving] = useState(false);
   const { toast } = useToast();
   
-  const handleSleep = useCallback(() => {
-    setIsPowerSaving(true);
-  }, []);
-  
-  const handleWake = useCallback(() => {
-    setIsPowerSaving(false);
-  }, []);
-  
-  // Initialize screensaver with 2-minute timeout and brightness control
+  // Initialize inactivity timer with 2-minute timeout and brightness control
   const screensaver = useScreensaver({
     inactivityTimeout: 2 * 60 * 1000, // 2 minutes
-    dimBrightness: 0.2, // 20% brightness during screensaver
+    dimBrightness: 0.2, // 20% brightness during power saving
     originalBrightness: (() => {
       const saved = localStorage.getItem('calendar-brightness');
       return saved ? parseInt(saved) / 100 : 1.0;
     })() // Load saved brightness or default to 100%
   });
+  
+  // Manual sleep button handler
+  const handleSleep = useCallback(() => {
+    setIsPowerSaving(true);
+  }, []);
+  
+  // Wake from power saving mode (both manual and automatic)
+  const handleWake = useCallback(() => {
+    setIsPowerSaving(false);
+    screensaver.exitScreensaver();
+  }, [screensaver]);
+  
+  // Power saving is active if manually triggered OR auto-triggered by inactivity
+  const isPowerSavingActive = isPowerSaving || screensaver.isActive;
   
   const {
     events,
@@ -393,19 +398,13 @@ export default function CalendarPage() {
 
       {/* Authentication Dialog */}
       <AuthDialog 
-        open={authDialogOpen && !screensaver.isActive}
+        open={authDialogOpen && !isPowerSavingActive}
         onOpenChange={setAuthDialogOpen}
       />
 
-      {/* Screensaver Overlay */}
-      <ScreensaverOverlay 
-        isActive={screensaver.isActive}
-        onExit={screensaver.exitScreensaver}
-      />
-      
-      {/* Power Saving Overlay (manual sleep mode) */}
+      {/* Power Saving Overlay (manual SLEEP button or auto after 2 min inactivity) */}
       <PowerSavingOverlay 
-        isActive={isPowerSaving}
+        isActive={isPowerSavingActive}
         onWake={handleWake}
       />
     </div>
