@@ -163,41 +163,41 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
 
   if (isLoading) {
     return (
-      <div className="flex h-full overflow-hidden">
-        {/* Time Column */}
-        <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
-          <div className="h-12 border-b border-border"></div>
-          {timeSlots.map((time, i) => (
-            <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '65px'}}>
-              {time}
+      <div className="flex flex-col h-full overflow-hidden">
+        {/* Fixed Week Header */}
+        <div className="flex bg-white border-b border-border flex-shrink-0 z-10">
+          <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 h-12"></div>
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="flex-1 text-center py-3 border-r border-border bg-[hsl(var(--google-light-gray))]">
+              <Skeleton className="h-4 w-16 mx-auto" />
             </div>
           ))}
         </div>
         
-        {/* Loading Days Grid */}
-        <div className="flex-1 overflow-hidden">
-          <div className="h-12 flex border-b border-border bg-[hsl(var(--google-light-gray))]">
-            {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex-1 text-center py-3 border-r border-border">
-                <Skeleton className="h-4 w-16 mx-auto" />
+        {/* Scrollable Content - matches actual content structure */}
+        <div className="flex w-full flex-1 overflow-y-auto overflow-x-hidden">
+          {/* Time Column */}
+          <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
+            {timeSlots.map((time, i) => (
+              <div key={i} className="flex items-center justify-start text-xs text-muted-foreground px-1 border-b border-border" style={{height: '65px'}}>
+                {time}
               </div>
             ))}
           </div>
           
-          <div className="flex-1 overflow-y-auto">
-            <div className="flex">
-              {Array.from({ length: 7 }).map((_, i) => (
-                <div key={i} className="flex-1 border-r border-border">
-                  {timeSlots.map((_, j) => (
-                    <div key={j} className="time-slot">
-                      {j % 4 === 0 && (
-                        <Skeleton className="h-8 w-3/4 m-1 rounded" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+          {/* Events Grid */}
+          <div className="flex-1 flex">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="flex-1 border-r border-border overflow-x-hidden" style={{ minWidth: 0 }}>
+                {timeSlots.map((_, j) => (
+                  <div key={j} className="time-slot">
+                    {j % 4 === 0 && (
+                      <Skeleton className="h-8 w-3/4 m-1 rounded" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -258,7 +258,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
       {/* Scrollable Content */}
       <div 
         ref={scrollContainerRef}
-        className="flex w-full flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
+        className="flex w-full flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100"
       >
         {/* Time Column */}
         <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0">
