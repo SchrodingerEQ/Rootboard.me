@@ -269,8 +269,8 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
           ))}
         </div>
         
-        {/* Events Grid */}
-        <div className="flex-1 flex relative">
+        {/* Events Grid - no overflow to let parent scroll container handle it */}
+        <div className="flex-1 flex">
           {weekDays.map((date, dayIndex) => {
             const dayEvents = getEventsForDay(date);
             const isTodayDate = isToday(date);
@@ -278,7 +278,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
             return (
               <div 
                 key={dayIndex} 
-                className={`flex-1 border-r border-border relative overflow-x-hidden overflow-y-visible ${
+                className={`flex-1 border-r border-border relative overflow-x-hidden ${
                   isTodayDate ? 'bg-blue-50' : ''
                 }`}
                 style={{ minWidth: 0 }}
