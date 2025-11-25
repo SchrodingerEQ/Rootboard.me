@@ -224,55 +224,55 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
             ))}
           </div>
           
-          {/* Day Events Column - absolute positioning like weekly view */}
-          <div 
-            className={`flex-1 relative ${isTodayDate ? 'bg-blue-50' : ''}`}
-            style={{ minWidth: 0 }}
-          >
-            {/* Time slot grid lines - using background gradient */}
+          {/* Day Events Column - matches weekly view structure */}
+          <div className="flex-1 flex">
             <div 
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                backgroundImage: `repeating-linear-gradient(
-                  to bottom,
-                  transparent 0px,
-                  transparent ${TIME_SLOT_HEIGHT - 1}px,
-                  hsl(var(--border)) ${TIME_SLOT_HEIGHT - 1}px,
-                  hsl(var(--border)) ${TIME_SLOT_HEIGHT}px
-                )`,
-                backgroundSize: `100% ${TIME_SLOT_HEIGHT}px`,
-                zIndex: 0
-              }}
-            />
-            
-            {/* Events - absolutely positioned with higher z-index */}
-            {timedEvents.map((event, index) => {
-              const position = getEventPosition(event);
-              if (!position) return null;
-              const layout = calculateEventLayout(timedEvents, event);
-              return (
-                <EventItem 
-                  key={event.id}
-                  event={event} 
-                  timeSlot 
-                  onClick={onEventClick}
-                  layout={{
-                    ...layout, 
-                    height: `${position.height}px`,
-                    top: `${position.top}px`,
-                    zIndex: index + 10
-                  }}
-                />
-              );
-            })}
-            
-            {/* Current time indicator */}
-            {timePosition >= 0 && (
+              className={`flex-1 border-r border-border relative ${isTodayDate ? 'bg-blue-50' : ''}`}
+              style={{ minWidth: 0 }}
+            >
+              {/* Time slot grid lines - using background gradient */}
               <div 
-                className="current-time-indicator"
-                style={{ top: `${timePosition}%` }}
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `repeating-linear-gradient(
+                    to bottom,
+                    transparent 0px,
+                    transparent ${TIME_SLOT_HEIGHT - 1}px,
+                    hsl(var(--border)) ${TIME_SLOT_HEIGHT - 1}px,
+                    hsl(var(--border)) ${TIME_SLOT_HEIGHT}px
+                  )`,
+                  backgroundSize: `100% ${TIME_SLOT_HEIGHT}px`
+                }}
               />
-            )}
+              
+              {/* Events - absolutely positioned relative to day column */}
+              {timedEvents.map(event => {
+                const position = getEventPosition(event);
+                if (!position) return null;
+                const layout = calculateEventLayout(timedEvents, event);
+                return (
+                  <EventItem 
+                    key={event.id}
+                    event={event} 
+                    timeSlot 
+                    onClick={onEventClick}
+                    layout={{
+                      ...layout, 
+                      height: `${position.height}px`,
+                      top: `${position.top}px`
+                    }}
+                  />
+                );
+              })}
+              
+              {/* Current time indicator */}
+              {timePosition >= 0 && (
+                <div 
+                  className="current-time-indicator"
+                  style={{ top: `${timePosition}%` }}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

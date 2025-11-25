@@ -6,7 +6,7 @@ interface EventItemProps {
   compact?: boolean;
   timeSlot?: boolean;
   detailed?: boolean;
-  layout?: { width: string; left: string; zIndex: number; height?: string; top?: string };
+  layout?: { width: string; left: string; zIndex?: number; height?: string; top?: string };
   onClick?: (event: CalendarEvent) => void;
 }
 
@@ -83,7 +83,7 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
       position: 'absolute' as const,
       width: layout.width,
       left: layout.left,
-      zIndex: layout.zIndex,
+      zIndex: layout.zIndex ?? 1,
       top: layout.top || '0',
       height: layout.height || '100%',
       maxWidth: '100%',
