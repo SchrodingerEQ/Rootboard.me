@@ -231,7 +231,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
           >
             {/* Time slot grid lines - using background gradient */}
             <div 
-              className="absolute inset-0"
+              className="absolute inset-0 pointer-events-none"
               style={{
                 backgroundImage: `repeating-linear-gradient(
                   to bottom,
@@ -240,11 +240,12 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
                   hsl(var(--border)) ${TIME_SLOT_HEIGHT - 1}px,
                   hsl(var(--border)) ${TIME_SLOT_HEIGHT}px
                 )`,
-                backgroundSize: `100% ${TIME_SLOT_HEIGHT}px`
+                backgroundSize: `100% ${TIME_SLOT_HEIGHT}px`,
+                zIndex: 0
               }}
             />
             
-            {/* Events - absolutely positioned */}
+            {/* Events - absolutely positioned with higher z-index */}
             {timedEvents.map((event, index) => {
               const position = getEventPosition(event);
               if (!position) return null;
@@ -259,7 +260,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
                     ...layout, 
                     height: `${position.height}px`,
                     top: `${position.top}px`,
-                    zIndex: index + 1
+                    zIndex: index + 10
                   }}
                 />
               );
