@@ -85,28 +85,48 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
     return { top, height };
   };
 
-  // Calculate overlapping event layouts (same approach as weekly view)
-  const calculateEventLayout = (allEvents: CalendarEvent[], event: CalendarEvent) => {
-    const eventStart = new Date(event.startTime);
-    const eventEnd = new Date(event.endTime);
+  // Get all events that overlap with the current event (same approach as weekly view)
+  const getOverlappingEvents = (allEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
+    const currentStart = new Date(currentEvent.startTime);
+    const currentEnd = new Date(currentEvent.endTime);
     
-    const overlappingEvents = allEvents.filter(other => {
-      if (other.id === event.id) return false;
-      const otherStart = new Date(other.startTime);
-      const otherEnd = new Date(other.endTime);
-      return eventStart < otherEnd && eventEnd > otherStart;
+    return allEvents.filter(event => {
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      return currentStart < eventEnd && currentEnd > eventStart;
+    });
+  };
+
+  // Calculate horizontal layout for overlapping events (same approach as weekly view)
+  const calculateEventLayout = (allEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
+    const overlappingEvents = getOverlappingEvents(allEvents, currentEvent);
+    
+    if (overlappingEvents.length === 1) {
+      return { width: '100%', left: '0%', zIndex: 1 };
+    }
+    
+    // Sort events by start time, then by duration (longer events first)
+    const sortedEvents = [...overlappingEvents].sort((a, b) => {
+      const startDiff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+      if (startDiff !== 0) return startDiff;
+      
+      const aDuration = new Date(a.endTime).getTime() - new Date(a.startTime).getTime();
+      const bDuration = new Date(b.endTime).getTime() - new Date(b.startTime).getTime();
+      return bDuration - aDuration;
     });
     
-    const totalColumns = overlappingEvents.length + 1;
-    const sortedEvents = [event, ...overlappingEvents].sort((a, b) => 
-      new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    );
-    const columnIndex = sortedEvents.indexOf(event);
+    const eventIndex = sortedEvents.findIndex(e => e?.id === currentEvent?.id);
+    const totalEvents = sortedEvents.length;
     
-    const width = `${100 / totalColumns}%`;
-    const left = `${(columnIndex / totalColumns) * 100}%`;
+    const availableWidth = 98;
+    const eventWidth = availableWidth / totalEvents;
+    const leftOffset = (eventIndex * eventWidth) + 1;
     
-    return { width, left };
+    return {
+      width: `${Math.max(eventWidth - 0.5, 15)}%`,
+      left: `${leftOffset}%`,
+      zIndex: totalEvents - eventIndex
+    };
   };
 
   // Auto-scroll to 7 AM when loading completes and scroll container exists
