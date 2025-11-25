@@ -23,6 +23,7 @@ The application features a Google Calendar-inspired design, utilizing Radix UI c
 -   **Calendar Display**: Displays events with event colors, all-day event support, and location data. Includes chronological sorting in views and dialogs. Today's date is highlighted with an amber/gold background in month view. Event items in month view show compact time format (e.g., "4p" for on-hour, "4:30" for off-hour) followed by title for timed events; all-day events show title only.
 -   **Kiosk Optimization**: Fullscreen meta viewport, 44px minimum touch targets, disabled user selection/right-click, Google Sans font, responsive breakpoints for 21.5-inch displays.
 -   **Screensaver**: Automatic activation after 2 minutes of inactivity, 20% brightness dimming, floating animated logo, current time/date, instant wake-up.
+-   **Power Saving Mode**: Manual SLEEP button in header activates a power-saving overlay with black background, centered logo, and very low brightness. Wakes on any key press, touch, or click.
 -   **Environment Configuration**: Uses environment variables for database and Google OAuth credentials.
 
 ### System Design Choices
