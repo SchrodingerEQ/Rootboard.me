@@ -54,9 +54,13 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
         onClick={() => onClick?.(event)}
       >
         <div className="font-medium">{event.title}</div>
-        <div className="text-xs opacity-75">
-          {formatTime(startTime)} - {formatTime(endTime)}
-        </div>
+        {event.isAllDay ? (
+          <div className="text-xs opacity-75">All day</div>
+        ) : (
+          <div className="text-xs opacity-75">
+            {formatTime(startTime)} - {formatTime(endTime)}
+          </div>
+        )}
         {event.location && (
           <div className="text-xs opacity-75">{event.location}</div>
         )}
