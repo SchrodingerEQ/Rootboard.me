@@ -120,12 +120,15 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
             return (
               <div 
                 key={index} 
-                className="calendar-cell p-0.5 flex flex-col justify-start pt-[0px] pb-[0px]"
+                className={`calendar-cell p-0.5 flex flex-col justify-start pt-[0px] pb-[0px] ${
+                  isTodayDate ? 'bg-amber-200' : 'bg-white'
+                }`}
+                data-testid={isTodayDate ? 'today-cell' : undefined}
               >
                 <div className={`text-xs mb-0 px-1 ${
                   isCurrentMonth 
                     ? isTodayDate 
-                      ? 'font-medium text-[hsl(var(--google-blue))]'
+                      ? 'font-bold text-[hsl(var(--google-blue))]'
                       : 'font-medium text-black'
                     : 'font-normal text-gray-300 opacity-60'
                 }`}>

@@ -89,7 +89,6 @@
   }
 
   .calendar-cell {
-    background-color: white;
     min-height: 100px;
     overflow: hidden;
     position: relative;
