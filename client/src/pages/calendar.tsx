@@ -9,9 +9,11 @@ import { LoadingIndicator } from "@/components/calendar/loading-indicator";
 import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
+import { UpdateNotification } from "@/components/calendar/update-notification";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useScreensaver } from "@/hooks/useScreensaver";
+import { useVersionCheck } from "@/hooks/use-version-check";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarEvent } from "@shared/schema";
 
@@ -27,6 +29,9 @@ export default function CalendarPage() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [isPowerSaving, setIsPowerSaving] = useState(false);
   const { toast } = useToast();
+  
+  // Version checking for updates
+  const { showUpdateNotification, latestVersion, dismissUpdate } = useVersionCheck();
   
   // Initialize inactivity timer with 2-minute timeout and brightness control
   const screensaver = useScreensaver({
@@ -402,6 +407,13 @@ export default function CalendarPage() {
       <AuthDialog 
         open={authDialogOpen && !isPowerSavingActive}
         onOpenChange={setAuthDialogOpen}
+      />
+
+      {/* Update Available Notification */}
+      <UpdateNotification
+        isOpen={showUpdateNotification && !isPowerSavingActive}
+        latestVersion={latestVersion}
+        onDismiss={dismissUpdate}
       />
 
       {/* Power Saving Overlay (manual SLEEP button or auto after 2 min inactivity) */}

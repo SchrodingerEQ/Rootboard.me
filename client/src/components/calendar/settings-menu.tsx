@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, LogOut, Calendar, X } from "lucide-react";
+import { Settings, Sun, Moon, LogOut, Calendar, X, Info } from "lucide-react";
+import { APP_VERSION } from "@shared/version";
 import { Button } from "@/components/ui/button";
 import { 
   Dialog, 
@@ -225,6 +226,16 @@ export function SettingsMenu({
               <LogOut className="h-4 w-4 mr-2" />
               Logout from Google Calendar
             </Button>
+
+            <Separator />
+
+            {/* Version Info */}
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <div className="flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                <span>Version {APP_VERSION}</span>
+              </div>
+            </div>
           </div>
         </PopoverContent>
       </Popover>

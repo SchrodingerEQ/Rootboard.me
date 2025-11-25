@@ -3,8 +3,17 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { googleCalendarService } from "./services/googleCalendar";
 import { insertCalendarEventSchema } from "@shared/schema";
+import { APP_VERSION } from "@shared/version";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Version endpoint for update checking
+  app.get("/api/version", (req, res) => {
+    res.json({ 
+      version: APP_VERSION,
+      timestamp: new Date().toISOString()
+    });
+  });
+
   // Google OAuth routes
   app.get("/api/auth/google", async (req, res) => {
     try {

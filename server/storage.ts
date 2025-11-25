@@ -26,6 +26,7 @@ export interface IStorage {
   createGoogleCredentials(credentials: InsertGoogleCredentials): Promise<GoogleCredentials>;
   updateGoogleCredentials(credentials: Partial<InsertGoogleCredentials>): Promise<GoogleCredentials | undefined>;
   clearGoogleCredentials(): Promise<void>;
+  saveGoogleCredentials(credentials: any): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -153,8 +154,12 @@ export class MemStorage implements IStorage {
     const id = this.currentCredentialsId++;
     const now = new Date();
     const credentials: GoogleCredentials = { 
-      ...insertCredentials, 
       id,
+      accessToken: insertCredentials.accessToken,
+      refreshToken: insertCredentials.refreshToken,
+      scope: insertCredentials.scope || null,
+      tokenType: insertCredentials.tokenType || null,
+      expiryDate: insertCredentials.expiryDate,
       createdAt: now,
       updatedAt: now
     };
@@ -206,4 +211,15 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+function createStorage(): IStorage {
+  if (process.env.DATABASE_URL) {
+    console.log('Using MemStorage with PostgreSQL session store (Replit environment)');
+    return new MemStorage();
+  } else {
+    console.log('Using SQLite storage (self-hosted environment)');
+    const { SQLiteStorage } = require('./sqlite-storage');
+    return new SQLiteStorage('./calendar.db');
+  }
+}
+
+export const storage = createStorage();

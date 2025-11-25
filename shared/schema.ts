@@ -28,6 +28,8 @@ export const googleCredentials = pgTable("google_credentials", {
   id: serial("id").primaryKey(),
   accessToken: text("access_token").notNull(),
   refreshToken: text("refresh_token").notNull(),
+  scope: text("scope"),
+  tokenType: text("token_type"),
   expiryDate: timestamp("expiry_date").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

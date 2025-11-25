@@ -13,27 +13,31 @@ The application features a Google Calendar-inspired design, utilizing Radix UI c
 
 ### Technical Implementations
 -   **Frontend**: React 18 with TypeScript, Vite, Wouter for routing, TanStack Query for state management, React Hook Form with Zod for forms.
--   **Backend**: Node.js with Express.js, TypeScript, Drizzle ORM for PostgreSQL.
--   **Authentication**: Google OAuth 2.0 with persistent session management using `connect-pg-simple`.
+-   **Backend**: Node.js with Express.js, TypeScript, Drizzle ORM for PostgreSQL, SQLite for self-hosted deployments.
+-   **Authentication**: Google OAuth 2.0 with persistent session management using `connect-pg-simple` (Replit) or SQLite (self-hosted).
 -   **Data Synchronization**: Real-time Google Calendar event synchronization, fetching up to 3 months past and 12 months future, with `maxResults=2500` and `pageToken` handling for comprehensive event retrieval. Shared events are handled by a composite `googleEventId + calendarId` key.
 -   **Calendar Views**: Month, Week, and Day views with touch-optimized navigation. Overlapping events in the weekly view are displayed side-by-side in staggered columns with dynamic height. Month view shows up to 5 events per day before collapsing with a "Show more events" dialog for busy days.
--   **Settings**: A settings menu provides brightness adjustment, individual calendar toggles, and a logout option.
+-   **Settings**: A settings menu provides brightness adjustment, individual calendar toggles, version display, and a logout option.
+-   **Version System**: Version constant in `shared/version.ts` (currently v1.0.0), exposed via `/api/version` endpoint for update checking.
 
 ### Feature Specifications
 -   **Calendar Display**: Displays events with event colors, all-day event support, and location data. Includes chronological sorting in views and dialogs. Today's date is highlighted with an amber/gold background in month view. Event items in month view show compact time format (e.g., "4p" for on-hour, "4:30" for off-hour) followed by title for timed events; all-day events show title only. Day and Week views show 12 hours visible with scrolling (auto-scrolls to 7 AM), and all-day events appear in a dedicated section at the top of the view.
 -   **Kiosk Optimization**: Fullscreen meta viewport, 44px minimum touch targets, disabled user selection/right-click, Google Sans font, responsive breakpoints for 21.5-inch displays.
 -   **Power Saving Mode**: Activates automatically after 2 minutes of inactivity OR manually via SLEEP button in header. Shows black background with centered logo and very low brightness. Wakes on any key press, touch, or click. Automatic calendar refreshes do not count as user activity.
+-   **Update Checking**: Daily check at 8 AM local time compares local version against hosted version. Displays update notification with "View Instructions" and "Dismiss" buttons. Dismissed notifications return the next day until updated.
+-   **Setup Guide**: Accessible at `/setup` route, provides comprehensive instructions for Raspberry Pi deployment including downloading, Google OAuth configuration, kiosk mode setup, and updating.
 -   **Environment Configuration**: Uses environment variables for database and Google OAuth credentials.
 
 ### System Design Choices
--   **Database**: PostgreSQL via Neon Database, with Drizzle ORM for type-safe operations.
+-   **Database**: PostgreSQL via Neon Database (Replit) or SQLite (self-hosted), with Drizzle ORM for type-safe operations. Auto-detects via DATABASE_URL environment variable.
 -   **Schema**: `users`, `calendar_events`, and `google_credentials` tables, with schema defined in `shared/schema.ts`.
 -   **Development**: Vite for frontend, `tsx` for backend development, in-memory fallback storage.
 -   **Production**: Vite builds optimized frontend, ESBuild bundles backend.
 
 ## External Dependencies
 -   **Google APIs**: Google Calendar API v3 for event integration and Google OAuth 2.0 for authentication.
--   **Neon Database**: Serverless PostgreSQL for data storage.
+-   **Neon Database**: Serverless PostgreSQL for data storage (Replit environment).
+-   **better-sqlite3**: SQLite for self-hosted deployments on Raspberry Pi.
 -   **Radix UI**: Accessible UI component primitives.
 -   **TanStack Query**: Server state management library.
 -   **Drizzle ORM**: Type-safe ORM for database interactions.

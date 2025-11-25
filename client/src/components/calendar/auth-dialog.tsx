@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, LogIn, AlertCircle } from "lucide-react";
+import { RefreshCw, LogIn, AlertCircle, BookOpen } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 
 interface AuthDialogProps {
   open: boolean;
@@ -104,6 +105,15 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               "Clear Stored Credentials"
             )}
           </Button>
+
+          <div className="text-center pt-2 border-t border-gray-100">
+            <Link href="/setup">
+              <a className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline" data-testid="link-setup-guide">
+                <BookOpen className="h-3 w-3" />
+                View Setup Guide
+              </a>
+            </Link>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
