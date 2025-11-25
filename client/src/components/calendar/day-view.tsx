@@ -23,10 +23,24 @@ export function DayView({ currentDate, events, isLoading, onEventClick }: DayVie
 
   const dayEvents = useMemo(() => {
     return events.filter(event => {
-      const eventDate = new Date(event.startTime);
-      return eventDate.toDateString() === currentDate.toDateString();
+      const eventStart = new Date(event.startTime);
+      const eventEnd = new Date(event.endTime);
+      // Include events that start on this day OR span across this day
+      return (
+        eventStart.toDateString() === currentDate.toDateString() ||
+        (eventStart <= currentDate && eventEnd >= currentDate)
+      );
     });
   }, [events, currentDate]);
+
+  // Separate all-day events from timed events
+  const allDayEvents = useMemo(() => {
+    return dayEvents.filter(event => event.isAllDay);
+  }, [dayEvents]);
+
+  const timedEvents = useMemo(() => {
+    return dayEvents.filter(event => !event.isAllDay);
+  }, [dayEvents]);
 
   // Auto-scroll to 7 AM when loading completes and scroll container exists
   useEffect(() => {
@@ -106,6 +120,27 @@ export function DayView({ currentDate, events, isLoading, onEventClick }: DayVie
         </div>
       </div>
 
+      {/* All-Day Events Section */}
+      {allDayEvents.length > 0 && (
+        <div className="flex bg-white border-b border-border flex-shrink-0">
+          <div className="w-20 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">All day</span>
+          </div>
+          <div className={`flex-1 p-2 min-h-[44px] ${isTodayDate ? 'bg-blue-50/50' : ''}`}>
+            <div className="flex flex-wrap gap-1">
+              {allDayEvents.map(event => (
+                <EventItem 
+                  key={event.id} 
+                  event={event} 
+                  compact 
+                  onClick={onEventClick}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Scrollable Content */}
       <div 
         ref={scrollContainerRef}
@@ -123,7 +158,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick }: DayVie
         {/* Day Time Slots */}
         <div className="flex-1 relative">
           {timeSlots.map((_, timeIndex) => {
-            const timeEvents = dayEvents.filter(event => {
+            const slotEvents = timedEvents.filter(event => {
               const eventStart = new Date(event.startTime);
               const eventStartHour = eventStart.getHours();
               
@@ -133,7 +168,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick }: DayVie
 
             return (
               <div key={timeIndex} className="time-slot relative">
-                {timeEvents.map(event => (
+                {slotEvents.map(event => (
                   <EventItem key={event.id} event={event} detailed timeSlot onClick={onEventClick} />
                 ))}
               </div>

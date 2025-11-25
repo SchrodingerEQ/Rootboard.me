@@ -61,9 +61,19 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     return eventsByDay.get(date.toDateString()) || [];
   };
 
+  // Get all-day events for a specific day
+  const getAllDayEventsForDay = (date: Date) => {
+    const dayEvents = getEventsForDay(date);
+    return dayEvents.filter(event => event.isAllDay);
+  };
+
+  // Get timed (non-all-day) events for a specific time slot
   const getEventsForTimeSlot = (date: Date, timeIndex: number) => {
     const dayEvents = getEventsForDay(date);
     return dayEvents.filter(event => {
+      // Skip all-day events - they go in the all-day section
+      if (event.isAllDay) return false;
+      
       const eventStart = new Date(event.startTime);
       const eventStartHour = eventStart.getHours();
       
@@ -85,10 +95,11 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
 
   const getOverlappingEventsForTimeSlot = (date: Date, timeIndex: number, currentEvent: CalendarEvent) => {
     const dayEvents = getEventsForDay(date).filter(event => 
-      !enabledCalendars || enabledCalendars.has(event.calendarId)
+      // Filter out all-day events and apply calendar filter
+      !event.isAllDay && (!enabledCalendars || enabledCalendars.has(event.calendarId))
     );
     
-    // Get all events that overlap with the current time slot
+    // Get all timed events that overlap with the current time slot
     const timeSlotEvents = dayEvents.filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
@@ -212,6 +223,36 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
           );
         })}
       </div>
+
+      {/* All-Day Events Section */}
+      {weekDays.some(date => getAllDayEventsForDay(date).length > 0) && (
+        <div className="flex bg-white border-b border-border flex-shrink-0">
+          <div className="w-16 bg-[hsl(var(--google-light-gray))] border-r border-border flex-shrink-0 flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">All day</span>
+          </div>
+          {weekDays.map((date, i) => {
+            const allDayEvents = getAllDayEventsForDay(date);
+            const isTodayDate = isToday(date);
+            return (
+              <div 
+                key={i} 
+                className={`flex-1 border-r border-border p-1 min-h-[40px] ${
+                  isTodayDate ? 'bg-blue-50/50' : ''
+                }`}
+              >
+                {allDayEvents.map(event => (
+                  <EventItem 
+                    key={event.id} 
+                    event={event} 
+                    compact 
+                    onClick={onEventClick}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Scrollable Content */}
       <div 
