@@ -174,12 +174,12 @@ export default function SetupPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <h4 className="font-medium text-gray-900">Create OAuth Credentials:</h4>
+            <h4 className="font-medium text-gray-900">Part A: Create a Google Cloud Project</h4>
             <ol className="list-decimal list-inside space-y-3 text-gray-700">
               <li>
                 Go to the{" "}
                 <a 
-                  href="https://console.cloud.google.com/apis/credentials" 
+                  href="https://console.cloud.google.com/" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline inline-flex items-center gap-1"
@@ -188,40 +188,148 @@ export default function SetupPage() {
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </li>
-              <li>Create a new project or select an existing one</li>
-              <li>Enable the Google Calendar API</li>
-              <li>Go to "Credentials" → "Create Credentials" → "OAuth client ID"</li>
-              <li>Select "Web application" as the application type</li>
-              <li>
-                Add these authorized redirect URIs:
-                <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
-                  <li><code className="bg-gray-100 px-1 rounded">http://localhost:5000/api/auth/google/callback</code></li>
-                  <li><code className="bg-gray-100 px-1 rounded">http://127.0.0.1:5000/api/auth/google/callback</code></li>
-                  <li><code className="bg-gray-100 px-1 rounded">http://[YOUR_PI_IP]:5000/api/auth/google/callback</code></li>
-                </ul>
-              </li>
-              <li>Add these authorized JavaScript origins:
-                <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
-                  <li><code className="bg-gray-100 px-1 rounded">http://localhost:5000</code></li>
-                  <li><code className="bg-gray-100 px-1 rounded">http://127.0.0.1:5000</code></li>
-                  <li><code className="bg-gray-100 px-1 rounded">http://[YOUR_PI_IP]:5000</code></li>
-                </ul>
-              </li>
-              <li>Copy your Client ID and Client Secret</li>
+              <li>Click the project dropdown at the top and select <strong>"New Project"</strong></li>
+              <li>Give your project a name (e.g., "Calendar Kiosk") and click <strong>Create</strong></li>
+              <li>Wait for the project to be created, then select it from the dropdown</li>
             </ol>
 
             <Separator />
 
-            <h4 className="font-medium text-gray-900">Create Environment File:</h4>
-            <p className="text-sm text-gray-600">Create a file named <code className="bg-gray-100 px-1 rounded">.env</code> in the project root:</p>
-            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
+            <h4 className="font-medium text-gray-900">Part B: Enable the Google Calendar API</h4>
+            <ol className="list-decimal list-inside space-y-3 text-gray-700">
+              <li>
+                Go to{" "}
+                <a 
+                  href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  Google Calendar API
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </li>
+              <li>Make sure your project is selected at the top</li>
+              <li>Click <strong>"Enable"</strong></li>
+            </ol>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Part C: Configure OAuth Consent Screen</h4>
+            <ol className="list-decimal list-inside space-y-3 text-gray-700">
+              <li>
+                Go to{" "}
+                <a 
+                  href="https://console.cloud.google.com/apis/credentials/consent" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  OAuth Consent Screen
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </li>
+              <li>Select <strong>"External"</strong> user type and click <strong>Create</strong></li>
+              <li>Fill in the required fields:
+                <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
+                  <li><strong>App name:</strong> Calendar Kiosk (or any name you prefer)</li>
+                  <li><strong>User support email:</strong> Your email address</li>
+                  <li><strong>Developer contact email:</strong> Your email address</li>
+                </ul>
+              </li>
+              <li>Click <strong>Save and Continue</strong> through the remaining steps</li>
+              <li>On the "Test users" page, click <strong>"Add Users"</strong> and add your Google email address</li>
+              <li>Click <strong>Save and Continue</strong>, then <strong>Back to Dashboard</strong></li>
+            </ol>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
+              <strong>Why "Testing" mode?</strong> While your app is in testing mode, only the email addresses you add as test users can sign in. This is perfect for personal use on your Raspberry Pi.
+            </div>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Part D: Create OAuth Credentials</h4>
+            <ol className="list-decimal list-inside space-y-3 text-gray-700">
+              <li>
+                Go to{" "}
+                <a 
+                  href="https://console.cloud.google.com/apis/credentials" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  Credentials
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </li>
+              <li>Click <strong>"Create Credentials"</strong> → <strong>"OAuth client ID"</strong></li>
+              <li>Select <strong>"Web application"</strong> as the application type</li>
+              <li>Give it a name (e.g., "Calendar Kiosk Client")</li>
+            </ol>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Part E: Add Authorized JavaScript Origins</h4>
+            <p className="text-sm text-gray-600 mb-2">Under "Authorized JavaScript origins", click <strong>"Add URI"</strong> and add these exact values:</p>
+            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 space-y-1">
+              <div>http://localhost:5000</div>
+              <div>http://127.0.0.1:5000</div>
+            </div>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Part F: Add Authorized Redirect URIs</h4>
+            <p className="text-sm text-gray-600 mb-2">Under "Authorized redirect URIs", click <strong>"Add URI"</strong> and add these exact values:</p>
+            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 space-y-1">
+              <div>http://localhost:5000/api/auth/google/callback</div>
+              <div>http://127.0.0.1:5000/api/auth/google/callback</div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800 mt-4">
+              <strong>Important:</strong> Make sure to use <code className="bg-amber-100 px-1 rounded">http://</code> (not https) and include the exact port number <code className="bg-amber-100 px-1 rounded">:5000</code>. Click <strong>Create</strong> when done.
+            </div>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Part G: Copy Your Credentials</h4>
+            <p className="text-sm text-gray-600">After clicking Create, a popup will show your credentials. Copy these values:</p>
+            <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm mt-2">
+              <li><strong>Client ID</strong> - looks like: <code className="bg-gray-100 px-1 rounded text-xs">123456789-abcdefg.apps.googleusercontent.com</code></li>
+              <li><strong>Client Secret</strong> - a shorter code like: <code className="bg-gray-100 px-1 rounded text-xs">GOCSPX-xxxxxxxxxxxxxx</code></li>
+            </ul>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Part H: Create Environment File on Your Raspberry Pi</h4>
+            <p className="text-sm text-gray-600">On your Raspberry Pi, create a file named <code className="bg-gray-100 px-1 rounded">.env</code> in the calendar-app folder:</p>
+            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto space-y-1">
+              <div># Open Terminal and run:</div>
+              <div>cd /home/pi/calendar-app</div>
+              <div>nano .env</div>
+            </div>
+            <p className="text-sm text-gray-600 mt-3">Add these three lines (replace with your actual values):</p>
+            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto space-y-1">
               <div>GOOGLE_CLIENT_ID=your_client_id_here</div>
               <div>GOOGLE_CLIENT_SECRET=your_client_secret_here</div>
               <div>GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback</div>
             </div>
+            <p className="text-sm text-gray-600 mt-2">Press <strong>Ctrl+X</strong>, then <strong>Y</strong>, then <strong>Enter</strong> to save the file.</p>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
-              <strong>Important:</strong> When running locally without a DATABASE_URL, the app automatically uses SQLite for storage. Your calendar data is stored in <code className="bg-amber-100 px-1 rounded">calendar.db</code> in the project folder.
+            <Separator />
+
+            <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800">
+              <strong>Tip:</strong> When running locally without a DATABASE_URL, the app automatically uses SQLite for storage. Your calendar data is stored in <code className="bg-green-100 px-1 rounded">calendar.db</code> in the project folder.
+            </div>
+
+            <div className="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800 space-y-2">
+              <strong>Troubleshooting Authentication Errors:</strong>
+              <ul className="list-disc list-inside space-y-1 mt-2">
+                <li>Make sure you access the app via <code className="bg-red-100 px-1 rounded">http://localhost:5000</code> (not an IP address)</li>
+                <li>Verify your email is added as a "Test user" in the OAuth consent screen</li>
+                <li>Double-check that the redirect URIs match exactly (no trailing slashes)</li>
+                <li>Ensure the Google Calendar API is enabled for your project</li>
+                <li>Check that your <code className="bg-red-100 px-1 rounded">.env</code> file has no extra spaces around the = signs</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
