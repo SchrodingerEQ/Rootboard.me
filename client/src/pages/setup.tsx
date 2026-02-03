@@ -301,19 +301,66 @@ export default function SetupPage() {
             <Separator />
 
             <h4 className="font-medium text-gray-900">Part H: Create Environment File on Your Raspberry Pi</h4>
-            <p className="text-sm text-gray-600">On your Raspberry Pi, create a file named <code className="bg-gray-100 px-1 rounded">.env</code> in the calendar-app folder:</p>
-            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto space-y-1">
-              <div># Open Terminal and run:</div>
-              <div>cd /home/pi/calendar-app</div>
-              <div>nano .env</div>
+            <p className="text-sm text-gray-600 mb-3">Choose one of these methods to create the <code className="bg-gray-100 px-1 rounded">.env</code> file:</p>
+            
+            {/* Terminal Method */}
+            <div className="border border-gray-200 rounded-lg p-4 space-y-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Terminal className="h-4 w-4 text-gray-600" />
+                <h5 className="font-medium text-gray-800">Method 1: Using Terminal (Recommended)</h5>
+              </div>
+              <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto space-y-1">
+                <div># Step 1: Open Terminal and navigate to your app folder</div>
+                <div>cd /home/pi/calendar-app</div>
+                <div></div>
+                <div># Step 2: Create and edit the .env file</div>
+                <div>nano .env</div>
+              </div>
+              <p className="text-sm text-gray-600">Type these three lines (replace with your actual values from Google):</p>
+              <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto space-y-1">
+                <div>GOOGLE_CLIENT_ID=your_client_id_here</div>
+                <div>GOOGLE_CLIENT_SECRET=your_client_secret_here</div>
+                <div>GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback</div>
+              </div>
+              <p className="text-sm text-gray-600">Save the file:</p>
+              <ol className="list-decimal list-inside text-sm text-gray-700 space-y-1">
+                <li>Press <strong>Ctrl + X</strong> to exit</li>
+                <li>Press <strong>Y</strong> to confirm saving</li>
+                <li>Press <strong>Enter</strong> to confirm the filename</li>
+              </ol>
             </div>
-            <p className="text-sm text-gray-600 mt-3">Add these three lines (replace with your actual values):</p>
-            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto space-y-1">
-              <div>GOOGLE_CLIENT_ID=your_client_id_here</div>
-              <div>GOOGLE_CLIENT_SECRET=your_client_secret_here</div>
-              <div>GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback</div>
+
+            {/* File Manager Method */}
+            <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-gray-600" />
+                <h5 className="font-medium text-gray-800">Method 2: Using File Manager (Graphical)</h5>
+              </div>
+              <ol className="list-decimal list-inside text-sm text-gray-700 space-y-2">
+                <li>Open <strong>File Manager</strong> on your Raspberry Pi</li>
+                <li>Navigate to <code className="bg-gray-100 px-1 rounded">/home/pi/calendar-app</code></li>
+                <li>Press <strong>Ctrl + H</strong> to show hidden files (files starting with a dot)</li>
+                <li>Right-click in the folder → <strong>Create New</strong> → <strong>Empty File</strong></li>
+                <li>Name the file <code className="bg-gray-100 px-1 rounded">.env</code> (include the dot at the beginning)</li>
+                <li>Right-click the new file → <strong>Open With</strong> → <strong>Text Editor</strong></li>
+                <li>Add these three lines (with your actual values):
+                  <div className="bg-gray-100 rounded-md p-2 font-mono text-xs mt-2 space-y-1">
+                    <div>GOOGLE_CLIENT_ID=your_client_id_here</div>
+                    <div>GOOGLE_CLIENT_SECRET=your_client_secret_here</div>
+                    <div>GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback</div>
+                  </div>
+                </li>
+                <li>Save and close the file</li>
+              </ol>
             </div>
-            <p className="text-sm text-gray-600 mt-2">Press <strong>Ctrl+X</strong>, then <strong>Y</strong>, then <strong>Enter</strong> to save the file.</p>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800 mt-4">
+              <strong>Important:</strong> The dot at the beginning of <code className="bg-blue-100 px-1 rounded">.env</code> makes it a hidden file. This is intentional for security. You can verify it was created by running <code className="bg-blue-100 px-1 rounded">ls -la</code> in Terminal.
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800 mt-3">
+              <strong>After creating the .env file:</strong> You must restart the application for the changes to take effect. Stop the app (Ctrl+C) and run <code className="bg-amber-100 px-1 rounded">npm run dev</code> again.
+            </div>
 
             <Separator />
 
@@ -324,11 +371,31 @@ export default function SetupPage() {
             <div className="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800 space-y-2">
               <strong>Troubleshooting Authentication Errors:</strong>
               <ul className="list-disc list-inside space-y-1 mt-2">
-                <li>Make sure you access the app via <code className="bg-red-100 px-1 rounded">http://localhost:5000</code> (not an IP address)</li>
-                <li>Verify your email is added as a "Test user" in the OAuth consent screen</li>
-                <li>Double-check that the redirect URIs match exactly (no trailing slashes)</li>
-                <li>Ensure the Google Calendar API is enabled for your project</li>
-                <li>Check that your <code className="bg-red-100 px-1 rounded">.env</code> file has no extra spaces around the = signs</li>
+                <li><strong>Access URL:</strong> Make sure you open the app via <code className="bg-red-100 px-1 rounded">http://localhost:5000</code> in your browser (not an IP address like 192.168.x.x)</li>
+                <li><strong>Test User:</strong> Your Google email must be added as a "Test user" in the OAuth consent screen settings</li>
+                <li><strong>Redirect URIs:</strong> The URIs in Google Cloud must match exactly - no trailing slashes, use <code className="bg-red-100 px-1 rounded">http://</code> not <code className="bg-red-100 px-1 rounded">https://</code></li>
+                <li><strong>API Enabled:</strong> Make sure the Google Calendar API is enabled for your project</li>
+                <li><strong>.env Format:</strong> No spaces around the = signs, no quotes around values</li>
+                <li><strong>Restart Required:</strong> After editing .env, you must restart the app (stop with Ctrl+C, then run <code className="bg-red-100 px-1 rounded">npm run dev</code> again)</li>
+              </ul>
+            </div>
+
+            <div className="bg-purple-50 border border-purple-200 rounded-md p-4 text-sm text-purple-800 space-y-2 mt-3">
+              <strong>Verify Your .env File:</strong>
+              <p className="mt-1">Run this command in Terminal to check your .env file exists and has content:</p>
+              <div className="bg-gray-900 rounded-md p-2 font-mono text-xs text-green-400 mt-2">
+                <div>cat /home/pi/calendar-app/.env</div>
+              </div>
+              <p className="mt-2">You should see your three lines displayed. If you see "No such file or directory", the file wasn't created correctly.</p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm text-gray-800 space-y-2 mt-3">
+              <strong>Common Error Messages:</strong>
+              <ul className="list-disc list-inside space-y-2 mt-2">
+                <li><strong>"redirect_uri_mismatch"</strong> - The redirect URI in your .env file doesn't match what's in Google Cloud Console. They must be identical.</li>
+                <li><strong>"Access blocked: This app's request is invalid"</strong> - Usually means the OAuth consent screen isn't configured or you're not added as a test user.</li>
+                <li><strong>"Error 400: invalid_request"</strong> - Check that your Client ID and Client Secret are copied correctly with no extra spaces.</li>
+                <li><strong>"This app isn't verified"</strong> - This is normal! Click "Advanced" then "Go to [App Name] (unsafe)" to continue.</li>
               </ul>
             </div>
           </CardContent>
