@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, LogOut, Calendar, X, Info } from "lucide-react";
+import { Settings, Sun, Moon, LogOut, Calendar, X, Info, Download, RotateCcw, RefreshCw } from "lucide-react";
 import { APP_VERSION } from "@shared/version";
 import { Button } from "@/components/ui/button";
 import { 
@@ -36,13 +36,17 @@ interface SettingsMenuProps {
   onCalendarToggle: (calendarId: string, visible: boolean) => void;
   setBrightness?: (brightness: number) => void;
   currentBrightness?: number;
+  onCheckForUpdates?: () => void;
+  onRollback?: () => void;
 }
 
 export function SettingsMenu({ 
   visibleCalendarsInHeader, 
   onCalendarToggle,
   setBrightness: externalSetBrightness,
-  currentBrightness = 1.0
+  currentBrightness = 1.0,
+  onCheckForUpdates,
+  onRollback,
 }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
@@ -226,6 +230,36 @@ export function SettingsMenu({
               <LogOut className="h-4 w-4 mr-2" />
               Logout from Google Calendar
             </Button>
+
+            <Separator />
+
+            {/* Update Controls */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                {onCheckForUpdates && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    onClick={() => { onCheckForUpdates(); setIsOpen(false); }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Check for Updates
+                  </Button>
+                )}
+                {onRollback && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                    onClick={() => { onRollback(); setIsOpen(false); }}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Roll Back
+                  </Button>
+                )}
+              </div>
+            </div>
 
             <Separator />
 

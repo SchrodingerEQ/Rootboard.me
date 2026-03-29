@@ -31,7 +31,7 @@ export default function CalendarPage() {
   const { toast } = useToast();
   
   // Version checking for updates
-  const { showUpdateNotification, latestVersion, dismissUpdate } = useVersionCheck();
+  const { showUpdateNotification, latestVersion, releaseNotes, releaseName, releaseUrl, dismissUpdate, startUpdate, startRollback, updateStatus, isUpdating, checkForUpdates } = useVersionCheck();
   
   // Initialize inactivity timer with 2-minute timeout and brightness control
   const screensaver = useScreensaver({
@@ -345,6 +345,8 @@ export default function CalendarPage() {
               onCalendarToggle={handleCalendarHeaderToggle}
               setBrightness={screensaver.setBrightness}
               currentBrightness={screensaver.currentBrightness}
+              onCheckForUpdates={checkForUpdates}
+              onRollback={startRollback}
             />
           ) : undefined}
         />
@@ -411,9 +413,16 @@ export default function CalendarPage() {
 
       {/* Update Available Notification */}
       <UpdateNotification
-        isOpen={showUpdateNotification && !isPowerSavingActive}
+        isOpen={(showUpdateNotification || isUpdating) && !isPowerSavingActive}
         latestVersion={latestVersion}
+        releaseNotes={releaseNotes}
+        releaseName={releaseName}
+        releaseUrl={releaseUrl}
         onDismiss={dismissUpdate}
+        onUpdate={startUpdate}
+        onRollback={startRollback}
+        updateStatus={updateStatus}
+        isUpdating={isUpdating}
       />
 
       {/* Power Saving Overlay (manual SLEEP button or auto after 2 min inactivity) */}

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { googleCalendarService } from "./services/googleCalendar";
+import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
 import { insertCalendarEventSchema } from "@shared/schema";
 import { APP_VERSION } from "@shared/version";
 
@@ -338,6 +339,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Failed to clear credentials:', error);
       res.status(500).json({ message: "Failed to clear credentials" });
+    }
+  });
+
+  const isLocalRequest = (req: any): boolean => {
+    const ip = req.ip || req.connection?.remoteAddress || '';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
+  };
+
+  app.get("/api/update/check", async (req, res) => {
+    try {
+      const result = await checkForUpdate();
+      res.json(result);
+    } catch (error) {
+      console.error('Update check failed:', error);
+      res.status(500).json({ message: "Failed to check for updates" });
+    }
+  });
+
+  app.get("/api/update/status", (req, res) => {
+    res.json(getUpdateStatus());
+  });
+
+  app.post("/api/update/apply", async (req, res) => {
+    if (!isLocalRequest(req)) {
+      return res.status(403).json({ message: "Updates can only be applied from localhost" });
+    }
+    try {
+      res.json({ message: "Update started", status: "in-progress" });
+      applyUpdate().catch(err => {
+        console.error('Update failed:', err);
+      });
+    } catch (error) {
+      console.error('Failed to start update:', error);
+      res.status(500).json({ message: "Failed to start update" });
+    }
+  });
+
+  app.post("/api/update/rollback", async (req, res) => {
+    if (!isLocalRequest(req)) {
+      return res.status(403).json({ message: "Rollback can only be triggered from localhost" });
+    }
+    try {
+      res.json({ message: "Rollback started", status: "in-progress" });
+      rollback().catch(err => {
+        console.error('Rollback failed:', err);
+      });
+    } catch (error) {
+      console.error('Failed to start rollback:', error);
+      res.status(500).json({ message: "Failed to start rollback" });
+    }
+  });
+
+  app.get("/api/update/backups", (req, res) => {
+    try {
+      const backups = getAvailableBackups();
+      res.json({ backups });
+    } catch (error) {
+      console.error('Failed to get backups:', error);
+      res.status(500).json({ message: "Failed to get backups list" });
     }
   });
 

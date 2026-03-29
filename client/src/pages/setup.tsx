@@ -509,30 +509,47 @@ X-GNOME-Autostart-enabled=true`}
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-gray-700">
-              The app checks for updates daily at 8 AM and displays a notification when a new version is available.
+              The app checks for updates daily at 8 AM. When a new version is available, you'll see a notification with an <strong>"Update Now"</strong> button.
             </p>
-            
-            <h4 className="font-medium text-gray-900">To Update:</h4>
+
+            <h4 className="font-medium text-gray-900">Automatic Updates (Recommended):</h4>
             <ol className="list-decimal list-inside space-y-3 text-gray-700">
-              <li>Stop the running calendar app</li>
-              <li>Download the new version from Replit (or pull via Git)</li>
-              <li>Extract and replace your existing installation</li>
-              <li>Run <code className="bg-gray-100 px-1 rounded">npm install</code> to update dependencies</li>
-              <li>Rebuild and restart: <code className="bg-gray-100 px-1 rounded">npm run build && npm start</code></li>
+              <li>When you see the update notification, tap <strong>"Update Now"</strong></li>
+              <li>The app will automatically download, install, and restart</li>
+              <li>Your settings, calendar data, and Google login are preserved</li>
             </ol>
 
             <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-700">
-              <strong>Note:</strong> Your Google credentials and calendar data are stored locally and will be preserved during updates.
+              <strong>Safe updates:</strong> Before each update, the app creates a backup of the current version. If anything goes wrong, it will automatically roll back. You can also manually roll back from <strong>Settings → Roll Back</strong>.
             </div>
 
             <Separator />
 
-            <h4 className="font-medium text-gray-900">Using Git (Recommended):</h4>
+            <h4 className="font-medium text-gray-900">Manual Check:</h4>
+            <p className="text-sm text-gray-600">
+              You can also check for updates anytime from <strong>Settings → Check for Updates</strong>.
+            </p>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Using the Startup Script:</h4>
+            <p className="text-sm text-gray-600 mb-2">
+              For the best experience, use the included startup script instead of running <code className="bg-gray-100 px-1 rounded">npm run dev</code> directly. 
+              This script automatically restarts the app after updates and handles rollbacks if a new version fails to start.
+            </p>
+            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
+              <div>cd calendar-app</div>
+              <div>bash scripts/start.sh</div>
+            </div>
+
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Manual Update via Terminal:</h4>
             <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
               <div>cd calendar-app</div>
               <div>git pull origin main</div>
               <div>npm install</div>
-              <div>npm run build && npm start</div>
+              <div>npm run dev</div>
             </div>
           </CardContent>
         </Card>
