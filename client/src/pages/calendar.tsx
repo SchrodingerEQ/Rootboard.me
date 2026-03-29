@@ -33,9 +33,9 @@ export default function CalendarPage() {
   // Version checking for updates
   const { showUpdateNotification, latestVersion, releaseNotes, releaseName, releaseUrl, dismissUpdate, startUpdate, startRollback, updateStatus, isUpdating, checkForUpdates } = useVersionCheck();
   
-  // Initialize inactivity timer with 2-minute timeout and brightness control
+  // Initialize inactivity timer with 5-minute timeout and brightness control
   const screensaver = useScreensaver({
-    inactivityTimeout: 2 * 60 * 1000, // 2 minutes
+    inactivityTimeout: 5 * 60 * 1000, // 5 minutes
     dimBrightness: 0.2, // 20% brightness during power saving
     originalBrightness: (() => {
       const saved = localStorage.getItem('calendar-brightness');

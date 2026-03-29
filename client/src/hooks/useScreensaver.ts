@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface ScreensaverConfig {
-  inactivityTimeout: number; // milliseconds
-  dimBrightness: number; // 0-1 scale
-  originalBrightness: number; // 0-1 scale
+  inactivityTimeout: number;
+  dimBrightness: number;
+  originalBrightness: number;
 }
 
 interface ScreensaverState {
@@ -13,7 +13,6 @@ interface ScreensaverState {
   lastActivity: number;
 }
 
-// Custom event to notify components when screensaver state changes
 const dispatchScreensaverEvent = (isActive: boolean) => {
   window.dispatchEvent(new CustomEvent('screensaver-state-change', {
     detail: { isActive }
@@ -28,73 +27,78 @@ export const useScreensaver = (config: ScreensaverConfig) => {
     lastActivity: Date.now()
   });
 
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const brightnessRef = useRef<number>(config.originalBrightness);
+  const isActiveRef = useRef(false);
+  const originalBrightnessRef = useRef(config.originalBrightness);
+  const configRef = useRef(config);
+  configRef.current = config;
 
-  // Apply brightness to the document
   const applyBrightness = useCallback((brightness: number) => {
     document.documentElement.style.filter = `brightness(${Math.round(brightness * 100)}%)`;
     brightnessRef.current = brightness;
     setState(prev => ({ ...prev, brightness }));
   }, []);
 
-  // Reset activity timer
-  const resetActivity = useCallback(() => {
-    const now = Date.now();
-    setState(prev => ({ ...prev, lastActivity: now }));
-
+  const startTimer = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
-
-    // Exit screensaver mode if active
-    if (state.isActive) {
-      setState(prev => ({
-        ...prev,
-        isActive: false,
-        isIdle: false
-      }));
-      applyBrightness(config.originalBrightness);
-      
-      // Notify components that screensaver has exited (resume activity)
-      dispatchScreensaverEvent(false);
-      
-      // Trigger calendar refresh to current month view
-      window.dispatchEvent(new CustomEvent('screensaver-exit'));
-    }
-
-    // Set new inactivity timer
     timeoutRef.current = setTimeout(() => {
+      isActiveRef.current = true;
       setState(prev => ({
         ...prev,
         isActive: true,
         isIdle: true
       }));
-      applyBrightness(config.dimBrightness);
-      
-      // Notify components that screensaver has activated (pause activity)
+      applyBrightness(configRef.current.dimBrightness);
       dispatchScreensaverEvent(true);
-    }, config.inactivityTimeout);
-  }, [state.isActive, config.inactivityTimeout, config.dimBrightness, config.originalBrightness, applyBrightness]);
+    }, configRef.current.inactivityTimeout);
+  }, [applyBrightness]);
 
-  // Activity event handlers
+  const resetActivityRef = useRef(() => {});
+
+  resetActivityRef.current = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    if (isActiveRef.current) {
+      isActiveRef.current = false;
+      setState(prev => ({
+        ...prev,
+        isActive: false,
+        isIdle: false,
+        lastActivity: Date.now()
+      }));
+      applyBrightness(originalBrightnessRef.current);
+      dispatchScreensaverEvent(false);
+      window.dispatchEvent(new CustomEvent('screensaver-exit'));
+    } else {
+      setState(prev => ({ ...prev, lastActivity: Date.now() }));
+    }
+
+    startTimer();
+  };
+
+  const resetActivity = useCallback(() => {
+    resetActivityRef.current();
+  }, []);
+
   useEffect(() => {
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-    
+
     const handleActivity = () => {
-      resetActivity();
+      resetActivityRef.current();
     };
 
-    // Add event listeners
     events.forEach(event => {
       document.addEventListener(event, handleActivity, true);
     });
 
-    // Initialize timer
-    resetActivity();
+    startTimer();
 
     return () => {
-      // Cleanup
       events.forEach(event => {
         document.removeEventListener(event, handleActivity, true);
       });
@@ -102,28 +106,24 @@ export const useScreensaver = (config: ScreensaverConfig) => {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [resetActivity]);
+  }, [startTimer]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      // Reset brightness
       document.documentElement.style.filter = '';
     };
   }, []);
 
-  // Manual brightness control
   const setBrightness = useCallback((brightness: number) => {
     const clampedBrightness = Math.max(0.1, Math.min(1.5, brightness));
-    applyBrightness(clampedBrightness);
-    // Update config original brightness if not in screensaver mode
-    if (!state.isActive) {
-      config.originalBrightness = clampedBrightness;
+    if (!isActiveRef.current) {
+      originalBrightnessRef.current = clampedBrightness;
     }
-  }, [state.isActive, applyBrightness, config]);
+    applyBrightness(clampedBrightness);
+  }, [applyBrightness]);
 
   const exitScreensaver = useCallback(() => {
     resetActivity();
