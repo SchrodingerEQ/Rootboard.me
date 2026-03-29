@@ -252,6 +252,7 @@ export class GoogleCalendarService {
           let pageToken: string | undefined = undefined;
           let totalEventsForCalendar = 0;
           let response: any;
+          const syncedGoogleIds: string[] = [];
 
           // Paginate through all events for this calendar
           do {
@@ -261,16 +262,16 @@ export class GoogleCalendarService {
               timeMax: endDate.toISOString(),
               singleEvents: true,
               orderBy: 'startTime',
-              maxResults: 2500, // Google's maximum per page
-              pageToken: pageToken, // Continue from previous page if exists
+              maxResults: 2500,
+              pageToken: pageToken,
             });
 
             const googleEvents = response.data.items || [];
             totalEventsForCalendar += googleEvents.length;
 
             for (const googleEvent of googleEvents) {
-              // Use composite key (googleEventId + calendarId) to allow same event on multiple calendars
               const existingEvent = await storage.getCalendarEventByGoogleIdAndCalendar(googleEvent.id!, calendar.id);
+              syncedGoogleIds.push(googleEvent.id!);
               
               const eventData: InsertCalendarEvent = {
                 googleEventId: googleEvent.id!,
@@ -295,14 +296,18 @@ export class GoogleCalendarService {
               syncedEvents.push(event);
             }
 
-            // Get next page token if there are more results
             pageToken = response.data.nextPageToken;
-          } while (pageToken); // Continue while there are more pages
+          } while (pageToken);
+
+          // Clean up events that were deleted/cancelled in Google Calendar
+          const removedCount = await storage.deleteCalendarEventsByCalendarNotIn(calendar.id, syncedGoogleIds);
+          if (removedCount > 0) {
+            console.log(`Removed ${removedCount} stale events from calendar: ${calendar.summary}`);
+          }
 
           console.log(`Synced ${totalEventsForCalendar} events from calendar: ${calendar.summary}`);
         } catch (calendarError) {
           console.warn(`Failed to sync events from calendar ${calendar.summary}:`, calendarError);
-          // Continue with other calendars even if one fails
         }
       }
 

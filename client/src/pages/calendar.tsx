@@ -364,35 +364,41 @@ export default function CalendarPage() {
       </div>
       
       <main className="flex-1 overflow-hidden">
-        <div className={`view-container h-full ${currentView === 'month' ? 'active' : ''}`}>
-          <MonthView 
-            currentDate={currentDate} 
-            events={events}
-            isLoading={isLoading}
-            enabledCalendars={enabledCalendars}
-            onEventClick={handleEventClick}
-          />
-        </div>
+        {currentView === 'month' && (
+          <div className="h-full">
+            <MonthView 
+              currentDate={currentDate} 
+              events={events}
+              isLoading={isLoading}
+              enabledCalendars={enabledCalendars}
+              onEventClick={handleEventClick}
+            />
+          </div>
+        )}
         
-        <div className={`view-container h-full ${currentView === 'week' ? 'active' : ''}`}>
-          <WeekView 
-            currentDate={currentDate} 
-            events={filteredEvents}
-            isLoading={isLoading}
-            enabledCalendars={enabledCalendars}
-            onEventClick={handleEventClick}
-          />
-        </div>
+        {currentView === 'week' && (
+          <div className="h-full">
+            <WeekView 
+              currentDate={currentDate} 
+              events={filteredEvents}
+              isLoading={isLoading}
+              enabledCalendars={enabledCalendars}
+              onEventClick={handleEventClick}
+            />
+          </div>
+        )}
         
-        <div className={`view-container h-full ${currentView === 'day' ? 'active' : ''}`}>
-          <DayView 
-            currentDate={currentDate} 
-            events={filteredEvents}
-            isLoading={isLoading}
-            onEventClick={handleEventClick}
-            enabledCalendars={enabledCalendars}
-          />
-        </div>
+        {currentView === 'day' && (
+          <div className="h-full">
+            <DayView 
+              currentDate={currentDate} 
+              events={filteredEvents}
+              isLoading={isLoading}
+              onEventClick={handleEventClick}
+              enabledCalendars={enabledCalendars}
+            />
+          </div>
+        )}
       </main>
 
       <LoadingIndicator isVisible={isRefreshing} />

@@ -18,12 +18,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Google OAuth routes
   app.get("/api/auth/google", async (req, res) => {
     try {
-      // Debug environment variables
-      console.log('OAuth environment check:');
-      console.log('- GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
-      console.log('- GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
-      console.log('- GOOGLE_REDIRECT_URI:', process.env.GOOGLE_REDIRECT_URI || 'Missing');
-      
       // Generate and store state for CSRF protection using crypto-secure random
       const crypto = await import('node:crypto');
       const state = crypto.randomBytes(16).toString('hex');
@@ -38,7 +32,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.error('Failed to save session:', err);
               reject(err);
             } else {
-              console.log('Session saved with state:', state);
               resolve();
             }
           });
@@ -80,10 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify state parameter to prevent CSRF attacks
-      console.log('Callback session ID:', (req as any).session?.id);
-      console.log('Callback session data:', (req as any).session);
       const expectedState = (req as any).session?.oauthState;
-      console.log('State verification - expected:', expectedState, 'received:', state);
       
       if (!expectedState || state !== expectedState) {
         console.error('OAuth state mismatch!');
@@ -91,9 +81,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           <html>
             <body>
               <h1>Security Error</h1>
-              <p>Authentication request rejected for security reasons</p>
+              <p>Authentication request rejected for security reasons.</p>
               <p>This may be due to session expiry. Please try again.</p>
-              <p style="font-size: 12px; color: gray;">Debug: Session ${(req as any).session ? 'exists' : 'missing'}, Expected state: ${expectedState ? 'present' : 'missing'}</p>
               <a href="/">Return to Calendar</a>
             </body>
           </html>
@@ -133,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <html>
           <body>
             <h1>Authentication Error</h1>
-            <p>Failed to complete authentication: ${error}</p>
+            <p>Failed to complete authentication. Please try again.</p>
             <a href="/">Try Again</a>
           </body>
         </html>
@@ -149,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Authorization code required' });
       }
 
-      console.log('Processing manual authorization code...', code.substring(0, 20) + '...');
+      console.log('Processing manual authorization code...');
       await googleCalendarService.handleAuthCallback(code);
       console.log('Manual Google authentication successful');
       
@@ -262,18 +251,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/calendar/auth-status", async (req, res) => {
     try {
       const credentials = await storage.getGoogleCredentials();
-      console.log('Auth status check - credentials found:', !!credentials);
       
-      // If we have credentials, try to initialize them to verify they're valid
       let isAuthenticated = false;
       let authError = null;
       
       if (credentials) {
         try {
           isAuthenticated = await googleCalendarService.initializeCredentials();
-          console.log('Credential validation result:', isAuthenticated);
         } catch (validationError) {
-          console.log('Credential validation failed:', validationError);
           authError = validationError instanceof Error ? validationError.message : 'Unknown validation error';
           // Credentials were invalid and have been automatically cleared
           isAuthenticated = false;

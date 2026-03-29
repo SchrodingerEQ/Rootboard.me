@@ -398,13 +398,6 @@
     z-index: 10;
   }
   
-  .view-container {
-    display: none;
-  }
-  
-  .view-container.active {
-    display: block;
-  }
 }
 
 @media (max-width: 768px) {

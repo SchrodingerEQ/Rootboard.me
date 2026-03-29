@@ -138,20 +138,21 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     const timeSinceLastRefresh = now - lastRefreshTime.current;
     
     if (!isOnline) {
-      console.log('Skipping auto-refresh - device is offline');
+      return;
+    }
+
+    if (isScreensaverActive) {
       return;
     }
     
-    // Enforce minimum interval between auto-refreshes
     if (timeSinceLastRefresh < AUTO_REFRESH_INTERVAL) {
-      console.log('Auto-refresh skipped - too soon since last refresh');
       return;
     }
     
     console.log('Executing auto calendar refresh');
     lastRefreshTime.current = now;
     syncMutation.mutate();
-  }, [syncMutation, isOnline]);
+  }, [syncMutation, isOnline, isScreensaverActive]);
 
   // Auto-sync events when authentication is detected and no events exist
   const hasTriggeredSync = useRef(false);

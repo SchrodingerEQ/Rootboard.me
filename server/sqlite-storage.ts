@@ -175,6 +175,16 @@ export class SQLiteStorage implements IStorage {
     return row ? this.rowToCalendarEvent(row) : undefined;
   }
 
+  async deleteCalendarEventsByCalendarNotIn(calendarId: string, googleEventIds: string[]): Promise<number> {
+    if (googleEventIds.length === 0) {
+      const result = this.db.prepare('DELETE FROM calendar_events WHERE calendar_id = ?').run(calendarId);
+      return result.changes;
+    }
+    const placeholders = googleEventIds.map(() => '?').join(',');
+    const result = this.db.prepare(`DELETE FROM calendar_events WHERE calendar_id = ? AND google_event_id NOT IN (${placeholders})`).run(calendarId, ...googleEventIds);
+    return result.changes;
+  }
+
   async getGoogleCredentials(): Promise<GoogleCredentials | undefined> {
     const row = this.db.prepare('SELECT * FROM google_credentials ORDER BY id DESC LIMIT 1').get() as any;
     if (!row) return undefined;

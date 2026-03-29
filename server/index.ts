@@ -38,7 +38,11 @@ if (process.env.DATABASE_URL) {
 // Configure session middleware for OAuth state management
 app.use(session({
   store: sessionStore,
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  secret: (() => {
+    if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
+    console.warn('WARNING: No SESSION_SECRET set. Using random secret — sessions will not persist across restarts.');
+    return require('crypto').randomBytes(32).toString('hex');
+  })(),
   resave: false,
   saveUninitialized: false,
   cookie: {
