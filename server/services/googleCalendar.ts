@@ -18,11 +18,15 @@ export class GoogleCalendarService {
   }
   
   private getRedirectUri(host?: string): string {
-    // Use the host from the request if provided, otherwise fall back to environment variable
-    if (host) {
-      return `https://${host}/api/auth/google/callback`;
+    if (process.env.GOOGLE_REDIRECT_URI) {
+      return process.env.GOOGLE_REDIRECT_URI;
     }
-    return process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/api/auth/google/callback";
+    if (host) {
+      const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+      const protocol = isLocalhost ? 'http' : 'https';
+      return `${protocol}://${host}/api/auth/google/callback`;
+    }
+    return "http://localhost:5000/api/auth/google/callback";
   }
 
   async initializeCredentials(): Promise<boolean> {
