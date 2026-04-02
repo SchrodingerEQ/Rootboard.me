@@ -225,15 +225,21 @@ export class MemStorage implements IStorage {
   }
 }
 
-function createStorage(): IStorage {
+async function createStorage(): Promise<IStorage> {
   if (process.env.DATABASE_URL) {
     console.log('Using MemStorage with PostgreSQL session store (Replit environment)');
     return new MemStorage();
   } else {
     console.log('Using SQLite storage (self-hosted environment)');
-    const { SQLiteStorage } = require('./sqlite-storage');
+    const { SQLiteStorage } = await import('./sqlite-storage');
     return new SQLiteStorage('./calendar.db');
   }
 }
 
-export const storage = createStorage();
+export let storage: IStorage;
+
+const storageReady = createStorage().then((s) => {
+  storage = s;
+});
+
+export { storageReady };

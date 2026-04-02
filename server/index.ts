@@ -1,9 +1,11 @@
+import { randomBytes } from "node:crypto";
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { neon } from "@neondatabase/serverless";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { storageReady } from "./storage";
 
 const app = express();
 app.use(express.json());
@@ -41,7 +43,7 @@ app.use(session({
   secret: (() => {
     if (process.env.SESSION_SECRET) return process.env.SESSION_SECRET;
     console.warn('WARNING: No SESSION_SECRET set. Using random secret — sessions will not persist across restarts.');
-    return require('crypto').randomBytes(32).toString('hex');
+    return randomBytes(32).toString('hex');
   })(),
   resave: false,
   saveUninitialized: false,
@@ -84,6 +86,7 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  await storageReady;
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
