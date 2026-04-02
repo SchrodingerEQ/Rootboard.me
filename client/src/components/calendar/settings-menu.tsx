@@ -136,9 +136,9 @@ export function SettingsMenu({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            className="h-12 w-12 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           >
-            <Settings className="h-4 w-4" />
+            <Settings className="h-6 w-6" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[416px] p-0" align="end">
