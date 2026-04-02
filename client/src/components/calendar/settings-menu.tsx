@@ -186,7 +186,7 @@ export function SettingsMenu({
                 <Calendar className="h-4 w-4" />
                 <Label className="text-sm font-medium">Calendar Visibility</Label>
               </div>
-              <div className="space-y-2 max-h-40 overflow-y-auto [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-100">
+              <div className="space-y-2 max-h-40 overflow-y-auto pr-6 [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-100">
                 {isLoading ? (
                   <div className="text-xs text-gray-500">Loading calendars...</div>
                 ) : calendars && calendars.length > 0 ? (
