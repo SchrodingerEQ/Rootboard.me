@@ -94,8 +94,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         delete (req as any).session.oauthState;
       }
 
-      console.log('Processing authorization code...');
-      await googleCalendarService.handleAuthCallback(code);
+      const callbackHost = req.get('host');
+      await googleCalendarService.handleAuthCallback(code, callbackHost);
       console.log('Google authentication successful');
       
       // Check if authentication worked
@@ -138,8 +138,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Authorization code required' });
       }
 
-      console.log('Processing manual authorization code...');
-      await googleCalendarService.handleAuthCallback(code);
+      const manualHost = req.get('host');
+      await googleCalendarService.handleAuthCallback(code, manualHost);
       console.log('Manual Google authentication successful');
       
       res.json({ message: 'Authentication successful', authenticated: true });

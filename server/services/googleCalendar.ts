@@ -18,13 +18,23 @@ export class GoogleCalendarService {
   }
   
   private getRedirectUri(host?: string): string {
-    if (process.env.GOOGLE_REDIRECT_URI) {
-      return process.env.GOOGLE_REDIRECT_URI;
-    }
     if (host) {
       const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
       const protocol = isLocalhost ? 'http' : 'https';
-      return `${protocol}://${host}/api/auth/google/callback`;
+      const autoUri = `${protocol}://${host}/api/auth/google/callback`;
+      if (process.env.GOOGLE_REDIRECT_URI) {
+        try {
+          const envHost = new URL(process.env.GOOGLE_REDIRECT_URI).host;
+          if (envHost !== host) {
+            console.log(`Using auto-detected redirect URI (host ${host} differs from GOOGLE_REDIRECT_URI host ${envHost})`);
+            return autoUri;
+          }
+        } catch {}
+      }
+      return autoUri;
+    }
+    if (process.env.GOOGLE_REDIRECT_URI) {
+      return process.env.GOOGLE_REDIRECT_URI;
     }
     return "http://localhost:5000/api/auth/google/callback";
   }
@@ -163,18 +173,19 @@ export class GoogleCalendarService {
     return authUrl;
   }
 
-  async handleAuthCallback(code: string): Promise<void> {
+  async handleAuthCallback(code: string, host?: string): Promise<void> {
     try {
       console.log('Processing OAuth callback (code received)');
       
-      // Properly decode the authorization code to prevent encoding issues
       const decodedCode = decodeURIComponent(code.trim());
-      console.log('Using decoded authorization code');
       
-      // Validate the authorization code format
       if (!decodedCode || decodedCode.length < 10) {
         throw new Error('Invalid authorization code format');
       }
+
+      const redirectUri = this.getRedirectUri(host);
+      this.oauth2Client.redirectUri = redirectUri;
+      console.log('Token exchange redirect URI:', redirectUri);
       
       const { tokens } = await this.oauth2Client.getToken(decodedCode);
       console.log('Received tokens:', { 
