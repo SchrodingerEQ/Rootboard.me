@@ -6,15 +6,21 @@ export class GoogleCalendarService {
   private oauth2Client: any;
   private calendar: any;
   private isInitialized: boolean = false;
+  private clientReady: boolean = false;
 
   constructor() {
-    // Initialize OAuth2 client without redirect URI (will be set per-request)
+    this.oauth2Client = null;
+    this.calendar = null;
+  }
+
+  private ensureClient(): void {
+    if (this.clientReady) return;
     this.oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID_ENV_VAR || "default_client_id",
-      process.env.GOOGLE_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET_ENV_VAR || "default_client_secret"
+      process.env.GOOGLE_CLIENT_ID || "default_client_id",
+      process.env.GOOGLE_CLIENT_SECRET || "default_client_secret"
     );
-    
     this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+    this.clientReady = true;
   }
   
   private getRedirectUri(host?: string): string {
@@ -41,6 +47,7 @@ export class GoogleCalendarService {
 
   async initializeCredentials(): Promise<boolean> {
     try {
+      this.ensureClient();
       const credentials = await storage.getGoogleCredentials();
       if (!credentials) {
         this.isInitialized = false;
@@ -141,7 +148,7 @@ export class GoogleCalendarService {
   }
 
   getAuthUrl(state?: string, host?: string): string {
-    // Validate OAuth configuration before generating URL
+    this.ensureClient();
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     const redirectUri = this.getRedirectUri(host);
@@ -175,6 +182,7 @@ export class GoogleCalendarService {
 
   async handleAuthCallback(code: string, host?: string): Promise<void> {
     try {
+      this.ensureClient();
       console.log('Processing OAuth callback (code received)');
       
       const decodedCode = decodeURIComponent(code.trim());
@@ -349,6 +357,7 @@ export class GoogleCalendarService {
   }
 
   clearCredentials(): void {
+    this.ensureClient();
     this.oauth2Client.setCredentials({});
     this.isInitialized = false;
   }
