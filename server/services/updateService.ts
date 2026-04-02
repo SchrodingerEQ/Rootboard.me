@@ -205,6 +205,20 @@ export async function applyUpdate(): Promise<void> {
       throw new Error('npm install failed during update. Rolled back to previous version.');
     }
 
+    setStatus('installing', 'Building application...', 80);
+    try {
+      execSync('npm run build', {
+        cwd: APP_ROOT,
+        stdio: 'pipe',
+        timeout: 300000,
+      });
+    } catch (buildError) {
+      console.error('npm run build failed:', buildError);
+      setStatus('error', 'Failed to build application. Rolling back...', 0, 'npm run build failed');
+      await rollback();
+      throw new Error('npm run build failed during update. Rolled back to previous version.');
+    }
+
     setStatus('restarting', 'Update complete! Restarting application...', 90);
 
     if (fs.existsSync(TEMP_DIR)) {
@@ -366,6 +380,17 @@ export async function rollback(): Promise<{ success: boolean; restoredVersion: s
     });
   } catch (e) {
     console.error('npm install during rollback failed:', e);
+  }
+
+  setStatus('installing', 'Rebuilding application...', 85);
+  try {
+    execSync('npm run build', {
+      cwd: APP_ROOT,
+      stdio: 'pipe',
+      timeout: 300000,
+    });
+  } catch (e) {
+    console.error('npm run build during rollback failed:', e);
   }
 
   setStatus('complete', `Rolled back to version ${restoredVersion}. Restarting...`, 100);

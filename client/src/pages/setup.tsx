@@ -424,8 +424,12 @@ export default function SetupPage() {
 
             <h4 className="font-medium text-gray-900">Production Mode (Recommended for Kiosk):</h4>
             <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
+              <div>rm -rf dist</div>
               <div>npm run build</div>
               <div>npm start</div>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+              <strong>Important:</strong> Always delete the <code className="bg-amber-100 px-1 rounded">dist</code> folder before building. This ensures a clean build and prevents issues with stale files from a previous version.
             </div>
           </CardContent>
         </Card>
@@ -549,7 +553,9 @@ X-GNOME-Autostart-enabled=true`}
               <div>cd calendar-app</div>
               <div>git pull origin main</div>
               <div>npm install</div>
-              <div>npm run dev</div>
+              <div>rm -rf dist</div>
+              <div>npm run build</div>
+              <div>npm start</div>
             </div>
           </CardContent>
         </Card>
@@ -588,6 +594,24 @@ X-GNOME-Autostart-enabled=true`}
                 <h4 className="font-medium text-gray-900">Calendar Not Syncing</h4>
                 <p className="text-sm text-gray-600 mt-1">
                   Click the refresh button in the header. If issues persist, try logging out and signing in again.
+                </p>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium text-gray-900">OAuth Error: invalid_client</h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  This usually means you need a fresh build. Stop the app, run <code className="bg-gray-100 px-1 rounded">rm -rf dist && npm run build && npm start</code>. If the error persists, go to Google Cloud Console, click on your OAuth client, and create a new client secret. Update the <code className="bg-gray-100 px-1 rounded">GOOGLE_CLIENT_SECRET</code> value in your <code className="bg-gray-100 px-1 rounded">.env</code> file.
+                </p>
+              </div>
+              
+              <Separator />
+              
+              <div>
+                <h4 className="font-medium text-gray-900">Port Already in Use (EADDRINUSE)</h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  If you see "EADDRINUSE: address already in use", the previous process is still running. Stop it first with <code className="bg-gray-100 px-1 rounded">{"kill -9 $(lsof -t -i:5000) 2>/dev/null"}</code> then start the app again.
                 </p>
               </div>
               

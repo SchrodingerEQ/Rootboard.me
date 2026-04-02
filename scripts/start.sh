@@ -9,7 +9,7 @@ HEALTH_CHECK_TIMEOUT=30
 
 while true; do
     echo "[$(date)] Starting calendar application..."
-    npm run dev &
+    npm start &
     APP_PID=$!
 
     sleep 5
@@ -56,8 +56,9 @@ while true; do
                             cp -r "$item" "$APP_DIR/"
                         fi
                     done
-                    echo "[$(date)] Rollback complete. Reinstalling dependencies..."
+                    echo "[$(date)] Rollback complete. Reinstalling dependencies and rebuilding..."
                     npm install 2>/dev/null
+                    npm run build 2>/dev/null
                     RETRY_COUNT=0
                     echo "[$(date)] Restarting with rolled-back version..."
                     continue
