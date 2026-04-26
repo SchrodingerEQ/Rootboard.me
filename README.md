@@ -91,18 +91,24 @@ If you are forking or republishing this project, complete these one-time securit
 
 2. **Consider rotating the OAuth Client Secret.** If your Google Cloud Client ID has been visible in screenshots or shared docs, rotate the secret: Google Cloud Console → APIs & Services → Credentials → click your OAuth client → **Reset Secret**. Update the new value in your Pi's `.env`.
 
-3. **Untrack any debugging artifacts.** If your local checkout has files in `attached_assets/` that were tracked before `.gitignore` was tightened, remove them from the git index (the .gitignore alone does NOT untrack already-tracked files):
+3. **Untrack any debugging artifacts.** The `attached_assets/` folder contains personal screenshots (OAuth screens, terminal captures, hostnames, IP addresses) that were used during development. The `.gitignore` excludes the entire folder **with one intentional exception** — `attached_assets/image_1753142842256.png`, which is the McMurry Hurricane logo imported by the app via Vite's `@assets` alias.
+
+   If your local checkout has other files in `attached_assets/` that were tracked before `.gitignore` was tightened, remove them from the git index (the .gitignore alone does NOT untrack already-tracked files):
    ```bash
    git rm -r --cached attached_assets/
    git add attached_assets/image_1753142842256.png   # re-add the one logo the app uses
    git status                                         # verify only the logo is staged from that folder
    ```
 
-4. **Verify nothing sensitive is staged for commit.** Run:
+4. **Verify nothing sensitive is staged for commit.** Run these two checks:
    ```bash
-   git ls-files | grep -E '\.env$|google_credentials|\.db$|attached_assets/(?!image_1753142842256)'
+   # Check 1: no env files, credential files, or databases are tracked
+   git ls-files | grep -E '(^|/)(\.env|google_credentials\.json|.*\.db)$'
+
+   # Check 2: only the logo from attached_assets is tracked (should print exactly one filename)
+   git ls-files attached_assets/
    ```
-   This should print nothing.
+   Check 1 should print nothing. Check 2 should print only `attached_assets/image_1753142842256.png`.
 
 5. **After pushing, on your Pi, point the auto-updater at YOUR repo** by setting these in `.env`:
    ```
