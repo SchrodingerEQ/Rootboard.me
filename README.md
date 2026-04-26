@@ -1,0 +1,88 @@
+# Touchscreen Calendar Kiosk
+
+A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchscreen display. Optimized for fullscreen kiosk mode on a 21.5-inch touchscreen.
+
+## Features
+
+- **Google Calendar Sync** — Real-time integration with the Google Calendar API
+- **Touch-Optimized UI** — Day, week, and month views with touch-friendly navigation
+- **Multi-Calendar Support** — Toggle individual calendars on or off
+- **Power-Saving Mode** — Auto-dims after 5 minutes of inactivity, wakes on any touch
+- **Auto-Updates** — Daily check for new GitHub releases with one-tap install
+- **Safe Rollback** — Automatic backup before every update with manual rollback option
+- **Brightness Control** — Adjustable from the in-app settings menu
+
+## Tech Stack
+
+- **Frontend**: React 18 + TypeScript + Vite, Tailwind CSS, Radix UI / shadcn
+- **Backend**: Node.js + Express + TypeScript
+- **Database**: SQLite (self-hosted) or PostgreSQL (hosted)
+- **Auth**: Google OAuth 2.0
+
+## Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
+   cd YOUR_REPO
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Google OAuth**
+
+   Copy the example environment file and fill in your Google OAuth credentials:
+   ```bash
+   cp .env.example .env
+   nano .env
+   ```
+
+   You will need a Google Cloud project with the Calendar API enabled and an OAuth 2.0 Client ID. The app contains a complete step-by-step setup guide — start the app and visit `http://localhost:5000/setup` for detailed instructions.
+
+4. **Run in development mode**
+   ```bash
+   npm run dev
+   ```
+
+5. **Or build and run in production mode** (recommended for Raspberry Pi)
+   ```bash
+   rm -rf dist
+   npm run build
+   npm start
+   ```
+
+   Open `http://localhost:5000` in your browser.
+
+## Full Setup Guide
+
+The app includes a comprehensive setup guide accessible at the `/setup` route once it's running. The guide covers:
+
+- Transferring the app to your Raspberry Pi (USB, direct download, git clone, or SCP)
+- Installing Node.js and dependencies
+- Configuring Google OAuth credentials (with screenshots-style walkthrough)
+- Setting up Chromium kiosk mode with auto-start on boot
+- Updating to new versions and rolling back
+- Common troubleshooting
+
+## Updating
+
+The app checks for new GitHub releases daily at 8 AM and shows a one-tap update notification. You can also check manually from **Settings → Check for Updates**.
+
+For manual updates via terminal:
+```bash
+cd ~/calendar-app
+git pull origin main
+npm install
+rm -rf dist
+npm run build
+npm start
+```
+
+Your `.env` file and calendar data are preserved across updates.
+
+## License
+
+Add your preferred license here.

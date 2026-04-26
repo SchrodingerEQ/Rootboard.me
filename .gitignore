@@ -1,9 +1,50 @@
+# Dependencies
 node_modules
+
+# Build output
 dist
-.DS_Store
 server/public
+
+# OS
+.DS_Store
+
+# Vite
 vite.config.ts.*
+
+# Tarballs
 *.tar.gz
 
-# Google OAuth credentials - keep these private!
+# Environment variables (secrets!)
+.env
+.env.*
+!.env.example
+
+# Google OAuth credentials (contains live tokens!)
 google_credentials.json
+
+# Self-hosted database and runtime data
+data/
+*.db
+*.db-journal
+
+# Auto-update runtime folders
+.update-backups/
+.update-temp/
+
+# Replit/agent debugging artifacts (contain personal screenshots, hostnames, IPs, OAuth screenshots)
+# Exclude the entire folder EXCEPT the one logo image actually imported by the app
+# (the @assets alias in vite.config.ts points to attached_assets/).
+attached_assets/*
+!attached_assets/image_1753142842256.png
+.local/
+.agents/
+.cache/
+.upm/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/

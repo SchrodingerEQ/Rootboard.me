@@ -2,13 +2,17 @@
 
 ## "accounts.google.com refused to connect" Error
 
-This error usually occurs due to one of these OAuth configuration issues:
+This error usually occurs due to one of these OAuth configuration issues.
 
-### Current Application URLs
-```
-Domain: https://65e2fec4-e075-4d66-aad5-d37cbddd2fcf.Phitrix.repl.co
-Redirect URI: https://65e2fec4-e075-4d66-aad5-d37cbddd2fcf.Phitrix.repl.co/api/auth/google/callback
-```
+### Identify Your Application URL
+
+Replace `YOUR_APP_URL` in the examples below with the URL where your app is reachable. Common values:
+
+- **Self-hosted on Raspberry Pi**: `http://localhost:5000`
+- **Replit hosted**: `https://your-replit-app.replit.app`
+- **Custom domain**: `https://your-custom-domain.com`
+
+The redirect URI is always `YOUR_APP_URL/api/auth/google/callback`.
 
 ## Most Common Fixes
 
@@ -19,35 +23,35 @@ Redirect URI: https://65e2fec4-e075-4d66-aad5-d37cbddd2fcf.Phitrix.repl.co/api/a
      - **OR add your email as a test user** in the "Test users" section
 
 ### 2. **Add JavaScript Origins**
-   - Go to "APIs & Services" > "Credentials" 
+   - Go to "APIs & Services" > "Credentials"
    - Edit your OAuth 2.0 Client ID
-   - In "Authorized JavaScript origins", add:
+   - In "Authorized JavaScript origins", add your application URL, e.g.:
      ```
-     https://65e2fec4-e075-4d66-aad5-d37cbddd2fcf.Phitrix.repl.co
+     http://localhost:5000
      ```
 
-### 3. **Verify Redirect URI** (Already configured correctly)
-   - In "Authorized redirect URIs", confirm this exists:
+### 3. **Verify Redirect URI**
+   - In "Authorized redirect URIs", confirm the callback URL exists, e.g.:
      ```
-     https://65e2fec4-e075-4d66-aad5-d37cbddd2fcf.Phitrix.repl.co/api/auth/google/callback
+     http://localhost:5000/api/auth/google/callback
      ```
 
 ### 4. **Wait for Changes to Propagate**
    - Google OAuth changes can take 5-10 minutes to take effect
    - Try the authentication again after waiting
 
-### Note About Replit URLs
+### Note About Hosted URLs
 
-Replit URLs can change when:
+Hosted URLs (like Replit's `*.replit.app`) can change when:
 - The project is forked or copied
 - The project is moved between accounts
-- Replit updates their domain structure
+- The hosting provider updates their domain structure
 
 If your URL changes in the future, you'll need to repeat this process with the new URL.
 
 ### Alternative Solution: Use localhost for Development
 
-If you're developing locally, you can also add:
+If you're developing locally, add this to your authorized redirect URIs:
 ```
 http://localhost:5000/api/auth/google/callback
 ```
