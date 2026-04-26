@@ -83,6 +83,33 @@ npm start
 
 Your `.env` file and calendar data are preserved across updates.
 
+## Before Your First Push to a Public GitHub Repo
+
+If you are forking or republishing this project, complete these one-time security steps **before** running `git push`:
+
+1. **Revoke any live OAuth tokens.** The runtime token cache (`google_credentials.json`) is gitignored, but if it ever appeared in screenshots, treat the tokens as compromised. Visit <https://myaccount.google.com/permissions>, find your "Calendar Kiosk" app, and click **Remove Access**. The app will simply re-prompt for login.
+
+2. **Consider rotating the OAuth Client Secret.** If your Google Cloud Client ID has been visible in screenshots or shared docs, rotate the secret: Google Cloud Console → APIs & Services → Credentials → click your OAuth client → **Reset Secret**. Update the new value in your Pi's `.env`.
+
+3. **Untrack any debugging artifacts.** If your local checkout has files in `attached_assets/` that were tracked before `.gitignore` was tightened, remove them from the git index (the .gitignore alone does NOT untrack already-tracked files):
+   ```bash
+   git rm -r --cached attached_assets/
+   git add attached_assets/image_1753142842256.png   # re-add the one logo the app uses
+   git status                                         # verify only the logo is staged from that folder
+   ```
+
+4. **Verify nothing sensitive is staged for commit.** Run:
+   ```bash
+   git ls-files | grep -E '\.env$|google_credentials|\.db$|attached_assets/(?!image_1753142842256)'
+   ```
+   This should print nothing.
+
+5. **After pushing, on your Pi, point the auto-updater at YOUR repo** by setting these in `.env`:
+   ```
+   GITHUB_REPO_OWNER=your-github-username
+   GITHUB_REPO_NAME=your-repo-name
+   ```
+
 ## License
 
 Add your preferred license here.
