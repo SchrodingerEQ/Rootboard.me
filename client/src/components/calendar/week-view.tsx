@@ -2,6 +2,10 @@ import { useMemo, useRef, useEffect } from "react";
 import { EventItem } from "./event-item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWeekDays, isToday, formatTime } from "@/lib/date-utils";
+import {
+  getEventPosition as computeEventPosition,
+  calculateEventLayout as computeEventLayout,
+} from "@/lib/calendar-layout";
 import type { CalendarEvent } from "@shared/schema";
 
 interface WeekViewProps {
@@ -73,88 +77,12 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     return dayEvents.filter(event => !event.isAllDay);
   };
 
-  // Calculate event position and height relative to a specific day column (in pixels)
-  // Clamps event to day boundaries for multi-day events
-  // Returns null if the event has no duration on this day (e.g., ends at midnight)
-  const getEventPosition = (event: CalendarEvent, date: Date): { top: number; height: number } | null => {
-    const eventStart = new Date(event.startTime);
-    const eventEnd = new Date(event.endTime);
-    
-    // Create day boundaries (midnight to midnight)
-    const dayStart = new Date(date);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(date);
-    dayEnd.setHours(23, 59, 59, 999);
-    
-    // Clamp event times to this day's boundaries
-    const clampedStart = eventStart < dayStart ? dayStart : eventStart;
-    const clampedEnd = eventEnd > dayEnd ? dayEnd : eventEnd;
-    
-    // Skip if clamped range has no duration (e.g., event ends exactly at midnight)
-    if (clampedEnd <= clampedStart) {
-      return null;
-    }
-    
-    // Calculate top position based on clamped start time
-    const startHour = clampedStart.getHours();
-    const startMinutes = clampedStart.getMinutes();
-    const top = (startHour + startMinutes / 60) * TIME_SLOT_HEIGHT;
-    
-    // Calculate height based on clamped duration
-    const endHour = clampedEnd.getHours();
-    const endMinutes = clampedEnd.getMinutes();
-    
-    // Handle end-of-day case (23:59:59)
-    const endPosition = endHour === 23 && endMinutes === 59 ? 24 : (endHour + endMinutes / 60);
-    const durationHours = endPosition - (startHour + startMinutes / 60);
-    const height = Math.max(durationHours * TIME_SLOT_HEIGHT, TIME_SLOT_HEIGHT / 2); // Minimum half-hour height
-    
-    return { top, height };
-  };
+  // Position + layout helpers live in @/lib/calendar-layout, shared with day-view.
+  const getEventPosition = (event: CalendarEvent, date: Date) =>
+    computeEventPosition(event, date, TIME_SLOT_HEIGHT);
 
-  // Find all events that overlap with a given event
-  const getOverlappingEvents = (timedEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
-    const currentStart = new Date(currentEvent.startTime);
-    const currentEnd = new Date(currentEvent.endTime);
-    
-    return timedEvents.filter(event => {
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
-      return currentStart < eventEnd && currentEnd > eventStart;
-    });
-  };
-
-  // Calculate horizontal layout for overlapping events
-  const calculateEventLayout = (timedEvents: CalendarEvent[], currentEvent: CalendarEvent) => {
-    const overlappingEvents = getOverlappingEvents(timedEvents, currentEvent);
-    
-    if (overlappingEvents.length === 1) {
-      return { width: '100%', left: '0%', zIndex: 1 };
-    }
-    
-    // Sort events by start time, then by duration (longer events first)
-    const sortedEvents = [...overlappingEvents].sort((a, b) => {
-      const startDiff = new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-      if (startDiff !== 0) return startDiff;
-      
-      const aDuration = new Date(a.endTime).getTime() - new Date(a.startTime).getTime();
-      const bDuration = new Date(b.endTime).getTime() - new Date(b.startTime).getTime();
-      return bDuration - aDuration;
-    });
-    
-    const eventIndex = sortedEvents.findIndex(e => e?.id === currentEvent?.id);
-    const totalEvents = sortedEvents.length;
-    
-    const availableWidth = 98;
-    const eventWidth = availableWidth / totalEvents;
-    const leftOffset = (eventIndex * eventWidth) + 1;
-    
-    return {
-      width: `${Math.max(eventWidth - 0.5, 15)}%`,
-      left: `${leftOffset}%`,
-      zIndex: eventIndex + 1
-    };
-  };
+  const calculateEventLayout = (timedEvents: CalendarEvent[], currentEvent: CalendarEvent) =>
+    computeEventLayout(timedEvents, currentEvent);
 
   const getCurrentTimePosition = () => {
     const now = new Date();

@@ -193,11 +193,7 @@ export async function applyUpdate(): Promise<void> {
 
     setStatus('installing', 'Installing dependencies (this may take a few minutes)...', 70);
     try {
-      execSync('npm install', {
-        cwd: APP_ROOT,
-        stdio: 'pipe',
-        timeout: 300000,
-      });
+      await runStreamed('npm', ['install'], 'installing', 'Installing dependencies', 70, 80);
     } catch (installError) {
       console.error('npm install failed:', installError);
       setStatus('error', 'Failed to install dependencies. Rolling back...', 0, 'npm install failed');
@@ -207,11 +203,7 @@ export async function applyUpdate(): Promise<void> {
 
     setStatus('installing', 'Building application...', 80);
     try {
-      execSync('npm run build', {
-        cwd: APP_ROOT,
-        stdio: 'pipe',
-        timeout: 300000,
-      });
+      await runStreamed('npm', ['run', 'build'], 'installing', 'Building application', 80, 90);
     } catch (buildError) {
       console.error('npm run build failed:', buildError);
       setStatus('error', 'Failed to build application. Rolling back...', 0, 'npm run build failed');
@@ -227,10 +219,7 @@ export async function applyUpdate(): Promise<void> {
 
     setStatus('complete', `Successfully updated to v${updateInfo.latestVersion}! Restarting...`, 100);
 
-    setTimeout(() => {
-      console.log('Restarting application after update...');
-      process.exit(0);
-    }, 2000);
+    scheduleRestart('update');
 
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
@@ -373,34 +362,109 @@ export async function rollback(): Promise<{ success: boolean; restoredVersion: s
 
   setStatus('installing', 'Reinstalling dependencies...', 70);
   try {
-    execSync('npm install', {
-      cwd: APP_ROOT,
-      stdio: 'pipe',
-      timeout: 300000,
-    });
+    await runStreamed('npm', ['install'], 'installing', 'Reinstalling dependencies', 70, 85);
   } catch (e) {
     console.error('npm install during rollback failed:', e);
   }
 
   setStatus('installing', 'Rebuilding application...', 85);
   try {
-    execSync('npm run build', {
-      cwd: APP_ROOT,
-      stdio: 'pipe',
-      timeout: 300000,
-    });
+    await runStreamed('npm', ['run', 'build'], 'installing', 'Rebuilding application', 85, 100);
   } catch (e) {
     console.error('npm run build during rollback failed:', e);
   }
 
   setStatus('complete', `Rolled back to version ${restoredVersion}. Restarting...`, 100);
 
-  setTimeout(() => {
-    console.log('Restarting application after rollback...');
-    process.exit(0);
-  }, 2000);
+  scheduleRestart('rollback');
 
   return { success: true, restoredVersion };
+}
+
+/**
+ * Spawn a child process and stream its stdout/stderr into the live update
+ * status. Replaces execSync (which blocks the event loop and gives the user
+ * no feedback during 1-3 minute npm install runs on a Pi). The `progressFrom`
+ * → `progressTo` range is updated based on output line count for a rough
+ * progress signal.
+ */
+function runStreamed(
+  cmd: string,
+  args: string[],
+  status: UpdateStatus['status'],
+  label: string,
+  progressFrom: number,
+  progressTo: number
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      cwd: APP_ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+    });
+
+    let lineCount = 0;
+    const onData = (chunk: Buffer) => {
+      const text = chunk.toString();
+      const lines = text.split('\n').filter(Boolean);
+      lineCount += lines.length;
+      // Cap progress at progressTo - 1 until the process exits cleanly.
+      const advance = Math.min(progressTo - progressFrom - 1, Math.floor(lineCount / 10));
+      const lastLine = lines[lines.length - 1] || label;
+      const trimmed = lastLine.length > 80 ? lastLine.slice(0, 77) + '...' : lastLine;
+      setStatus(status, `${label}: ${trimmed}`, progressFrom + Math.max(0, advance));
+    };
+
+    child.stdout?.on('data', onData);
+    child.stderr?.on('data', onData);
+
+    const timeout = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`${cmd} ${args.join(' ')} timed out after 5 minutes`));
+    }, 5 * 60 * 1000);
+
+    child.on('error', err => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+    child.on('exit', code => {
+      clearTimeout(timeout);
+      if (code === 0) resolve();
+      else reject(new Error(`${cmd} ${args.join(' ')} exited with code ${code}`));
+    });
+  });
+}
+
+/**
+ * Exit the process so a supervisor (start.sh on the Pi, systemd, pm2, etc.)
+ * can restart us with the new code. If we detect we are NOT under a
+ * supervisor (no MANAGED_BY_SUPERVISOR env var and not a child of init/systemd),
+ * we surface a clear warning instead of silently exit-locking the kiosk.
+ */
+function scheduleRestart(reason: string) {
+  const supervised =
+    process.env.MANAGED_BY_SUPERVISOR === '1' ||
+    process.env.SUPERVISED === '1' ||
+    process.env.PM2_HOME !== undefined ||
+    process.env.INVOCATION_ID !== undefined; // systemd sets this
+
+  if (!supervised) {
+    const warn = `Update applied (${reason}), but no supervisor detected (MANAGED_BY_SUPERVISOR not set). ` +
+      `The app will NOT auto-restart — start it with scripts/start.sh, systemd, or pm2 to enable auto-restart.`;
+    console.warn(warn);
+    setStatus(
+      'complete',
+      `Update applied — please restart the app manually. (No supervisor detected.)`,
+      100,
+      warn,
+    );
+    return;
+  }
+
+  setTimeout(() => {
+    console.log(`Restarting application after ${reason} (supervisor will respawn)...`);
+    process.exit(0);
+  }, 2000);
 }
 
 export function getAvailableBackups(): Array<{ name: string; version: string; date: string }> {

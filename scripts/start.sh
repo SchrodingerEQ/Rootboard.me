@@ -7,6 +7,11 @@ RETRY_COUNT=0
 HEALTH_CHECK_URL="http://localhost:5000/api/version"
 HEALTH_CHECK_TIMEOUT=30
 
+# Tell the app it's running under a supervisor that will restart it on exit.
+# The auto-update flow checks this before calling process.exit so we don't
+# kill the app forever on systems where there's no restart loop.
+export MANAGED_BY_SUPERVISOR=1
+
 while true; do
     echo "[$(date)] Starting calendar application..."
     npm start &

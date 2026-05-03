@@ -7,6 +7,7 @@ export class GoogleCalendarService {
   private calendar: any;
   private isInitialized: boolean = false;
   private clientReady: boolean = false;
+  private syncInFlight: Promise<CalendarEvent[]> | null = null;
 
   constructor() {
     this.oauth2Client = null;
@@ -255,6 +256,21 @@ export class GoogleCalendarService {
   }
 
   async syncCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
+    // Coalesce concurrent sync requests so the heavy network/DB work runs only once.
+    // Any caller that arrives while a sync is already running shares the same promise
+    // and gets the same result, instead of triggering a duplicate fan-out.
+    if (this.syncInFlight) {
+      console.log('Sync already in progress — joining existing run');
+      return this.syncInFlight;
+    }
+
+    this.syncInFlight = this.runSync(startDate, endDate).finally(() => {
+      this.syncInFlight = null;
+    });
+    return this.syncInFlight;
+  }
+
+  private async runSync(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
     try {
       const initialized = await this.initializeCredentials();
       if (!initialized) {

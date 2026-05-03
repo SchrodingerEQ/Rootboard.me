@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { CalendarFilters } from "@/components/calendar/calendar-filters";
 import { SettingsMenu } from "@/components/calendar/settings-menu";
@@ -56,6 +56,17 @@ export default function CalendarPage() {
   
   // Power saving is active if manually triggered OR auto-triggered by inactivity
   const isPowerSavingActive = isPowerSaving || screensaver.isActive;
+
+  // OAuth popup poll interval — kept in a ref so unmount always clears it.
+  const oauthPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (oauthPollRef.current) {
+        clearInterval(oauthPollRef.current);
+        oauthPollRef.current = null;
+      }
+    };
+  }, []);
   
   const {
     events,
@@ -178,13 +189,9 @@ export default function CalendarPage() {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
-  // Auto-sync events when authentication becomes available
-  useEffect(() => {
-    if (authStatus?.authenticated && events.length === 0 && !isRefreshing) {
-      console.log('Auto-syncing calendar events on authentication');
-      manualRefresh();
-    }
-  }, [authStatus?.authenticated, events.length, isRefreshing, manualRefresh]);
+  // Initial calendar sync on auth is handled by use-calendar.ts (which has a
+  // ref-guarded one-shot trigger). Don't duplicate that here — having both
+  // effects fire produced two parallel /api/calendar/sync calls on every load.
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -272,13 +279,18 @@ export default function CalendarPage() {
   const handleAuth = () => {
     // Open OAuth in a popup to avoid redirect issues
     const popup = window.open('/api/auth/google', 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
-    
+
     if (popup) {
-      // Poll to check if popup closes (indicating completion)
-      const checkClosed = setInterval(() => {
+      // Poll to check if popup closes (indicating completion). Track via ref so
+      // the interval is always cleared on unmount, even if the user navigates
+      // away mid-OAuth (otherwise it would leak forever on a 24/7 kiosk).
+      if (oauthPollRef.current) clearInterval(oauthPollRef.current);
+      oauthPollRef.current = setInterval(() => {
         if (popup.closed) {
-          clearInterval(checkClosed);
-          // Refresh to check auth status
+          if (oauthPollRef.current) {
+            clearInterval(oauthPollRef.current);
+            oauthPollRef.current = null;
+          }
           setTimeout(() => {
             window.location.reload();
           }, 1000);
