@@ -185,6 +185,11 @@ export class SQLiteStorage implements IStorage {
     return result.changes;
   }
 
+  async deleteCalendarEventsEndedBefore(cutoff: Date): Promise<number> {
+    const result = this.db.prepare('DELETE FROM calendar_events WHERE end_time < ?').run(cutoff.toISOString());
+    return result.changes;
+  }
+
   async getGoogleCredentials(): Promise<GoogleCredentials | undefined> {
     const row = this.db.prepare('SELECT * FROM google_credentials ORDER BY id DESC LIMIT 1').get() as any;
     if (!row) return undefined;

@@ -171,16 +171,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Calendar events routes
   app.get("/api/calendar/events", async (req, res) => {
     try {
-      const { startDate, endDate } = req.query;
-      
-      if (!startDate || !endDate) {
-        return res.status(400).json({ 
-          message: "startDate and endDate parameters are required" 
+      // Accept either ?from&to (preferred, matches task wording) or the
+      // legacy ?startDate&endDate. The client must pass a window so the
+      // payload is trimmed to the visible date range instead of returning
+      // every stored event.
+      const fromParam = (req.query.from ?? req.query.startDate) as string | undefined;
+      const toParam = (req.query.to ?? req.query.endDate) as string | undefined;
+
+      if (!fromParam || !toParam) {
+        return res.status(400).json({
+          message: "from and to (or startDate and endDate) parameters are required"
         });
       }
 
-      const start = new Date(startDate as string);
-      const end = new Date(endDate as string);
+      const start = new Date(fromParam);
+      const end = new Date(toParam);
 
       if (isNaN(start.getTime()) || isNaN(end.getTime())) {
         return res.status(400).json({ 

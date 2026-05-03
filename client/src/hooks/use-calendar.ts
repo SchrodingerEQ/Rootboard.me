@@ -80,7 +80,7 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     queryKey: ['/api/calendar/events', start.toISOString(), end.toISOString()],
     queryFn: async () => {
       const response = await fetch(
-        `/api/calendar/events?startDate=${start.toISOString()}&endDate=${end.toISOString()}`,
+        `/api/calendar/events?from=${encodeURIComponent(start.toISOString())}&to=${encodeURIComponent(end.toISOString())}`,
         { credentials: 'include' }
       );
       if (!response.ok) {

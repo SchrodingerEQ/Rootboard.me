@@ -357,6 +357,19 @@ export class GoogleCalendarService {
       }
 
       console.log(`Total events synced across all calendars: ${syncedEvents.length}`);
+
+      // Retention sweep: drop events that ended before the rolling 3-month past window.
+      // This keeps storage bounded on long-running kiosks where the sync window slides
+      // forward over time but old events would otherwise pile up indefinitely.
+      try {
+        const retentionCutoff = new Date();
+        retentionCutoff.setMonth(retentionCutoff.getMonth() - 3);
+        const prunedCount = await storage.deleteCalendarEventsEndedBefore(retentionCutoff);
+        console.log(`Retention sweep: pruned ${prunedCount} events ended before ${retentionCutoff.toISOString()}`);
+      } catch (pruneError) {
+        console.warn('Retention sweep failed:', pruneError);
+      }
+
       this.lastSyncAt = new Date();
       this.lastSyncError = null;
       return syncedEvents;
