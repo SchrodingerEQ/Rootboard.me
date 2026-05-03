@@ -248,6 +248,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/calendar/sync-status", (req, res) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
+    res.json(googleCalendarService.getSyncStatus());
+  });
+
   app.get("/api/calendar/auth-status", async (req, res) => {
     try {
       const credentials = await storage.getGoogleCredentials();

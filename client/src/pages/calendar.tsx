@@ -73,6 +73,7 @@ export default function CalendarPage() {
     isLoading,
     isRefreshing,
     authStatus,
+    syncStatus,
     manualRefresh,
     autoRefresh,
     checkAuthStatus
@@ -351,6 +352,8 @@ export default function CalendarPage() {
           onSleep={handleSleep}
           isRefreshing={isRefreshing}
           needsAuth={authStatus?.needsAuth}
+          lastSyncAt={syncStatus?.lastSyncAt ?? null}
+          lastSyncError={syncStatus?.lastSyncError ?? null}
           settingsButton={authStatus?.authenticated ? (
             <SettingsMenu 
               visibleCalendarsInHeader={visibleCalendarsInHeader}

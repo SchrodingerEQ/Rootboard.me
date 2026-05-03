@@ -11,6 +11,12 @@ interface AuthStatus {
   needsAuth: boolean;
 }
 
+interface SyncStatus {
+  lastSyncAt: string | null;
+  lastSyncError: string | null;
+  syncing: boolean;
+}
+
 // Minimum time between auto-refreshes (10 minutes) for energy efficiency
 const AUTO_REFRESH_INTERVAL = 10 * 60 * 1000;
 
@@ -164,11 +170,35 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     }
   }, [authStatus?.authenticated, events.length, isLoading, syncMutation]);
 
+  // Poll sync status so the header can show last-sync timestamp and errors
+  const { data: syncStatus } = useQuery<SyncStatus>({
+    queryKey: ['/api/calendar/sync-status'],
+    queryFn: async () => {
+      const response = await fetch('/api/calendar/sync-status', { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to fetch sync status');
+      }
+      return response.json();
+    },
+    enabled: shouldPerformQueries,
+    refetchInterval: shouldPerformQueries ? 30 * 1000 : false,
+    refetchOnWindowFocus: false,
+    staleTime: 15 * 1000,
+  });
+
+  // When a sync mutation finishes (success or failure), refresh the sync status
+  useEffect(() => {
+    if (!syncMutation.isPending) {
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/sync-status'] });
+    }
+  }, [syncMutation.isPending, syncMutation.isSuccess, syncMutation.isError, queryClient]);
+
   return {
     events,
     isLoading,
     isRefreshing: syncMutation.isPending,
     authStatus,
+    syncStatus,
     manualRefresh,
     autoRefresh,
     checkAuthStatus,

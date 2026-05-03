@@ -8,6 +8,16 @@ export class GoogleCalendarService {
   private isInitialized: boolean = false;
   private clientReady: boolean = false;
   private syncInFlight: Promise<CalendarEvent[]> | null = null;
+  private lastSyncAt: Date | null = null;
+  private lastSyncError: string | null = null;
+
+  getSyncStatus(): { lastSyncAt: string | null; lastSyncError: string | null; syncing: boolean } {
+    return {
+      lastSyncAt: this.lastSyncAt ? this.lastSyncAt.toISOString() : null,
+      lastSyncError: this.lastSyncError,
+      syncing: this.syncInFlight !== null,
+    };
+  }
 
   constructor() {
     this.oauth2Client = null;
@@ -347,9 +357,15 @@ export class GoogleCalendarService {
       }
 
       console.log(`Total events synced across all calendars: ${syncedEvents.length}`);
+      this.lastSyncAt = new Date();
+      this.lastSyncError = null;
       return syncedEvents;
     } catch (error) {
       console.error('Failed to sync calendar events:', error);
+      this.lastSyncError = error instanceof Error ? error.message : 'Unknown sync error';
+      // Intentionally do NOT update lastSyncAt on failure — it tracks the
+      // most recent *successful* sync so the UI can keep showing how stale
+      // the on-screen data is while flagging the error separately.
       throw error;
     }
   }

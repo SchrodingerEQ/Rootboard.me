@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key, Moon } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CalendarView } from "@/pages/calendar";
 import logoImage from "@assets/image_1753142842256.png";
 
@@ -14,7 +16,23 @@ interface CalendarHeaderProps {
   onSleep: () => void;
   isRefreshing: boolean;
   needsAuth?: boolean;
+  lastSyncAt?: string | null;
+  lastSyncError?: string | null;
   settingsButton?: React.ReactNode;
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (isNaN(then)) return "unknown";
+  const diffSec = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (diffSec < 10) return "just now";
+  if (diffSec < 60) return `${diffSec} sec ago`;
+  const min = Math.round(diffSec / 60);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  const days = Math.round(hr / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
 export function CalendarHeader({
@@ -28,8 +46,16 @@ export function CalendarHeader({
   onSleep,
   isRefreshing,
   needsAuth,
+  lastSyncAt,
+  lastSyncError,
   settingsButton
 }: CalendarHeaderProps) {
+  // Re-render every 30s so the relative timestamp stays fresh
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30 * 1000);
+    return () => clearInterval(id);
+  }, []);
   const getDateTitle = () => {
     if (currentView === 'month') {
       return currentDate.toLocaleDateString('en-US', { 
@@ -160,6 +186,51 @@ export function CalendarHeader({
           </Button>
         )}
         
+        {/* Sync health indicator */}
+        {(lastSyncAt || lastSyncError) && (
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="flex items-center space-x-1.5 text-xs text-[hsl(var(--google-gray))] px-2"
+                  data-testid="sync-status-indicator"
+                >
+                  {lastSyncError ? (
+                    <AlertTriangle
+                      size={16}
+                      className="text-red-600"
+                      data-testid="sync-error-icon"
+                    />
+                  ) : (
+                    <span
+                      className="inline-block h-2 w-2 rounded-full bg-emerald-500"
+                      data-testid="sync-ok-dot"
+                    />
+                  )}
+                  <span>
+                    {lastSyncAt
+                      ? `Updated: ${formatRelative(lastSyncAt)}`
+                      : "Not yet synced"}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {lastSyncError ? (
+                  <div className="max-w-xs">
+                    <div className="font-medium text-red-600">Last sync failed</div>
+                    <div className="text-xs mt-1 break-words">{lastSyncError}</div>
+                  </div>
+                ) : (
+                  <div className="text-xs">
+                    Last successful sync:{" "}
+                    {lastSyncAt ? new Date(lastSyncAt).toLocaleString() : "never"}
+                  </div>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
         {/* Refresh Button */}
         <Button
           size="sm"
