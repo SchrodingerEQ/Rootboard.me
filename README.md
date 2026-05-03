@@ -58,11 +58,15 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 
 ## Full Setup Guide
 
-The app includes a comprehensive setup guide accessible at the `/setup` route once it's running. The guide covers:
+For a complete, step-by-step Raspberry Pi + touchscreen install, see **[INSTALLATION.md](INSTALLATION.md)**. It covers everything from flashing the SD card to configuring kiosk auto-start.
 
-- Transferring the app to your Raspberry Pi (USB, direct download, git clone, or SCP)
+The same guide is also available in-app at the `/setup` route once the server is running. Both cover:
+
+- Flashing Raspberry Pi OS and first-boot config
+- Connecting and calibrating the touchscreen
 - Installing Node.js and dependencies
-- Configuring Google OAuth credentials (with screenshots-style walkthrough)
+- Transferring the app to the Pi (USB, direct download, git clone, or SCP)
+- Configuring Google OAuth credentials
 - Setting up Chromium kiosk mode with auto-start on boot
 - Updating to new versions and rolling back
 - Common troubleshooting
