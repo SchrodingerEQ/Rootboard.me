@@ -17,7 +17,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 - **Frontend**: React 18 + TypeScript + Vite, Tailwind CSS, Radix UI / shadcn
 - **Backend**: Node.js + Express + TypeScript
 - **Database**: SQLite (self-hosted) or PostgreSQL (hosted)
-- **Auth**: Google OAuth 2.0
+- **Auth**: Google Service Account (JSON key file)
 
 ## Quick Start
 
@@ -32,15 +32,15 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
    npm install
    ```
 
-3. **Configure Google OAuth**
+3. **Configure the Google service account**
 
-   Copy the example environment file and fill in your Google OAuth credentials:
+   Copy the example environment file and point it at your service-account JSON key:
    ```bash
    cp .env.example .env
    nano .env
    ```
 
-   You will need a Google Cloud project with the Calendar API enabled and an OAuth 2.0 Client ID. The app contains a complete step-by-step setup guide — start the app and visit `http://localhost:5000/setup` for detailed instructions.
+   You will need a Google Cloud project with the Calendar API enabled and a **service account** with a JSON key file. Drop the key at `./service-account.json` (or set `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` to its path), then share each calendar you want displayed with the service account's `client_email`. The app contains a complete step-by-step setup guide — start the app and visit `http://localhost:5000/setup`, or see **[INSTALLATION.md](INSTALLATION.md)** Step 7 for detailed instructions.
 
 4. **Run in development mode**
    ```bash
@@ -66,7 +66,7 @@ The same guide is also available in-app at the `/setup` route once the server is
 - Connecting and calibrating the touchscreen
 - Installing Node.js and dependencies
 - Transferring the app to the Pi (USB, direct download, git clone, or SCP)
-- Configuring Google OAuth credentials
+- Creating a Google service account and sharing calendars with it
 - Setting up Chromium kiosk mode with auto-start on boot
 - Updating to new versions and rolling back
 - Common troubleshooting
@@ -85,17 +85,15 @@ npm run build
 npm start
 ```
 
-Your `.env` file and calendar data are preserved across updates.
+Your `.env` file, `service-account.json`, and calendar data are preserved across updates.
 
 ## Before Your First Push to a Public GitHub Repo
 
 If you are forking or republishing this project, complete these one-time security steps **before** running `git push`:
 
-1. **Revoke any live OAuth tokens.** The runtime token cache (`google_credentials.json`) is gitignored, but if it ever appeared in screenshots, treat the tokens as compromised. Visit <https://myaccount.google.com/permissions>, find your "Calendar Kiosk" app, and click **Remove Access**. The app will simply re-prompt for login.
+1. **Protect your service-account key.** The `service-account.json` key file is gitignored, but if it ever appeared in screenshots or was accidentally committed, treat it as compromised. In Google Cloud Console → IAM & Admin → Service Accounts, open the account, go to the **Keys** tab, and delete the exposed key. Then create a new JSON key and replace the file on your Pi.
 
-2. **Consider rotating the OAuth Client Secret.** If your Google Cloud Client ID has been visible in screenshots or shared docs, rotate the secret: Google Cloud Console → APIs & Services → Credentials → click your OAuth client → **Reset Secret**. Update the new value in your Pi's `.env`.
-
-3. **Untrack any debugging artifacts.** The `attached_assets/` folder contains personal screenshots (OAuth screens, terminal captures, hostnames, IP addresses) that were used during development. The `.gitignore` excludes the entire folder **with one intentional exception** — `attached_assets/image_1753142842256.png`, which is the McMurry Hurricane logo imported by the app via Vite's `@assets` alias.
+2. **Untrack any debugging artifacts.** The `attached_assets/` folder contains personal screenshots (terminal captures, hostnames, IP addresses) that were used during development. The `.gitignore` excludes the entire folder **with one intentional exception** — `attached_assets/image_1753142842256.png`, which is the McMurry Hurricane logo imported by the app via Vite's `@assets` alias.
 
    If your local checkout has other files in `attached_assets/` that were tracked before `.gitignore` was tightened, remove them from the git index (the .gitignore alone does NOT untrack already-tracked files):
    ```bash
@@ -104,17 +102,17 @@ If you are forking or republishing this project, complete these one-time securit
    git status                                         # verify only the logo is staged from that folder
    ```
 
-4. **Verify nothing sensitive is staged for commit.** Run these two checks:
+3. **Verify nothing sensitive is staged for commit.** Run these two checks:
    ```bash
-   # Check 1: no env files, credential files, or databases are tracked
-   git ls-files | grep -E '(^|/)(\.env|google_credentials\.json|.*\.db)$'
+   # Check 1: no env files, service-account keys, or databases are tracked
+   git ls-files | grep -E '(^|/)(\.env|service-account\.json|.*\.db)$'
 
    # Check 2: only the logo from attached_assets is tracked (should print exactly one filename)
    git ls-files attached_assets/
    ```
    Check 1 should print nothing. Check 2 should print only `attached_assets/image_1753142842256.png`.
 
-5. **After pushing, on your Pi, point the auto-updater at YOUR repo** by setting these in `.env`:
+4. **After pushing, on your Pi, point the auto-updater at YOUR repo** by setting these in `.env`:
    ```
    GITHUB_REPO_OWNER=your-github-username
    GITHUB_REPO_NAME=your-repo-name
