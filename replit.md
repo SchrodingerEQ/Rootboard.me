@@ -1,7 +1,7 @@
 # Calendar Application - Replit Configuration
 
 ## Overview
-This full-stack calendar application, built with React and Express, is designed to emulate Google Calendar's interface and functionality. It is optimized for fullscreen kiosk mode on a 21.5-inch touchscreen, particularly for Raspberry Pi deployments. The application integrates with the Google Calendar API to display real-time events across day, week, and month views. Key capabilities include Google OAuth integration, real-time event synchronization, and a touch-optimized UI.
+This full-stack calendar application, built with React and Express, is designed to emulate Google Calendar's interface and functionality. It is optimized for fullscreen kiosk mode on a 21.5-inch touchscreen, particularly for Raspberry Pi deployments. The application integrates with the Google Calendar API to display real-time events across day, week, and month views. Key capabilities include Google service account authentication (no browser sign-in required), real-time event synchronization, and a touch-optimized UI.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -14,7 +14,7 @@ The application features a Google Calendar-inspired design, utilizing Radix UI c
 ### Technical Implementations
 -   **Frontend**: React 18 with TypeScript, Vite, Wouter for routing, TanStack Query for state management, React Hook Form with Zod for forms.
 -   **Backend**: Node.js with Express.js, TypeScript, Drizzle ORM for PostgreSQL, SQLite for self-hosted deployments.
--   **Authentication**: Google OAuth 2.0 with persistent session management using `connect-pg-simple` (Replit) or SQLite (self-hosted). OAuth redirect URI resolution prioritizes `GOOGLE_REDIRECT_URI` env var, then auto-detects `http://` for localhost vs `https://` for hosted deployments. Session cookies use `secure: true` only when both `DATABASE_URL` and `NODE_ENV=production` are set (i.e., hosted HTTPS environments). Session secret auto-generates a random value per restart if `SESSION_SECRET` env var is not set.
+-   **Authentication**: Google Service Account with a JSON key file. The path is read from `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` (defaults to `./service-account.json`). No browser sign-in, no OAuth consent screen, no session cookies — the server uses the key to mint Google API tokens directly. Each calendar to be displayed must be shared (in Google Calendar) with the service account's `client_email`.
 -   **Data Synchronization**: Real-time Google Calendar event synchronization, fetching up to 3 months past and 12 months future, with `maxResults=2500` and `pageToken` handling for comprehensive event retrieval. Shared events are handled by a composite `googleEventId + calendarId` key. Stale/deleted events are automatically pruned during each sync cycle via `deleteCalendarEventsByCalendarNotIn`.
 -   **Calendar Views**: Month, Week, and Day views with touch-optimized navigation. Overlapping events in the weekly view are displayed side-by-side in staggered columns with dynamic height. Month view shows up to 5 events per day before collapsing with a "Show more events" dialog for busy days.
 -   **Settings**: A settings menu provides brightness adjustment, individual calendar toggles, check for updates, rollback, version display, and a logout option.
@@ -25,17 +25,17 @@ The application features a Google Calendar-inspired design, utilizing Radix UI c
 -   **Kiosk Optimization**: Fullscreen meta viewport, 44px minimum touch targets, disabled user selection/right-click, Google Sans font, responsive breakpoints for 21.5-inch displays.
 -   **Power Saving Mode**: Activates automatically after 5 minutes of inactivity OR manually via SLEEP button in header. Shows black background with centered logo and very low brightness. Wakes on any key press, touch, or click. Auto-refresh is fully skipped while screensaver is active to save CPU and network on Pi.
 -   **Auto-Update System**: Daily check at 8 AM via GitHub releases API. Shows notification with "Update Now", "Details", and "Dismiss" buttons. One-tap update: downloads release tarball, backs up current version, extracts, runs npm install, and restarts. Automatic rollback on failure. Manual rollback available in Settings. Update status shown with progress bar. Startup script (`scripts/start.sh`) handles process restart and health-check-based rollback for Pi deployments.
--   **Setup Guide**: Accessible at `/setup` route, provides comprehensive instructions for Raspberry Pi deployment including downloading, Google OAuth configuration, kiosk mode setup, and updating.
--   **Environment Configuration**: Uses environment variables for database and Google OAuth credentials.
+-   **Setup Guide**: Accessible at `/setup` route, provides comprehensive instructions for Raspberry Pi deployment including downloading, Google service account configuration (create account, generate JSON key, share calendars), kiosk mode setup, and updating.
+-   **Environment Configuration**: Uses environment variables for database path and the service account key file location.
 
 ### System Design Choices
 -   **Database**: PostgreSQL via Neon Database (Replit) or SQLite (self-hosted), with Drizzle ORM for type-safe operations. Auto-detects via DATABASE_URL environment variable.
--   **Schema**: `users`, `calendar_events`, and `google_credentials` tables, with schema defined in `shared/schema.ts`.
+-   **Schema**: `users` and `calendar_events` tables, with schema defined in `shared/schema.ts`. Google credentials are read from the service account JSON key file at runtime, not stored in the database.
 -   **Development**: Vite for frontend, `tsx` for backend development, in-memory fallback storage.
 -   **Production**: Vite builds optimized frontend, ESBuild bundles backend.
 
 ## External Dependencies
--   **Google APIs**: Google Calendar API v3 for event integration and Google OAuth 2.0 for authentication.
+-   **Google APIs**: Google Calendar API v3 for event integration, authenticated via a Google service account JSON key.
 -   **Neon Database**: Serverless PostgreSQL for data storage (Replit environment).
 -   **better-sqlite3**: SQLite for self-hosted deployments on Raspberry Pi.
 -   **Radix UI**: Accessible UI component primitives.

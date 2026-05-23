@@ -14,7 +14,7 @@ A complete, step-by-step guide for setting up the McMurry Hurricane Calendar on 
 4. [Connect and calibrate the touchscreen](#4-connect-and-calibrate-the-touchscreen)
 5. [Install Node.js and system dependencies](#5-install-nodejs-and-system-dependencies)
 6. [Get the calendar app onto the Pi](#6-get-the-calendar-app-onto-the-pi)
-7. [Configure Google OAuth](#7-configure-google-oauth)
+7. [Create a Google service account](#7-create-a-google-service-account)
 8. [Configure the `.env` file](#8-configure-the-env-file)
 9. [Build and first run](#9-build-and-first-run)
 10. [Set up auto-start kiosk mode](#10-set-up-auto-start-kiosk-mode)
@@ -42,7 +42,7 @@ A complete, step-by-step guide for setting up the McMurry Hurricane Calendar on 
 ### Accounts and credentials
 
 - A Google account that owns the calendars you want to display.
-- A Google Cloud project with the **Google Calendar API** enabled (we'll create this in Step 7 — it's free).
+- A Google Cloud project with the **Google Calendar API** enabled and a **service account** key file (we'll create both in Step 7 — it's free).
 
 ---
 
@@ -76,7 +76,7 @@ Once you see the desktop:
    sudo apt full-upgrade -y
    sudo reboot
    ```
-3. After reboot, find your Pi's IP address (you'll need it to SSH in or configure OAuth):
+3. After reboot, find your Pi's IP address (you'll need it to SSH in or copy files to the Pi):
    ```bash
    hostname -I
    ```
@@ -185,9 +185,9 @@ npm install
 
 ---
 
-## 7. Configure Google OAuth
+## 7. Create a Google service account
 
-The app talks to your calendars using your **own** Google Cloud OAuth credentials. This takes about 5 minutes.
+The kiosk talks to Google Calendar using a **service account** — a Google identity that belongs to the app itself. The Pi authenticates with a JSON key file, so there's no browser sign-in, no consent screen, and the kiosk never gets logged out. This takes about 5 minutes.
 
 ### Part A — Create the Cloud project
 1. Go to <https://console.cloud.google.com/>.
@@ -199,28 +199,44 @@ The app talks to your calendars using your **own** Google Cloud OAuth credential
 1. Go to <https://console.cloud.google.com/apis/library/calendar-json.googleapis.com>.
 2. Click **Enable**.
 
-### Part C — Configure the OAuth consent screen
-1. Go to <https://console.cloud.google.com/apis/credentials/consent>.
-2. Choose **External** → **Create**.
-3. Fill in:
-   - **App name:** Calendar Kiosk
-   - **User support email:** your email
-   - **Developer contact email:** your email
-4. Click **Save and Continue** through the Scopes step.
-5. On **Test users**, click **Add Users** and add the Google account whose calendars you want to display. **The app must stay in *Testing* mode** — you don't need to publish it.
+### Part C — Create the service account
+1. Go to <https://console.cloud.google.com/iam-admin/serviceaccounts>.
+2. Click **+ Create Service Account** at the top.
+3. **Service account name:** `calendar-kiosk` (the ID auto-fills — leave it).
+4. Click **Create and Continue**.
+5. Skip the optional "Grant this service account access to project" step — click **Continue**, then **Done**.
 
-### Part D — Create OAuth Client ID credentials
-1. Go to <https://console.cloud.google.com/apis/credentials>.
-2. Click **Create Credentials → OAuth client ID**.
-3. **Application type:** Web application.
-4. **Name:** Calendar Kiosk.
-5. Under **Authorized redirect URIs**, add **all** of the following so it works locally on the Pi and via your hostname:
-   - `http://localhost:5000/api/auth/google/callback`
-   - `http://<PI_IP>:5000/api/auth/google/callback` *(replace `<PI_IP>` with the address from Step 3)*
-   - `http://calendar-pi.local:5000/api/auth/google/callback` *(if your hostname is `calendar-pi`)*
-6. Click **Create**. A modal shows your **Client ID** and **Client Secret** — keep this open, you need both in the next step.
+### Part D — Generate a JSON key
+1. In the service account list, click the account you just created.
+2. Open the **Keys** tab at the top.
+3. Click **Add Key → Create new key**.
+4. Choose **JSON** and click **Create**. A JSON file downloads.
+5. Open the file in a text editor and note the **`client_email`** value — it looks like `calendar-kiosk@your-project-id.iam.gserviceaccount.com`. You'll need it in Part F.
 
-> **Why three redirect URIs?** Chromium on the Pi will use whichever address you typed in the address bar, and any of those three can hit the same server. Adding all three avoids the dreaded `redirect_uri_mismatch` error.
+> **Treat the JSON file like a password.** Anyone with it can read every calendar shared with the service account. Don't commit it to git or post it anywhere — the project's `.gitignore` already excludes `service-account.json`.
+
+### Part E — Copy the JSON key onto the Pi
+Place the file inside the app folder and rename it to `service-account.json`.
+
+```bash
+# From your laptop:
+scp ~/Downloads/your-key-file.json pi@<PI_IP>:/home/pi/calendar-app/service-account.json
+
+# Verify on the Pi:
+ls -la /home/pi/calendar-app/service-account.json
+```
+
+USB-drive equivalent: copy the JSON onto a USB stick → plug it into the Pi → drag it into `/home/pi/calendar-app` and rename it to `service-account.json`.
+
+### Part F — Share each calendar with the service account
+A new service account has zero access. You have to explicitly share every calendar you want the kiosk to display.
+
+1. Open <https://calendar.google.com/> on a regular computer.
+2. In the left sidebar under **My calendars**, hover a calendar → three-dot menu → **Settings and sharing**.
+3. Under **Share with specific people or groups**, click **Add people and groups**.
+4. Paste the service account's `client_email` from the JSON file.
+5. Set permission to **Make changes to events** (lets the kiosk create events later) and click **Send**. No email is sent — service accounts don't receive notifications.
+6. Repeat for every calendar you want displayed.
 
 ---
 
@@ -232,33 +248,24 @@ cp .env.example .env
 nano .env
 ```
 
-Fill in the **required** keys with the values from Step 7 Part D:
+The only required key tells the app where to find your service-account JSON:
 
 ```bash
-GOOGLE_CLIENT_ID=123456-abcdef.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=your_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback
+GOOGLE_SERVICE_ACCOUNT_KEY_FILE=./service-account.json
 ```
 
-**Highly recommended optional keys:**
+**Optional keys** — point the auto-updater at your fork:
 
 ```bash
-# Persists your Google login across restarts — without this you re-auth every reboot.
-SESSION_SECRET=$(openssl rand -hex 32)   # paste the output of this command, not the command itself
-
-# Point the auto-updater at YOUR repo
 GITHUB_REPO_OWNER=your-github-username
 GITHUB_REPO_NAME=your-repo-name
-```
-
-To generate a session secret in one step:
-```bash
-echo "SESSION_SECRET=$(openssl rand -hex 32)" >> .env
 ```
 
 Save with `Ctrl+O`, `Enter`, then `Ctrl+X`.
 
 > **Database:** leave `DATABASE_URL` commented out. With it unset, the app automatically uses SQLite (`calendar.db` in the project folder), which is the right choice for self-hosted Pi installs.
+
+> **No session secret needed.** Service-account auth doesn't use browser sessions, so `SESSION_SECRET` is irrelevant on a self-hosted Pi.
 
 ---
 
@@ -277,9 +284,9 @@ serving on port 5000
 ```
 
 On the Pi's desktop, open Chromium and go to <http://localhost:5000>:
-1. The app shows a "Connect Google Calendar" prompt.
-2. Click it → sign in with the Google account you added as a test user.
-3. Grant calendar access. The app stores its credentials in `google_credentials.json` (gitignored, never leaves the Pi) and starts the first sync.
+1. The calendar should load and immediately start its first sync of the calendars you shared with the service account.
+2. If you instead see a "Service account key file could not be loaded" message, jump to [Troubleshooting](#13-troubleshooting) — usually the file isn't at the path in `GOOGLE_SERVICE_ACCOUNT_KEY_FILE`.
+3. If the calendars look empty but no error appears, you probably haven't shared them with the service account's `client_email` yet — revisit Step 7 Part F.
 
 If everything looks right, stop the server with `Ctrl+C` — we're about to make it auto-start.
 
@@ -414,10 +421,20 @@ pkill -f "node.*calendar-app" ; bash scripts/start.sh
 
 ## 13. Troubleshooting
 
-### Calendar shows nothing / "Connect Google Calendar" loops back
-- Re-check your three redirect URIs in Google Cloud Console match exactly (no trailing slash, correct port).
-- Confirm your Google account is listed as a **Test user** on the OAuth consent screen.
-- See [`GOOGLE_OAUTH_TROUBLESHOOTING.md`](GOOGLE_OAUTH_TROUBLESHOOTING.md) for the full matrix.
+### "Service account key file could not be loaded"
+The app can't find or parse the JSON key file. Check, in order:
+```bash
+# 1. Does the file actually exist where .env says it does?
+grep GOOGLE_SERVICE_ACCOUNT_KEY_FILE /home/pi/calendar-app/.env
+ls -la /home/pi/calendar-app/service-account.json
+
+# 2. Is it valid JSON?
+node -e "JSON.parse(require('fs').readFileSync('/home/pi/calendar-app/service-account.json'))"
+```
+If the path in `.env` is relative (like `./service-account.json`), it's resolved against the app folder — the file must live at `/home/pi/calendar-app/service-account.json`.
+
+### Calendars load but show no events
+The service account doesn't have access to those calendars yet. Re-do Step 7 Part F: share each calendar in Google Calendar with the `client_email` from the JSON key file. After sharing, refresh the calendar in the kiosk (the header refresh button).
 
 ### `EADDRINUSE: address already in use :::5000`
 A previous instance is still running:
@@ -425,12 +442,11 @@ A previous instance is still running:
 kill -9 $(lsof -t -i:5000) 2>/dev/null
 ```
 
-### `invalid_client` / `unauthorized_client` after a fresh build
-Stale build artefacts. Always run:
+### Stale build after an update
+Always run:
 ```bash
 rm -rf dist && npm run build && npm start
 ```
-If it persists, rotate the Client Secret in Google Cloud Console (**Credentials → your OAuth client → Reset Secret**) and update `.env`.
 
 ### Touchscreen taps register at the wrong location
 Most likely the touch device is mapped to the wrong display output. Run:
@@ -484,7 +500,7 @@ tail -f /home/pi/calendar-app.log
 | `/home/pi/calendar-app` | The application |
 | `/home/pi/calendar-app/.env` | Your secrets and config |
 | `/home/pi/calendar-app/calendar.db` | SQLite database (events) |
-| `/home/pi/calendar-app/google_credentials.json` | Cached OAuth tokens |
+| `/home/pi/calendar-app/service-account.json` | Google service account JSON key (gitignored, never leaves the Pi) |
 | `/home/pi/calendar-app/.update-backups/` | Auto-update rollback snapshots |
 | `/home/pi/kiosk.sh` | Launches server + Chromium |
 | `/home/pi/.config/autostart/calendar-kiosk.desktop` | Boot autostart entry |

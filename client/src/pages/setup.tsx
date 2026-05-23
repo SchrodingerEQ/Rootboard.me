@@ -167,20 +167,24 @@ export default function SetupPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5 text-amber-600" />
-              Step 3: Configure Google OAuth
+              Step 3: Connect Google Calendar (Service Account)
             </CardTitle>
             <CardDescription>
-              Set up Google Calendar API access for your local installation
+              Create a Google service account so the kiosk can read your calendars without a browser sign-in
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
+              <strong>Why a service account?</strong> A service account is a Google identity that belongs to the app itself, not to a person. The Pi authenticates with a JSON key file — no browser sign-in, no consent screen, and the kiosk keeps working forever without anyone re-logging in.
+            </div>
+
             <h4 className="font-medium text-gray-900">Part A: Create a Google Cloud Project</h4>
             <ol className="list-decimal list-inside space-y-3 text-gray-700">
               <li>
                 Go to the{" "}
-                <a 
-                  href="https://console.cloud.google.com/" 
-                  target="_blank" 
+                <a
+                  href="https://console.cloud.google.com/"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline inline-flex items-center gap-1"
                 >
@@ -199,9 +203,9 @@ export default function SetupPage() {
             <ol className="list-decimal list-inside space-y-3 text-gray-700">
               <li>
                 Go to{" "}
-                <a 
-                  href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com" 
-                  target="_blank" 
+                <a
+                  href="https://console.cloud.google.com/apis/library/calendar-json.googleapis.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline inline-flex items-center gap-1"
                 >
@@ -215,94 +219,62 @@ export default function SetupPage() {
 
             <Separator />
 
-            <h4 className="font-medium text-gray-900">Part C: Configure OAuth Consent Screen</h4>
+            <h4 className="font-medium text-gray-900">Part C: Create a Service Account</h4>
             <ol className="list-decimal list-inside space-y-3 text-gray-700">
               <li>
                 Go to{" "}
-                <a 
-                  href="https://console.cloud.google.com/apis/credentials/consent" 
-                  target="_blank" 
+                <a
+                  href="https://console.cloud.google.com/iam-admin/serviceaccounts"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:underline inline-flex items-center gap-1"
                 >
-                  OAuth Consent Screen
+                  Service Accounts
                   <ExternalLink className="h-3 w-3" />
                 </a>
               </li>
-              <li>Select <strong>"External"</strong> user type and click <strong>Create</strong></li>
-              <li>Fill in the required fields:
-                <ul className="list-disc list-inside ml-4 mt-2 space-y-1 text-sm">
-                  <li><strong>App name:</strong> Calendar Kiosk (or any name you prefer)</li>
-                  <li><strong>User support email:</strong> Your email address</li>
-                  <li><strong>Developer contact email:</strong> Your email address</li>
-                </ul>
-              </li>
-              <li>Click <strong>Save and Continue</strong> through the remaining steps</li>
-              <li>On the "Test users" page, click <strong>"Add Users"</strong> and add your Google email address</li>
-              <li>Click <strong>Save and Continue</strong>, then <strong>Back to Dashboard</strong></li>
-            </ol>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
-              <strong>Why "Testing" mode?</strong> While your app is in testing mode, only the email addresses you add as test users can sign in. This is perfect for personal use on your Raspberry Pi.
-            </div>
-
-            <Separator />
-
-            <h4 className="font-medium text-gray-900">Part D: Create OAuth Credentials</h4>
-            <ol className="list-decimal list-inside space-y-3 text-gray-700">
-              <li>
-                Go to{" "}
-                <a 
-                  href="https://console.cloud.google.com/apis/credentials" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
-                >
-                  Credentials
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </li>
-              <li>Click <strong>"Create Credentials"</strong> → <strong>"OAuth client ID"</strong></li>
-              <li>Select <strong>"Web application"</strong> as the application type</li>
-              <li>Give it a name (e.g., "Calendar Kiosk Client")</li>
+              <li>Click <strong>"+ Create Service Account"</strong> at the top</li>
+              <li>Give it a name (e.g., <code className="bg-gray-100 px-1 rounded">calendar-kiosk</code>). The ID auto-fills — leave it as is.</li>
+              <li>Click <strong>Create and Continue</strong></li>
+              <li>You can skip the optional "Grant this service account access to project" and "Grant users access" steps — click <strong>Continue</strong>, then <strong>Done</strong></li>
             </ol>
 
             <Separator />
 
-            <h4 className="font-medium text-gray-900">Part E: Add Authorized JavaScript Origins</h4>
-            <p className="text-sm text-gray-600 mb-2">Under "Authorized JavaScript origins", click <strong>"Add URI"</strong> and add these exact values:</p>
-            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 space-y-1">
-              <div>http://localhost:5000</div>
-              <div>http://127.0.0.1:5000</div>
+            <h4 className="font-medium text-gray-900">Part D: Generate a JSON Key File</h4>
+            <ol className="list-decimal list-inside space-y-3 text-gray-700">
+              <li>Click the service account you just created in the list</li>
+              <li>Open the <strong>"Keys"</strong> tab at the top</li>
+              <li>Click <strong>Add Key → Create new key</strong></li>
+              <li>Choose <strong>JSON</strong> and click <strong>Create</strong></li>
+              <li>A JSON file downloads to your computer. <strong>Keep it safe</strong> — anyone with this file can read every calendar shared with the service account.</li>
+            </ol>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+              <strong>Write down the service account's email address.</strong> Open the JSON file in a text editor and find the <code className="bg-amber-100 px-1 rounded">"client_email"</code> field — it looks like <code className="bg-amber-100 px-1 rounded text-xs">calendar-kiosk@your-project-id.iam.gserviceaccount.com</code>. You'll need it in Part G.
             </div>
 
             <Separator />
 
-            <h4 className="font-medium text-gray-900">Part F: Add Authorized Redirect URIs</h4>
-            <p className="text-sm text-gray-600 mb-2">Under "Authorized redirect URIs", click <strong>"Add URI"</strong> and add these exact values:</p>
-            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 space-y-1">
-              <div>http://localhost:5000/api/auth/google/callback</div>
-              <div>http://127.0.0.1:5000/api/auth/google/callback</div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800 mt-4">
-              <strong>Important:</strong> Make sure to use <code className="bg-amber-100 px-1 rounded">http://</code> (not https) and include the exact port number <code className="bg-amber-100 px-1 rounded">:5000</code>. Click <strong>Create</strong> when done.
-            </div>
-
-            <Separator />
-
-            <h4 className="font-medium text-gray-900">Part G: Copy Your Credentials</h4>
-            <p className="text-sm text-gray-600">After clicking Create, a popup will show your credentials. Copy these values:</p>
-            <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm mt-2">
-              <li><strong>Client ID</strong> - looks like: <code className="bg-gray-100 px-1 rounded text-xs">123456789-abcdefg.apps.googleusercontent.com</code></li>
-              <li><strong>Client Secret</strong> - a shorter code like: <code className="bg-gray-100 px-1 rounded text-xs">GOCSPX-xxxxxxxxxxxxxx</code></li>
+            <h4 className="font-medium text-gray-900">Part E: Copy the JSON Key to the Pi</h4>
+            <p className="text-sm text-gray-600">Place the key file inside the app folder and rename it to <code className="bg-gray-100 px-1 rounded">service-account.json</code>:</p>
+            <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
+              <li>Easiest: copy it onto a USB drive, plug it into the Pi, and drag it into <code className="bg-gray-100 px-1 rounded">/home/pi/calendar-app</code> using File Manager. Rename it to <code className="bg-gray-100 px-1 rounded">service-account.json</code>.</li>
+              <li>From another computer over SSH:</li>
             </ul>
+            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
+              <div>scp ~/Downloads/your-key-file.json pi@PI_IP:/home/pi/calendar-app/service-account.json</div>
+            </div>
+            <p className="text-sm text-gray-600">Verify it's there:</p>
+            <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
+              <div>ls -la /home/pi/calendar-app/service-account.json</div>
+            </div>
 
             <Separator />
 
-            <h4 className="font-medium text-gray-900">Part H: Create Environment File on Your Raspberry Pi</h4>
+            <h4 className="font-medium text-gray-900">Part F: Create the .env File on Your Raspberry Pi</h4>
             <p className="text-sm text-gray-600 mb-3">Choose one of these methods to create the <code className="bg-gray-100 px-1 rounded">.env</code> file:</p>
-            
+
             {/* Terminal Method */}
             <div className="border border-gray-200 rounded-lg p-4 space-y-3 mb-4">
               <div className="flex items-center gap-2">
@@ -316,11 +288,9 @@ export default function SetupPage() {
                 <div># Step 2: Create and edit the .env file</div>
                 <div>nano .env</div>
               </div>
-              <p className="text-sm text-gray-600">Type these three lines (replace with your actual values from Google):</p>
+              <p className="text-sm text-gray-600">Add this single line (it points at the key file you just copied):</p>
               <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto space-y-1">
-                <div>GOOGLE_CLIENT_ID=your_client_id_here</div>
-                <div>GOOGLE_CLIENT_SECRET=your_client_secret_here</div>
-                <div>GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback</div>
+                <div>GOOGLE_SERVICE_ACCOUNT_KEY_FILE=./service-account.json</div>
               </div>
               <p className="text-sm text-gray-600">Save the file:</p>
               <ol className="list-decimal list-inside text-sm text-gray-700 space-y-1">
@@ -343,11 +313,9 @@ export default function SetupPage() {
                 <li>Right-click in the folder → <strong>Create New</strong> → <strong>Empty File</strong></li>
                 <li>Name the file <code className="bg-gray-100 px-1 rounded">.env</code> (include the dot at the beginning)</li>
                 <li>Right-click the new file → <strong>Open With</strong> → <strong>Text Editor</strong></li>
-                <li>Add these three lines (with your actual values):
+                <li>Add this single line:
                   <div className="bg-gray-100 rounded-md p-2 font-mono text-xs mt-2 space-y-1">
-                    <div>GOOGLE_CLIENT_ID=your_client_id_here</div>
-                    <div>GOOGLE_CLIENT_SECRET=your_client_secret_here</div>
-                    <div>GOOGLE_REDIRECT_URI=http://localhost:5000/api/auth/google/callback</div>
+                    <div>GOOGLE_SERVICE_ACCOUNT_KEY_FILE=./service-account.json</div>
                   </div>
                 </li>
                 <li>Save and close the file</li>
@@ -355,11 +323,37 @@ export default function SetupPage() {
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800 mt-4">
-              <strong>Important:</strong> The dot at the beginning of <code className="bg-blue-100 px-1 rounded">.env</code> makes it a hidden file. This is intentional for security. You can verify it was created by running <code className="bg-blue-100 px-1 rounded">ls -la</code> in Terminal.
+              <strong>Important:</strong> The dot at the beginning of <code className="bg-blue-100 px-1 rounded">.env</code> makes it a hidden file. This is intentional. You can verify it was created by running <code className="bg-blue-100 px-1 rounded">ls -la</code> in Terminal.
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800 mt-3">
-              <strong>After creating the .env file:</strong> You must restart the application for the changes to take effect. Stop the app (Ctrl+C) and run <code className="bg-amber-100 px-1 rounded">npm run dev</code> again.
+            <Separator />
+
+            <h4 className="font-medium text-gray-900">Part G: Share Your Calendars With the Service Account</h4>
+            <p className="text-sm text-gray-600">A service account starts with zero access. You have to share each calendar you want the kiosk to display with the service account's email address.</p>
+            <ol className="list-decimal list-inside space-y-3 text-gray-700">
+              <li>
+                Open{" "}
+                <a
+                  href="https://calendar.google.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  Google Calendar
+                  <ExternalLink className="h-3 w-3" />
+                </a>{" "}
+                on a regular computer
+              </li>
+              <li>In the left sidebar under <strong>"My calendars"</strong>, hover over a calendar → click the three-dot menu → <strong>Settings and sharing</strong></li>
+              <li>Scroll to <strong>"Share with specific people or groups"</strong> → click <strong>Add people and groups</strong></li>
+              <li>Paste the service account's email address (the <code className="bg-gray-100 px-1 rounded">client_email</code> from the JSON file)</li>
+              <li>Set permission to <strong>"Make changes to events"</strong> (this lets the app create events from the kiosk later)</li>
+              <li>Click <strong>Send</strong>. No email is sent — service accounts don't get notifications.</li>
+              <li>Repeat for every calendar you want the kiosk to display</li>
+            </ol>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+              <strong>After editing .env or adding the key file:</strong> restart the app for the changes to take effect. Stop the app with Ctrl+C and start it again.
             </div>
 
             <Separator />
@@ -369,34 +363,23 @@ export default function SetupPage() {
             </div>
 
             <div className="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800 space-y-2">
-              <strong>Troubleshooting Authentication Errors:</strong>
+              <strong>Troubleshooting:</strong>
               <ul className="list-disc list-inside space-y-1 mt-2">
-                <li><strong>Access URL:</strong> Make sure you open the app via <code className="bg-red-100 px-1 rounded">http://localhost:5000</code> in your browser (not an IP address like 192.168.x.x)</li>
-                <li><strong>Test User:</strong> Your Google email must be added as a "Test user" in the OAuth consent screen settings</li>
-                <li><strong>Redirect URIs:</strong> The URIs in Google Cloud must match exactly - no trailing slashes, use <code className="bg-red-100 px-1 rounded">http://</code> not <code className="bg-red-100 px-1 rounded">https://</code></li>
-                <li><strong>API Enabled:</strong> Make sure the Google Calendar API is enabled for your project</li>
-                <li><strong>.env Format:</strong> No spaces around the = signs, no quotes around values</li>
-                <li><strong>Restart Required:</strong> After editing .env, you must restart the app (stop with Ctrl+C, then run <code className="bg-red-100 px-1 rounded">npm run dev</code> again)</li>
+                <li><strong>"Service account key file could not be loaded":</strong> the path in <code className="bg-red-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE</code> doesn't match where the JSON file actually lives. Run <code className="bg-red-100 px-1 rounded">ls /home/pi/calendar-app/service-account.json</code> to confirm it's there.</li>
+                <li><strong>Calendars appear empty:</strong> you haven't shared the calendars with the service account email yet (Part G), or you shared them with your personal email by mistake.</li>
+                <li><strong>API not enabled:</strong> double-check the Google Calendar API is enabled for the same project the service account belongs to.</li>
+                <li><strong>.env format:</strong> no spaces around the <code className="bg-red-100 px-1 rounded">=</code> sign, no quotes around the path.</li>
+                <li><strong>Restart required:</strong> after editing <code className="bg-red-100 px-1 rounded">.env</code> or replacing the JSON file, restart the app.</li>
               </ul>
             </div>
 
             <div className="bg-purple-50 border border-purple-200 rounded-md p-4 text-sm text-purple-800 space-y-2 mt-3">
-              <strong>Verify Your .env File:</strong>
-              <p className="mt-1">Run this command in Terminal to check your .env file exists and has content:</p>
-              <div className="bg-gray-900 rounded-md p-2 font-mono text-xs text-green-400 mt-2">
+              <strong>Verify your setup:</strong>
+              <div className="bg-gray-900 rounded-md p-2 font-mono text-xs text-green-400 mt-2 space-y-1">
                 <div>cat /home/pi/calendar-app/.env</div>
+                <div>ls -la /home/pi/calendar-app/service-account.json</div>
               </div>
-              <p className="mt-2">You should see your three lines displayed. If you see "No such file or directory", the file wasn't created correctly.</p>
-            </div>
-
-            <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm text-gray-800 space-y-2 mt-3">
-              <strong>Common Error Messages:</strong>
-              <ul className="list-disc list-inside space-y-2 mt-2">
-                <li><strong>"redirect_uri_mismatch"</strong> - The redirect URI in your .env file doesn't match what's in Google Cloud Console. They must be identical.</li>
-                <li><strong>"Access blocked: This app's request is invalid"</strong> - Usually means the OAuth consent screen isn't configured or you're not added as a test user.</li>
-                <li><strong>"Error 400: invalid_request"</strong> - Check that your Client ID and Client Secret are copied correctly with no extra spaces.</li>
-                <li><strong>"This app isn't verified"</strong> - This is normal! Click "Advanced" then "Go to [App Name] (unsafe)" to continue.</li>
-              </ul>
+              <p className="mt-2">You should see your <code className="bg-purple-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE</code> line, and the JSON file should exist at the listed path.</p>
             </div>
           </CardContent>
         </Card>
@@ -573,41 +556,32 @@ X-GNOME-Autostart-enabled=true`}
           <CardContent className="space-y-4">
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium text-gray-900">OAuth Error: Redirect URI Mismatch</h4>
+                <h4 className="font-medium text-gray-900">"Service account key file could not be loaded"</h4>
                 <p className="text-sm text-gray-600 mt-1">
-                  Make sure the redirect URI in your <code className="bg-gray-100 px-1 rounded">.env</code> file exactly matches one of the authorized redirect URIs in your Google Cloud Console.
+                  The app couldn't find or read <code className="bg-gray-100 px-1 rounded">service-account.json</code>. Confirm the file exists at the path in <code className="bg-gray-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE</code> (default is <code className="bg-gray-100 px-1 rounded">./service-account.json</code> inside the app folder) and that it's valid JSON.
                 </p>
               </div>
-              
+
               <Separator />
-              
+
               <div>
-                <h4 className="font-medium text-gray-900">OAuth Error: Access Blocked</h4>
+                <h4 className="font-medium text-gray-900">Calendars appear but are empty</h4>
                 <p className="text-sm text-gray-600 mt-1">
-                  In Google Cloud Console, go to "OAuth consent screen" and either publish your app or add your email address as a test user.
+                  You haven't shared the calendars with the service account yet. Open Google Calendar → calendar settings → Share with specific people, and add the service account's <code className="bg-gray-100 px-1 rounded">client_email</code> from the JSON key file.
                 </p>
               </div>
-              
+
               <Separator />
-              
+
               <div>
                 <h4 className="font-medium text-gray-900">Calendar Not Syncing</h4>
                 <p className="text-sm text-gray-600 mt-1">
-                  Click the refresh button in the header. If issues persist, try logging out and signing in again.
+                  Click the refresh button in the header. If issues persist, confirm the Google Calendar API is enabled for the project that owns the service account, and that the service account still has access to each calendar.
                 </p>
               </div>
-              
+
               <Separator />
-              
-              <div>
-                <h4 className="font-medium text-gray-900">OAuth Error: invalid_client</h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  This usually means you need a fresh build. Stop the app, run <code className="bg-gray-100 px-1 rounded">rm -rf dist && npm run build && npm start</code>. If the error persists, go to Google Cloud Console, click on your OAuth client, and create a new client secret. Update the <code className="bg-gray-100 px-1 rounded">GOOGLE_CLIENT_SECRET</code> value in your <code className="bg-gray-100 px-1 rounded">.env</code> file.
-                </p>
-              </div>
-              
-              <Separator />
-              
+
               <div>
                 <h4 className="font-medium text-gray-900">Port Already in Use (EADDRINUSE)</h4>
                 <p className="text-sm text-gray-600 mt-1">
