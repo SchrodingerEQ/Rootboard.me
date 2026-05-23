@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle } from "lucide-react";
+import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CalendarView } from "@/pages/calendar";
 import logoImage from "@assets/image_1753142842256.png";
@@ -14,6 +14,7 @@ interface CalendarHeaderProps {
   onRefresh: () => void;
   onAuth: () => void;
   onSleep: () => void;
+  onNewEvent?: () => void;
   isRefreshing: boolean;
   needsAuth?: boolean;
   lastSyncAt?: string | null;
@@ -44,6 +45,7 @@ export function CalendarHeader({
   onRefresh,
   onAuth,
   onSleep,
+  onNewEvent,
   isRefreshing,
   needsAuth,
   lastSyncAt,
@@ -165,6 +167,19 @@ export function CalendarHeader({
           </Button>
         </div>
         
+        {/* New Event Button */}
+        {onNewEvent && (
+          <Button
+            size="sm"
+            className="touch-button bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 text-base h-10"
+            onClick={onNewEvent}
+            data-testid="button-new-event"
+          >
+            <Plus className="mr-1" size={18} />
+            New Event
+          </Button>
+        )}
+
         {/* Sleep Button */}
         <button
           onClick={onSleep}

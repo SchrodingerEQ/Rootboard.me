@@ -90,6 +90,11 @@ export class SQLiteStorage implements IStorage {
     };
   }
 
+  async getCalendarEvent(id: number): Promise<CalendarEvent | undefined> {
+    const row = this.db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id) as any;
+    return row ? this.rowToCalendarEvent(row) : undefined;
+  }
+
   async createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent> {
     const now = new Date().toISOString();
     const result = this.db.prepare(`

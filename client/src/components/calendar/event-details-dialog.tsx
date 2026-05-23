@@ -1,6 +1,7 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Clock, MapPin, Pencil } from "lucide-react";
 import { CalendarEvent } from "@shared/schema";
 import { formatDate, formatTime } from "@/lib/date-utils";
 
@@ -8,16 +9,18 @@ interface EventDetailsDialogProps {
   event: CalendarEvent | null;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: (event: CalendarEvent) => void;
   calendarName?: string;
   calendarColor?: string;
 }
 
-export function EventDetailsDialog({ 
-  event, 
-  isOpen, 
-  onClose, 
+export function EventDetailsDialog({
+  event,
+  isOpen,
+  onClose,
+  onEdit,
   calendarName,
-  calendarColor 
+  calendarColor
 }: EventDetailsDialogProps) {
   if (!event) return null;
 
@@ -94,6 +97,19 @@ export function EventDetailsDialog({
             </div>
           </div>
         </div>
+
+        {onEdit && (
+          <DialogFooter>
+            <Button
+              onClick={() => onEdit(event)}
+              className="touch-button h-10"
+              data-testid="button-edit-event"
+            >
+              <Pencil className="mr-1" size={16} />
+              Edit
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

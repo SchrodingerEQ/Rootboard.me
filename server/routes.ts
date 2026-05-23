@@ -1,9 +1,30 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { z } from "zod";
 import { storage } from "./storage";
 import { googleCalendarService } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
 import { APP_VERSION } from "@shared/version";
+
+// Shared request body schema for create/update event endpoints. Times come
+// over the wire as ISO strings; coerce to Date so downstream code works
+// with proper Date instances. Title is required and trimmed; everything
+// else is optional / nullable.
+const eventWriteBodySchema = z.object({
+  title: z.string().trim().min(1, "Title is required"),
+  description: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+  isAllDay: z.boolean().optional().default(false),
+}).refine((v) => v.endTime > v.startTime, {
+  message: "endTime must be after startTime",
+  path: ["endTime"],
+});
+
+const createEventBodySchema = eventWriteBodySchema.and(
+  z.object({ calendarId: z.string().min(1, "calendarId is required") })
+);
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Version endpoint for update checking
@@ -64,6 +85,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Failed to get calendar list:', error);
       res.status(500).json({ message: "Failed to fetch calendar list" });
+    }
+  });
+
+  // Create a new event on Google Calendar (and mirror it locally so the UI
+  // reflects the change immediately, without waiting for the next sync).
+  app.post("/api/calendar/events", async (req, res) => {
+    try {
+      const parsed = createEventBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid event payload",
+          errors: parsed.error.flatten(),
+        });
+      }
+      const created = await googleCalendarService.createEvent(parsed.data);
+      res.status(201).json(created);
+    } catch (error) {
+      console.error('Failed to create calendar event:', error);
+      res.status(500).json({
+        message: error instanceof Error ? error.message : "Failed to create event"
+      });
+    }
+  });
+
+  app.patch("/api/calendar/events/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        return res.status(400).json({ message: "Invalid event id" });
+      }
+      const parsed = eventWriteBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Invalid event payload",
+          errors: parsed.error.flatten(),
+        });
+      }
+      const updated = await googleCalendarService.updateEvent(id, parsed.data);
+      res.json(updated);
+    } catch (error) {
+      console.error('Failed to update calendar event:', error);
+      const msg = error instanceof Error ? error.message : "Failed to update event";
+      const status = msg.startsWith('Event not found') ? 404 : 500;
+      res.status(status).json({ message: msg });
+    }
+  });
+
+  app.delete("/api/calendar/events/:id", async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (!Number.isFinite(id)) {
+        return res.status(400).json({ message: "Invalid event id" });
+      }
+      await googleCalendarService.deleteEvent(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Failed to delete calendar event:', error);
+      const msg = error instanceof Error ? error.message : "Failed to delete event";
+      const status = msg.startsWith('Event not found') ? 404 : 500;
+      res.status(status).json({ message: msg });
     }
   });
 

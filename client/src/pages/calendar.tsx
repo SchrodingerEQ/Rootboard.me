@@ -7,6 +7,7 @@ import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
 import { LoadingIndicator } from "@/components/calendar/loading-indicator";
 import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
+import { EventFormDialog } from "@/components/calendar/event-form-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { UpdateNotification } from "@/components/calendar/update-notification";
@@ -26,6 +27,8 @@ export default function CalendarPage() {
   const [visibleCalendarsInHeader, setVisibleCalendarsInHeader] = useState<Set<string>>(new Set());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [isPowerSaving, setIsPowerSaving] = useState(false);
   const { toast } = useToast();
@@ -175,6 +178,25 @@ export default function CalendarPage() {
     setSelectedEvent(null);
   };
 
+  const handleNewEvent = () => {
+    setEditingEvent(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setIsDialogOpen(false);
+    setSelectedEvent(null);
+    setEditingEvent(event);
+    setFormDialogOpen(true);
+  };
+
+  const handleFormOpenChange = (open: boolean) => {
+    setFormDialogOpen(open);
+    if (!open) {
+      setEditingEvent(null);
+    }
+  };
+
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
@@ -268,6 +290,7 @@ export default function CalendarPage() {
           onRefresh={handleRefresh}
           onAuth={handleAuth}
           onSleep={handleSleep}
+          onNewEvent={authStatus?.authenticated ? handleNewEvent : undefined}
           isRefreshing={isRefreshing}
           needsAuth={authStatus?.needsAuth}
           lastSyncAt={syncStatus?.lastSyncAt ?? null}
@@ -340,8 +363,16 @@ export default function CalendarPage() {
         event={selectedEvent}
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
+        onEdit={handleEditEvent}
         calendarName={selectedEvent ? calendars?.find((cal: any) => cal.id === selectedEvent.calendarId)?.summary : undefined}
         calendarColor={selectedEvent?.color ?? undefined}
+      />
+
+      <EventFormDialog
+        open={formDialogOpen && !isPowerSavingActive}
+        onOpenChange={handleFormOpenChange}
+        event={editingEvent}
+        defaultStart={currentDate}
       />
 
       {/* Authentication Dialog */}

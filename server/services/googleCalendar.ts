@@ -203,6 +203,179 @@ export class GoogleCalendarService {
     }
   }
 
+  // --- Write operations -------------------------------------------------
+
+  // Input shape used by both create and update. Times are ISO strings; for
+  // all-day events the caller passes a YYYY-MM-DD date string for start and
+  // the day AFTER the last day for end (per Google Calendar API semantics —
+  // end.date is exclusive).
+  private buildGoogleEventBody(input: {
+    title: string;
+    description?: string | null;
+    location?: string | null;
+    startTime: Date;
+    endTime: Date;
+    isAllDay: boolean;
+  }): any {
+    const body: any = {
+      summary: input.title,
+      description: input.description || undefined,
+      location: input.location || undefined,
+    };
+
+    if (input.isAllDay) {
+      // Google all-day events use date (YYYY-MM-DD) with end exclusive.
+      const toDateStr = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+      body.start = { date: toDateStr(input.startTime) };
+      body.end = { date: toDateStr(input.endTime) };
+    } else {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+      body.start = { dateTime: input.startTime.toISOString(), timeZone: tz };
+      body.end = { dateTime: input.endTime.toISOString(), timeZone: tz };
+    }
+
+    return body;
+  }
+
+  private async getCalendarMeta(calendarId: string): Promise<{ summary: string; color: string }> {
+    try {
+      const list = await this.getCalendarList();
+      const found = list.find((c: any) => c.id === calendarId);
+      if (found) {
+        return {
+          summary: found.summary || 'Unknown Calendar',
+          color: found.backgroundColor || this.getCalendarColorById(calendarId),
+        };
+      }
+    } catch {
+      // fall through
+    }
+    return { summary: 'Unknown Calendar', color: this.getCalendarColorById(calendarId) };
+  }
+
+  private parseGoogleEventTimes(googleEvent: any): { startTime: Date; endTime: Date; isAllDay: boolean } {
+    const isAllDay = !!googleEvent.start?.date;
+    return {
+      startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date),
+      endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date),
+      isAllDay,
+    };
+  }
+
+  async createEvent(input: {
+    calendarId: string;
+    title: string;
+    description?: string | null;
+    location?: string | null;
+    startTime: Date;
+    endTime: Date;
+    isAllDay: boolean;
+  }): Promise<CalendarEvent> {
+    await this.initPromise;
+    if (!this.isInitialized) {
+      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
+    }
+
+    const body = this.buildGoogleEventBody(input);
+    const response = await this.calendar.events.insert({
+      calendarId: input.calendarId,
+      requestBody: body,
+    });
+    const googleEvent = response.data;
+    const meta = await this.getCalendarMeta(input.calendarId);
+    const times = this.parseGoogleEventTimes(googleEvent);
+
+    const eventData: InsertCalendarEvent = {
+      googleEventId: googleEvent.id!,
+      calendarId: input.calendarId,
+      calendarName: meta.summary,
+      title: googleEvent.summary || input.title,
+      description: googleEvent.description || '',
+      startTime: times.startTime,
+      endTime: times.endTime,
+      location: googleEvent.location || '',
+      color: meta.color,
+      isAllDay: times.isAllDay,
+    };
+
+    return await storage.createCalendarEvent(eventData);
+  }
+
+  async updateEvent(
+    localId: number,
+    input: {
+      title: string;
+      description?: string | null;
+      location?: string | null;
+      startTime: Date;
+      endTime: Date;
+      isAllDay: boolean;
+    }
+  ): Promise<CalendarEvent> {
+    await this.initPromise;
+    if (!this.isInitialized) {
+      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
+    }
+
+    const existing = await storage.getCalendarEvent(localId);
+    if (!existing) {
+      throw new Error(`Event not found: ${localId}`);
+    }
+
+    const body = this.buildGoogleEventBody(input);
+    const response = await this.calendar.events.patch({
+      calendarId: existing.calendarId,
+      eventId: existing.googleEventId,
+      requestBody: body,
+    });
+    const googleEvent = response.data;
+    const times = this.parseGoogleEventTimes(googleEvent);
+
+    const updated = await storage.updateCalendarEvent(localId, {
+      title: googleEvent.summary || input.title,
+      description: googleEvent.description || '',
+      location: googleEvent.location || '',
+      startTime: times.startTime,
+      endTime: times.endTime,
+      isAllDay: times.isAllDay,
+    });
+    if (!updated) {
+      throw new Error(`Local update failed for event ${localId}`);
+    }
+    return updated;
+  }
+
+  async deleteEvent(localId: number): Promise<void> {
+    await this.initPromise;
+    if (!this.isInitialized) {
+      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
+    }
+
+    const existing = await storage.getCalendarEvent(localId);
+    if (!existing) {
+      throw new Error(`Event not found: ${localId}`);
+    }
+
+    try {
+      await this.calendar.events.delete({
+        calendarId: existing.calendarId,
+        eventId: existing.googleEventId,
+      });
+    } catch (err: any) {
+      // 410 Gone = already deleted upstream; still prune locally.
+      const code = err?.code || err?.response?.status;
+      if (code !== 410 && code !== 404) {
+        throw err;
+      }
+    }
+    await storage.deleteCalendarEvent(localId);
+  }
+
   private getEventColor(colorId?: string): string {
     const colorMap: Record<string, string> = {
       '1': '#1a73e8', // Blue
