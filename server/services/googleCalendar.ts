@@ -1,15 +1,67 @@
 import { google } from 'googleapis';
+import { GoogleAuth } from 'google-auth-library';
+import { existsSync } from 'fs';
 import { storage } from '../storage';
 import type { CalendarEvent, InsertCalendarEvent } from '@shared/schema';
 
 export class GoogleCalendarService {
-  private oauth2Client: any;
   private calendar: any;
   private isInitialized: boolean = false;
-  private clientReady: boolean = false;
+  private initError: string | null = null;
+  private initPromise: Promise<void>;
   private syncInFlight: Promise<CalendarEvent[]> | null = null;
   private lastSyncAt: Date | null = null;
   private lastSyncError: string | null = null;
+
+  constructor() {
+    this.calendar = null;
+    this.initPromise = this.initialize();
+  }
+
+  private async initialize(): Promise<void> {
+    const keyFile = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || './service-account.json';
+    try {
+      // Pre-flight: surface a clear error before google-auth-library tries to
+      // read the file. GoogleAuth defers file IO until first API call, so
+      // without this check a missing key silently looks "connected" until
+      // the first sync fails.
+      if (!existsSync(keyFile)) {
+        throw new Error(
+          `Service account key file not found at "${keyFile}". ` +
+          `Place your JSON key at this path or set GOOGLE_SERVICE_ACCOUNT_KEY_FILE in .env.`
+        );
+      }
+
+      const auth = new GoogleAuth({
+        keyFile,
+        scopes: ['https://www.googleapis.com/auth/calendar.events'],
+      });
+
+      // Force GoogleAuth to actually read+parse the key file and mint a
+      // client. If the file is unreadable, malformed JSON, or missing the
+      // required fields, this throws here at startup instead of pretending
+      // the service is connected until the first user-visible sync fails.
+      await auth.getClient();
+
+      this.calendar = google.calendar({ version: 'v3', auth });
+      this.isInitialized = true;
+      this.initError = null;
+      console.log(`Service account auth initialized from: ${keyFile}`);
+    } catch (error) {
+      this.calendar = null;
+      this.isInitialized = false;
+      this.initError = error instanceof Error ? error.message : 'Failed to initialize service account';
+      console.error('Failed to initialize service account auth:', this.initError);
+    }
+  }
+
+  isConnected(): boolean {
+    return this.isInitialized;
+  }
+
+  getInitError(): string | null {
+    return this.initError;
+  }
 
   getSyncStatus(): { lastSyncAt: string | null; lastSyncError: string | null; syncing: boolean } {
     return {
@@ -19,244 +71,12 @@ export class GoogleCalendarService {
     };
   }
 
-  constructor() {
-    this.oauth2Client = null;
-    this.calendar = null;
-  }
-
-  private ensureClient(): void {
-    if (this.clientReady) return;
-    this.oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID || "default_client_id",
-      process.env.GOOGLE_CLIENT_SECRET || "default_client_secret"
-    );
-    this.calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
-    this.clientReady = true;
-  }
-  
-  private getRedirectUri(host?: string): string {
-    if (host) {
-      const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
-      const protocol = isLocalhost ? 'http' : 'https';
-      const autoUri = `${protocol}://${host}/api/auth/google/callback`;
-      if (process.env.GOOGLE_REDIRECT_URI) {
-        try {
-          const envHost = new URL(process.env.GOOGLE_REDIRECT_URI).host;
-          if (envHost !== host) {
-            console.log(`Using auto-detected redirect URI (host ${host} differs from GOOGLE_REDIRECT_URI host ${envHost})`);
-            return autoUri;
-          }
-        } catch {}
-      }
-      return autoUri;
-    }
-    if (process.env.GOOGLE_REDIRECT_URI) {
-      return process.env.GOOGLE_REDIRECT_URI;
-    }
-    return "http://localhost:5000/api/auth/google/callback";
-  }
-
-  async initializeCredentials(): Promise<boolean> {
-    try {
-      this.ensureClient();
-      const credentials = await storage.getGoogleCredentials();
-      if (!credentials) {
-        this.isInitialized = false;
-        return false;
-      }
-
-      this.oauth2Client.setCredentials({
-        access_token: credentials.accessToken,
-        refresh_token: credentials.refreshToken,
-        expiry_date: credentials.expiryDate.getTime(),
-      });
-
-      // Validate credentials by making a test API call
-      try {
-        await this.oauth2Client.getAccessToken();
-        this.isInitialized = true;
-      } catch (testError) {
-        console.log('Credentials validation failed, attempting refresh');
-        // Check if token is expired and refresh if needed
-        if (credentials.expiryDate < new Date()) {
-          await this.refreshAccessToken();
-          this.isInitialized = true;
-        } else {
-          throw testError;
-        }
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Failed to initialize Google credentials:', error);
-      this.isInitialized = false;
-      
-      // Enhanced error handling for different invalid_grant scenarios
-      if (error instanceof Error) {
-        if (error.message.includes('invalid_grant')) {
-          console.log('Invalid grant detected, clearing stored credentials');
-          await storage.clearGoogleCredentials();
-        } else if (error.message.includes('invalid_request')) {
-          console.log('Invalid request detected, may need OAuth reconfiguration');
-          await storage.clearGoogleCredentials();
-        }
-      }
-      
-      return false;
-    }
-  }
-
-  async refreshAccessToken(): Promise<void> {
-    const maxRetries = 2;
-    let lastError: Error | null = null;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`Token refresh attempt ${attempt}/${maxRetries}`);
-        const { credentials } = await this.oauth2Client.refreshAccessToken();
-        
-        if (!credentials.access_token) {
-          throw new Error('No access token received from refresh');
-        }
-        
-        await storage.updateGoogleCredentials({
-          accessToken: credentials.access_token,
-          expiryDate: new Date(credentials.expiry_date),
-        });
-
-        this.oauth2Client.setCredentials(credentials);
-        this.isInitialized = true;
-        console.log('Token refresh successful');
-        return; // Success - exit retry loop
-      } catch (error) {
-        lastError = error as Error;
-        console.error(`Token refresh attempt ${attempt} failed:`, error);
-        
-        // Handle specific error types
-        if (error instanceof Error) {
-          if (error.message.includes('invalid_grant')) {
-            console.log('Refresh token is invalid, clearing stored credentials');
-            await storage.clearGoogleCredentials();
-            this.isInitialized = false;
-            throw new Error('Authentication required: refresh token expired or revoked');
-          } else if (error.message.includes('invalid_request')) {
-            console.log('Invalid OAuth request configuration');
-            await storage.clearGoogleCredentials();
-            this.isInitialized = false;
-            throw new Error('OAuth configuration error: please check client credentials');
-          }
-        }
-        
-        // Wait before retry (except on last attempt)
-        if (attempt < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-        }
-      }
-    }
-    
-    this.isInitialized = false;
-    throw lastError || new Error('Token refresh failed after all retries');
-  }
-
-  getAuthUrl(state?: string, host?: string): string {
-    this.ensureClient();
-    const clientId = process.env.GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = this.getRedirectUri(host);
-    
-    if (!clientId || clientId === 'default_client_id') {
-      throw new Error('Google Client ID not configured. Please set GOOGLE_CLIENT_ID environment variable.');
-    }
-    if (!clientSecret || clientSecret === 'default_client_secret') {
-      throw new Error('Google Client Secret not configured. Please set GOOGLE_CLIENT_SECRET environment variable.');
-    }
-    
-    // Temporarily set the redirect URI for this auth request
-    this.oauth2Client.redirectUri = redirectUri;
-    
-    const scopes = ['https://www.googleapis.com/auth/calendar.readonly'];
-    const authUrl = this.oauth2Client.generateAuthUrl({
-      access_type: 'offline', // Required for refresh tokens
-      scope: scopes,
-      prompt: 'consent', // Forces consent to get refresh token
-      include_granted_scopes: true, // Incremental authorization
-      state: state || Date.now().toString(), // CSRF protection - use provided state or generate one
-      redirect_uri: redirectUri // Explicitly set redirect URI for this request
-    });
-    
-    console.log('OAuth Client Configuration:');
-    console.log('Client ID:', clientId.substring(0, 20) + '...');
-    console.log('Redirect URI:', redirectUri);
-    console.log('Auth URL generated successfully');
-    return authUrl;
-  }
-
-  async handleAuthCallback(code: string, host?: string): Promise<void> {
-    try {
-      this.ensureClient();
-      console.log('Processing OAuth callback (code received)');
-      
-      const decodedCode = decodeURIComponent(code.trim());
-      
-      if (!decodedCode || decodedCode.length < 10) {
-        throw new Error('Invalid authorization code format');
-      }
-
-      const redirectUri = this.getRedirectUri(host);
-      this.oauth2Client.redirectUri = redirectUri;
-      console.log('Token exchange redirect URI:', redirectUri);
-      
-      const { tokens } = await this.oauth2Client.getToken(decodedCode);
-      console.log('Received tokens:', { 
-        hasAccessToken: !!tokens.access_token,
-        hasRefreshToken: !!tokens.refresh_token,
-        expiryDate: tokens.expiry_date 
-      });
-      
-      // Validate required tokens
-      if (!tokens.access_token) {
-        throw new Error('No access token received from OAuth callback');
-      }
-      if (!tokens.refresh_token) {
-        throw new Error('No refresh token received - ensure access_type=offline and prompt=consent');
-      }
-      
-      const credentials = await storage.createGoogleCredentials({
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
-        expiryDate: new Date(tokens.expiry_date || Date.now() + 3600000), // Default 1 hour if not provided
-      });
-      console.log('Stored credentials:', { id: credentials.id, hasTokens: !!credentials.accessToken });
-
-      this.oauth2Client.setCredentials(tokens);
-      this.isInitialized = true;
-      console.log('OAuth client credentials set successfully');
-    } catch (error) {
-      console.error('Failed to handle auth callback:', error);
-      this.isInitialized = false;
-      
-      // Enhanced error reporting for callback failures
-      if (error instanceof Error) {
-        if (error.message.includes('invalid_grant')) {
-          throw new Error('Authorization code invalid or expired. Please try signing in again.');
-        } else if (error.message.includes('redirect_uri_mismatch')) {
-          throw new Error('OAuth redirect URI mismatch. Check your Google Cloud Console configuration.');
-        } else if (error.message.includes('invalid_client')) {
-          throw new Error('Invalid OAuth client configuration. Check your client ID and secret.');
-        }
-      }
-      
-      throw error;
-    }
-  }
-
   async getCalendarList(): Promise<any[]> {
+    await this.initPromise;
+    if (!this.isInitialized) {
+      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
+    }
     try {
-      const initialized = await this.initializeCredentials();
-      if (!initialized) {
-        throw new Error('Google Calendar credentials not initialized');
-      }
-
       const response = await this.calendar.calendarList.list();
       return response.data.items || [];
     } catch (error) {
@@ -282,9 +102,9 @@ export class GoogleCalendarService {
 
   private async runSync(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
     try {
-      const initialized = await this.initializeCredentials();
-      if (!initialized) {
-        throw new Error('Google Calendar credentials not initialized');
+      await this.initPromise;
+      if (!this.isInitialized) {
+        throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
       }
 
       // Get all calendars first
@@ -317,7 +137,7 @@ export class GoogleCalendarService {
             for (const googleEvent of googleEvents) {
               const existingEvent = await storage.getCalendarEventByGoogleIdAndCalendar(googleEvent.id!, calendar.id);
               syncedGoogleIds.push(googleEvent.id!);
-              
+
               const eventData: InsertCalendarEvent = {
                 googleEventId: googleEvent.id!,
                 calendarId: calendar.id,
@@ -397,21 +217,15 @@ export class GoogleCalendarService {
       '10': '#ff5722', // Deep Orange
       '11': '#e91e63', // Pink
     };
-    
-    return colorMap[colorId || '1'] || '#1a73e8';
-  }
 
-  clearCredentials(): void {
-    this.ensureClient();
-    this.oauth2Client.setCredentials({});
-    this.isInitialized = false;
+    return colorMap[colorId || '1'] || '#1a73e8';
   }
 
   private getCalendarColorById(calendarId: string): string {
     // Generate a consistent color based on calendar ID
     const colors = [
       '#1a73e8', // Blue
-      '#34a853', // Green  
+      '#34a853', // Green
       '#ea4335', // Red
       '#ff9800', // Orange
       '#9c27b0', // Purple
@@ -423,7 +237,7 @@ export class GoogleCalendarService {
       '#3f51b5', // Indigo
       '#009688', // Teal
     ];
-    
+
     // Create a simple hash from the calendar ID to get consistent colors
     let hash = 0;
     for (let i = 0; i < calendarId.length; i++) {

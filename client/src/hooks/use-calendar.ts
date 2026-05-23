@@ -9,6 +9,7 @@ import { useScreensaverState } from "./useScreensaverState";
 interface AuthStatus {
   authenticated: boolean;
   needsAuth: boolean;
+  error?: string | null;
 }
 
 interface SyncStatus {

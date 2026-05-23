@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { CalendarFilters } from "@/components/calendar/calendar-filters";
 import { SettingsMenu } from "@/components/calendar/settings-menu";
@@ -57,17 +57,6 @@ export default function CalendarPage() {
   // Power saving is active if manually triggered OR auto-triggered by inactivity
   const isPowerSavingActive = isPowerSaving || screensaver.isActive;
 
-  // OAuth popup poll interval — kept in a ref so unmount always clears it.
-  const oauthPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    return () => {
-      if (oauthPollRef.current) {
-        clearInterval(oauthPollRef.current);
-        oauthPollRef.current = null;
-      }
-    };
-  }, []);
-  
   const {
     events,
     isLoading,
@@ -194,24 +183,6 @@ export default function CalendarPage() {
   // ref-guarded one-shot trigger). Don't duplicate that here — having both
   // effects fire produced two parallel /api/calendar/sync calls on every load.
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('auth') === 'success') {
-      toast({
-        title: "Authentication Successful",
-        description: "Google Calendar has been connected successfully.",
-      });
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } else if (params.get('auth') === 'error') {
-      toast({
-        title: "Authentication Failed",
-        description: "Failed to connect to Google Calendar. Please try again.",
-        variant: "destructive",
-      });
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-  }, [toast]);
-
   // Auto-refresh every 10 minutes
   useEffect(() => {
     const interval = setInterval(() => {
@@ -277,64 +248,11 @@ export default function CalendarPage() {
     manualRefresh();
   };
 
+  // Service account auth has no interactive sign-in flow — clicking the header's
+  // auth button just surfaces the error dialog (which explains how to install
+  // the key file). Keep this handler so the header's onAuth prop stays wired.
   const handleAuth = () => {
-    // Open OAuth in a popup to avoid redirect issues
-    const popup = window.open('/api/auth/google', 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
-
-    if (popup) {
-      // Poll to check if popup closes (indicating completion). Track via ref so
-      // the interval is always cleared on unmount, even if the user navigates
-      // away mid-OAuth (otherwise it would leak forever on a 24/7 kiosk).
-      if (oauthPollRef.current) clearInterval(oauthPollRef.current);
-      oauthPollRef.current = setInterval(() => {
-        if (popup.closed) {
-          if (oauthPollRef.current) {
-            clearInterval(oauthPollRef.current);
-            oauthPollRef.current = null;
-          }
-          setTimeout(() => {
-            window.location.reload();
-          }, 1000);
-        }
-      }, 1000);
-    } else {
-      toast({
-        title: "Popup Blocked",
-        description: "Please allow popups and try again, or use direct navigation.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleManualAuth = async (code: string) => {
-    try {
-      const response = await fetch('/api/auth/google/manual', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Authentication Successful",
-          description: "Google Calendar connected successfully!",
-        });
-        // Refresh events after successful auth
-        setTimeout(() => {
-          manualRefresh();
-        }, 1000);
-      } else {
-        throw new Error('Authentication failed');
-      }
-    } catch (error) {
-      toast({
-        title: "Authentication Failed", 
-        description: "Please try again or check the authorization code.",
-        variant: "destructive",
-      });
-    }
+    setAuthDialogOpen(true);
   };
 
   return (
@@ -430,6 +348,7 @@ export default function CalendarPage() {
       <AuthDialog 
         open={authDialogOpen && !isPowerSavingActive}
         onOpenChange={setAuthDialogOpen}
+        error={authStatus?.error}
       />
 
       {/* Update Available Notification */}

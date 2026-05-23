@@ -1,49 +1,27 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RefreshCw, LogIn, AlertCircle, BookOpen } from "lucide-react";
+import { AlertCircle, RefreshCw, BookOpen } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 
 interface AuthDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  error?: string | null;
 }
 
-export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
-  const [isClearing, setIsClearing] = useState(false);
+export function AuthDialog({ open, onOpenChange, error }: AuthDialogProps) {
+  const [isRetrying, setIsRetrying] = useState(false);
   const queryClient = useQueryClient();
 
-  const handleGoogleLogin = () => {
-    // Try opening in a new tab first to see the error more clearly
-    const authWindow = window.open('/api/auth/google', '_blank');
-    
-    // Fallback to current window if popup is blocked
-    setTimeout(() => {
-      if (!authWindow || authWindow.closed) {
-        window.location.href = '/api/auth/google';
-      }
-    }, 1000);
-  };
-
-  const handleClearCredentials = async () => {
-    setIsClearing(true);
+  const handleRetry = async () => {
+    setIsRetrying(true);
     try {
-      const response = await fetch('/api/auth/clear', {
-        method: 'POST',
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        // Refresh auth status after clearing
-        await queryClient.invalidateQueries({ 
-          queryKey: ['/api/calendar/auth-status'] 
-        });
-      }
-    } catch (error) {
-      console.error('Failed to clear credentials:', error);
+      await queryClient.invalidateQueries({ queryKey: ['/api/calendar/auth-status'] });
+    } finally {
+      setIsRetrying(false);
     }
-    setIsClearing(false);
   };
 
   return (
@@ -51,58 +29,47 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <LogIn className="h-5 w-5 text-[hsl(var(--google-blue))]" />
-            Connect Google Calendar
+            <AlertCircle className="h-5 w-5 text-red-500" />
+            Google Calendar Not Connected
           </DialogTitle>
           <DialogDescription>
-            Sign in with your Google account to display your calendar events.
+            The service account key file could not be loaded.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4">
-          <Button 
-            onClick={handleGoogleLogin}
-            className="w-full bg-[hsl(var(--google-blue))] hover:bg-[hsl(var(--google-blue-hover))] text-white"
-            size="lg"
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            Sign in with Google
-          </Button>
-          
-          <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
-            <div className="text-sm text-blue-700">
-              <p className="font-medium mb-1">Troubleshooting OAuth Issues:</p>
-              <ul className="text-xs space-y-1">
-                <li>• <strong>Publish your OAuth consent screen</strong> (most common fix)</li>
-                <li>• Add <code className="bg-blue-100 px-1 rounded">{window.location.origin}</code> to Authorized JavaScript origins</li>
-                <li>• If testing mode, add your email as a test user</li>
-                <li>• Wait 5-10 minutes for changes to take effect</li>
-              </ul>
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md" data-testid="auth-error-detail">
+              <p className="text-sm text-red-700 font-mono break-all">{error}</p>
             </div>
+          )}
+
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+            <p className="font-medium mb-2">To connect your calendar:</p>
+            <ol className="list-decimal list-inside space-y-1 text-xs">
+              <li>Create a service account at <code className="bg-blue-100 px-1 rounded">console.cloud.google.com</code></li>
+              <li>Enable the Google Calendar API for your project</li>
+              <li>Download the service account JSON key file</li>
+              <li>Copy the key file to the app directory on the Pi</li>
+              <li>Set <code className="bg-blue-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE=./service-account.json</code> in <code className="bg-blue-100 px-1 rounded">.env</code></li>
+              <li>Share each Google Calendar with the service account's email address (the <code className="bg-blue-100 px-1 rounded">client_email</code> field in the JSON key file)</li>
+              <li>Restart the app</li>
+            </ol>
           </div>
-          
-          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-            <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
-            <p className="text-sm text-yellow-700">
-              If you're experiencing authentication issues, try clearing stored credentials first.
-            </p>
-          </div>
-          
-          <Button 
-            onClick={handleClearCredentials}
-            disabled={isClearing}
-            variant="outline"
+
+          <Button
+            onClick={handleRetry}
+            disabled={isRetrying}
             className="w-full"
-            size="sm"
+            data-testid="button-retry-connection"
           >
-            {isClearing ? (
+            {isRetrying ? (
               <>
-                <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                Clearing...
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                Checking...
               </>
             ) : (
-              "Clear Stored Credentials"
+              "Retry Connection"
             )}
           </Button>
 

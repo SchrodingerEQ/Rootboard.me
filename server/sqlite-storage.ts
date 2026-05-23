@@ -1,11 +1,9 @@
 import Database from 'better-sqlite3';
-import type { 
-  User, 
+import type {
+  User,
   InsertUser,
   CalendarEvent,
   InsertCalendarEvent,
-  GoogleCredentials,
-  InsertGoogleCredentials
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
@@ -41,17 +39,6 @@ export class SQLiteStorage implements IStorage {
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(google_event_id, calendar_id)
-      );
-
-      CREATE TABLE IF NOT EXISTS google_credentials (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        access_token TEXT NOT NULL,
-        refresh_token TEXT NOT NULL,
-        scope TEXT,
-        token_type TEXT,
-        expiry_date TEXT NOT NULL,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE INDEX IF NOT EXISTS idx_events_time ON calendar_events(start_time, end_time);
@@ -188,91 +175,6 @@ export class SQLiteStorage implements IStorage {
   async deleteCalendarEventsEndedBefore(cutoff: Date): Promise<number> {
     const result = this.db.prepare('DELETE FROM calendar_events WHERE end_time < ?').run(cutoff.toISOString());
     return result.changes;
-  }
-
-  async getGoogleCredentials(): Promise<GoogleCredentials | undefined> {
-    const row = this.db.prepare('SELECT * FROM google_credentials ORDER BY id DESC LIMIT 1').get() as any;
-    if (!row) return undefined;
-
-    return {
-      id: row.id,
-      accessToken: row.access_token,
-      refreshToken: row.refresh_token,
-      scope: row.scope,
-      tokenType: row.token_type,
-      expiryDate: new Date(row.expiry_date),
-      createdAt: row.created_at ? new Date(row.created_at) : null,
-      updatedAt: row.updated_at ? new Date(row.updated_at) : null
-    };
-  }
-
-  async createGoogleCredentials(credentials: InsertGoogleCredentials): Promise<GoogleCredentials> {
-    const now = new Date().toISOString();
-    const result = this.db.prepare(`
-      INSERT INTO google_credentials (access_token, refresh_token, scope, token_type, expiry_date, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      credentials.accessToken,
-      credentials.refreshToken,
-      credentials.scope || 'https://www.googleapis.com/auth/calendar.readonly',
-      credentials.tokenType || 'Bearer',
-      credentials.expiryDate.toISOString(),
-      now,
-      now
-    );
-
-    return {
-      id: Number(result.lastInsertRowid),
-      accessToken: credentials.accessToken,
-      refreshToken: credentials.refreshToken,
-      scope: credentials.scope || null,
-      tokenType: credentials.tokenType || null,
-      expiryDate: credentials.expiryDate,
-      createdAt: new Date(now),
-      updatedAt: new Date(now)
-    };
-  }
-
-  async updateGoogleCredentials(credentials: Partial<InsertGoogleCredentials>): Promise<GoogleCredentials | undefined> {
-    const existing = await this.getGoogleCredentials();
-    if (!existing) return undefined;
-
-    const now = new Date().toISOString();
-    const updates: string[] = ['updated_at = ?'];
-    const values: any[] = [now];
-
-    if (credentials.accessToken !== undefined) { updates.push('access_token = ?'); values.push(credentials.accessToken); }
-    if (credentials.refreshToken !== undefined) { updates.push('refresh_token = ?'); values.push(credentials.refreshToken); }
-    if (credentials.scope !== undefined) { updates.push('scope = ?'); values.push(credentials.scope); }
-    if (credentials.tokenType !== undefined) { updates.push('token_type = ?'); values.push(credentials.tokenType); }
-    if (credentials.expiryDate !== undefined) { updates.push('expiry_date = ?'); values.push(credentials.expiryDate.toISOString()); }
-
-    values.push(existing.id);
-    this.db.prepare(`UPDATE google_credentials SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-
-    return this.getGoogleCredentials();
-  }
-
-  async clearGoogleCredentials(): Promise<void> {
-    this.db.prepare('DELETE FROM google_credentials').run();
-    console.log('Cleared all Google credentials from SQLite');
-  }
-
-  async saveGoogleCredentials(credentials: any): Promise<void> {
-    const insertCredentials: InsertGoogleCredentials = {
-      accessToken: credentials.access_token,
-      refreshToken: credentials.refresh_token,
-      scope: credentials.scope || 'https://www.googleapis.com/auth/calendar.readonly',
-      tokenType: credentials.token_type || 'Bearer',
-      expiryDate: credentials.expiry_date ? new Date(credentials.expiry_date) : new Date(Date.now() + 3600000)
-    };
-    
-    const existing = await this.getGoogleCredentials();
-    if (existing) {
-      await this.updateGoogleCredentials(insertCredentials);
-    } else {
-      await this.createGoogleCredentials(insertCredentials);
-    }
   }
 
   close(): void {

@@ -1,14 +1,7 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, LogOut, Calendar, X, Info, Download, RotateCcw, RefreshCw } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, Download, RotateCcw, RefreshCw } from "lucide-react";
 import { APP_VERSION } from "@shared/version";
 import { Button } from "@/components/ui/button";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle,
-  DialogDescription 
-} from "@/components/ui/dialog";
 import { 
   Popover, 
   PopoverContent, 
@@ -19,7 +12,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
 
 interface CalendarInfo {
   id: string;
@@ -53,9 +45,6 @@ export function SettingsMenu({
     const saved = localStorage.getItem('calendar-brightness');
     return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
   });
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const { toast } = useToast();
-
   // Get calendars for selection
   const { data: calendars, isLoading } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
@@ -75,33 +64,6 @@ export function SettingsMenu({
       // Fallback to direct DOM manipulation
       document.documentElement.style.filter = `brightness(${newBrightness}%)`;
     }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      
-      if (response.ok) {
-        toast({
-          title: "Logged out successfully",
-          description: "You have been logged out of your Google Calendar account.",
-        });
-        // Refresh the page to reset the auth state
-        window.location.reload();
-      } else {
-        throw new Error('Logout failed');
-      }
-    } catch (error) {
-      toast({
-        title: "Logout failed",
-        description: "There was an error logging out. Please try again.",
-        variant: "destructive",
-      });
-    }
-    setShowLogoutConfirm(false);
   };
 
   const getCalendarColor = (calendar: CalendarInfo): string => {
@@ -220,19 +182,6 @@ export function SettingsMenu({
 
             <Separator />
 
-            {/* Logout Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
-              onClick={() => setShowLogoutConfirm(true)}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout from Google Calendar
-            </Button>
-
-            <Separator />
-
             {/* Update Controls */}
             <div className="space-y-2">
               <div className="flex gap-2">
@@ -273,34 +222,6 @@ export function SettingsMenu({
           </div>
         </PopoverContent>
       </Popover>
-
-      {/* Logout Confirmation Dialog */}
-      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirm Logout</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to logout from your Google Calendar account? 
-              You'll need to sign in again to view your calendar events.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex gap-2 justify-end mt-4">
-            <Button
-              variant="outline"
-              onClick={() => setShowLogoutConfirm(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

@@ -24,17 +24,6 @@ export const calendarEvents = pgTable("calendar_events", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const googleCredentials = pgTable("google_credentials", {
-  id: serial("id").primaryKey(),
-  accessToken: text("access_token").notNull(),
-  refreshToken: text("refresh_token").notNull(),
-  scope: text("scope"),
-  tokenType: text("token_type"),
-  expiryDate: timestamp("expiry_date").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -46,15 +35,7 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit
   updatedAt: true,
 });
 
-export const insertGoogleCredentialsSchema = createInsertSchema(googleCredentials).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
-export type GoogleCredentials = typeof googleCredentials.$inferSelect;
-export type InsertGoogleCredentials = z.infer<typeof insertGoogleCredentialsSchema>;

@@ -19,7 +19,10 @@ vite.config.ts.*
 .env.*
 !.env.example
 
-# Google OAuth credentials (contains live tokens!)
+# Google service account key file (contains a private key!)
+service-account.json
+
+# Google OAuth credentials (legacy — pre-service-account flow; kept gitignored for users migrating)
 google_credentials.json
 
 # Self-hosted database and runtime data
