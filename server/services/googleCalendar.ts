@@ -85,6 +85,32 @@ export class GoogleCalendarService {
     }
   }
 
+  async subscribeToCalendar(calendarId: string): Promise<any> {
+    await this.initPromise;
+    if (!this.isInitialized) {
+      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
+    }
+    try {
+      const response = await this.calendar.calendarList.insert({
+        requestBody: { id: calendarId.trim() },
+      });
+      return response.data;
+    } catch (error: any) {
+      const status = error?.code ?? error?.status;
+      const reason = error?.errors?.[0]?.reason ?? '';
+      if (status === 409) {
+        throw new Error('Already subscribed to this calendar.');
+      }
+      if (status === 404 || reason === 'notFound') {
+        throw new Error('Calendar not found. Share it with the service account email first, then try again.');
+      }
+      if (status === 403) {
+        throw new Error("The service account doesn't have permission. In Google Calendar, share this calendar with the service account email (Settings → Share with specific people).");
+      }
+      throw error;
+    }
+  }
+
   async syncCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
     // Coalesce concurrent sync requests so the heavy network/DB work runs only once.
     // Any caller that arrives while a sync is already running shares the same promise

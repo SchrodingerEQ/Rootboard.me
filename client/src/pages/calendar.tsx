@@ -78,24 +78,26 @@ export default function CalendarPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Initialize calendars when data is loaded
+  // Sync enabled/visible sets with the calendar list:
+  // - On first load, enable and show all calendars.
+  // - When a new calendar is added later (e.g. via Settings subscribe), auto-enable it.
   useEffect(() => {
     if (calendars && calendars.length > 0) {
-      const allCalendarIds = new Set(calendars.map(cal => cal.id));
       setEnabledCalendars(prev => {
-        // Only initialize if empty
-        if (prev.size === 0) {
-          return allCalendarIds;
+        const next = new Set(prev);
+        let changed = false;
+        for (const cal of calendars) {
+          if (!next.has(cal.id)) { next.add(cal.id); changed = true; }
         }
-        return prev;
+        return changed ? next : prev;
       });
-      
       setVisibleCalendarsInHeader(prev => {
-        // Only initialize if empty
-        if (prev.size === 0) {
-          return allCalendarIds;
+        const next = new Set(prev);
+        let changed = false;
+        for (const cal of calendars) {
+          if (!next.has(cal.id)) { next.add(cal.id); changed = true; }
         }
-        return prev;
+        return changed ? next : prev;
       });
     }
   }, [calendars]);

@@ -80,8 +80,8 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
     );
   }
 
-  if (!calendars || !Array.isArray(calendars) || calendars.length <= 1) {
-    return null; // Hide filter if only one calendar
+  if (!calendars || !Array.isArray(calendars) || calendars.length < 1) {
+    return null; // Hide filter if no calendars
   }
 
   // Show only calendars that are marked as visible in the header

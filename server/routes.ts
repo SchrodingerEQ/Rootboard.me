@@ -148,6 +148,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/calendar/subscribe", async (req, res) => {
+    const parsed = z.object({ calendarId: z.string().trim().min(1, "calendarId is required") }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors[0]?.message ?? "calendarId is required" });
+    }
+    try {
+      const entry = await googleCalendarService.subscribeToCalendar(parsed.data.calendarId);
+      res.status(201).json(entry);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to subscribe to calendar";
+      const status = msg.startsWith('Already subscribed') ? 409
+        : (msg.startsWith('Calendar not found') || msg.includes("doesn't have permission")) ? 400
+        : 500;
+      res.status(status).json({ message: msg });
+    }
+  });
+
   app.post("/api/calendar/sync", async (req, res) => {
     try {
       const { startDate, endDate } = req.body;

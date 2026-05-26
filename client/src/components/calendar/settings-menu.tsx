@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, Download, RotateCcw, RefreshCw } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus } from "lucide-react";
 import { APP_VERSION } from "@shared/version";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   Popover, 
   PopoverContent, 
@@ -11,7 +12,9 @@ import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface CalendarInfo {
   id: string;
@@ -45,6 +48,37 @@ export function SettingsMenu({
     const saved = localStorage.getItem('calendar-brightness');
     return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
   });
+  const [calendarIdInput, setCalendarIdInput] = useState('');
+  const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const subscribeMutation = useMutation({
+    mutationFn: async (calendarId: string) => {
+      const res = await apiRequest('POST', '/api/calendar/subscribe', { calendarId });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setCalendarIdInput('');
+      setSubscribeError(null);
+      toast({ title: `Added "${data.summary || data.id}"`, description: 'Calendar subscribed. Events will appear after the next sync.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/calendars'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/sync-status'] });
+    },
+    onError: (error: any) => {
+      const msg = error?.message ?? 'Failed to subscribe to calendar.';
+      setSubscribeError(msg);
+    },
+  });
+
+  const handleSubscribe = () => {
+    const id = calendarIdInput.trim();
+    if (!id) return;
+    setSubscribeError(null);
+    subscribeMutation.mutate(id);
+  };
+
   // Get calendars for selection
   const { data: calendars, isLoading } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
@@ -178,6 +212,34 @@ export function SettingsMenu({
                   <div className="text-xs text-gray-500">No calendars available</div>
                 )}
               </div>
+            </div>
+
+            {/* Add Calendar by ID */}
+            <div className="space-y-1.5">
+              <div className="flex gap-2">
+                <Input
+                  value={calendarIdInput}
+                  onChange={(e) => { setCalendarIdInput(e.target.value); setSubscribeError(null); }}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubscribe()}
+                  placeholder="email@example.com or calendar ID"
+                  className="text-xs h-8 flex-1"
+                  disabled={subscribeMutation.isPending}
+                />
+                <Button
+                  size="sm"
+                  className="h-8 px-3 bg-emerald-500 hover:bg-emerald-600 text-white"
+                  onClick={handleSubscribe}
+                  disabled={!calendarIdInput.trim() || subscribeMutation.isPending}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {subscribeError && (
+                <p className="text-xs text-red-600 leading-snug">{subscribeError}</p>
+              )}
+              <p className="text-xs text-gray-400 leading-snug">
+                Find Calendar ID in Google Calendar → Settings → Integrate calendar
+              </p>
             </div>
 
             <Separator />
