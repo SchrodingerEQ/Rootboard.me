@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle } from "lucide-react";
+import { Link } from "wouter";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -139,7 +140,7 @@ export function SettingsMenu({
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: serviceAccountData } = useQuery<{ email: string }>({
+  const { data: serviceAccountData, isError: serviceAccountError } = useQuery<{ email: string }>({
     queryKey: ['/api/calendar/service-account-email'],
     enabled: isOpen,
     staleTime: Infinity,
@@ -272,7 +273,17 @@ export function SettingsMenu({
                 <Calendar className="h-4 w-4" />
                 <Label className="text-sm font-medium">Calendar Visibility</Label>
               </div>
-              {serviceAccountEmail && (
+              {serviceAccountError ? (
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-800 leading-snug">
+                    Key file not found —{" "}
+                    <Link href="/setup" onClick={() => setIsOpen(false)} className="underline font-medium hover:text-amber-900">
+                      visit the Setup Guide to get started
+                    </Link>
+                  </p>
+                </div>
+              ) : serviceAccountEmail ? (
                 <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2 space-y-1">
                   <p className="text-xs text-gray-500">Share a Google Calendar with this email to make it available here.</p>
                   <div className="flex items-center gap-2">
@@ -288,7 +299,7 @@ export function SettingsMenu({
                     </Button>
                   </div>
                 </div>
-              )}
+              ) : null}
               <div className="space-y-2 max-h-40 overflow-y-auto pr-6 [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-100">
                 {isLoading ? (
                   <div className="text-xs text-gray-500">Loading calendars...</div>
