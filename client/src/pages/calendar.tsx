@@ -305,6 +305,7 @@ export default function CalendarPage() {
               currentBrightness={screensaver.currentBrightness}
               onCheckForUpdates={checkForUpdates}
               onRollback={startRollback}
+              onSubscribeSuccess={manualRefresh}
             />
           ) : undefined}
         />

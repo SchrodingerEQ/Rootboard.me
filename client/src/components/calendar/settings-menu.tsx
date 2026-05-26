@@ -33,6 +33,7 @@ interface SettingsMenuProps {
   currentBrightness?: number;
   onCheckForUpdates?: () => void;
   onRollback?: () => void;
+  onSubscribeSuccess?: () => void;
 }
 
 export function SettingsMenu({ 
@@ -42,6 +43,7 @@ export function SettingsMenu({
   currentBrightness = 1.0,
   onCheckForUpdates,
   onRollback,
+  onSubscribeSuccess,
 }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
@@ -55,16 +57,26 @@ export function SettingsMenu({
 
   const subscribeMutation = useMutation({
     mutationFn: async (calendarId: string) => {
-      const res = await apiRequest('POST', '/api/calendar/subscribe', { calendarId });
-      return res.json();
+      const res = await fetch('/api/calendar/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ calendarId }),
+        credentials: 'include',
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.message ?? `Request failed (${res.status})`);
+      }
+      return body;
     },
     onSuccess: (data) => {
       setCalendarIdInput('');
       setSubscribeError(null);
-      toast({ title: `Added "${data.summary || data.id}"`, description: 'Calendar subscribed. Events will appear after the next sync.' });
+      toast({ title: `Added "${data.summary || data.id}"`, description: 'Syncing events now…' });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/calendars'] });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/sync-status'] });
+      onSubscribeSuccess?.();
     },
     onError: (error: any) => {
       const msg = error?.message ?? 'Failed to subscribe to calendar.';

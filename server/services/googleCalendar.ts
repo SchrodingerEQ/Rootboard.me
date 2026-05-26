@@ -96,8 +96,8 @@ export class GoogleCalendarService {
       });
       return response.data;
     } catch (error: any) {
-      const status = error?.code ?? error?.status;
-      const reason = error?.errors?.[0]?.reason ?? '';
+      const status = error?.code ?? error?.status ?? error?.response?.status;
+      const reason = error?.errors?.[0]?.reason ?? error?.cause?.errors?.[0]?.reason ?? '';
       if (status === 409) {
         throw new Error('Already subscribed to this calendar.');
       }
