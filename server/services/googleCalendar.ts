@@ -34,7 +34,7 @@ export class GoogleCalendarService {
 
       const auth = new GoogleAuth({
         keyFile,
-        scopes: ['https://www.googleapis.com/auth/calendar.events'],
+        scopes: ['https://www.googleapis.com/auth/calendar'],
       });
 
       // Force GoogleAuth to actually read+parse the key file and mint a
