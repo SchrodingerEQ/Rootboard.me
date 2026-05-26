@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2 } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +65,7 @@ export function SettingsMenu({
   const [calendarIdInput, setCalendarIdInput] = useState('');
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [calendarToRemove, setCalendarToRemove] = useState<CalendarInfo | null>(null);
+  const [emailCopied, setEmailCopied] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -137,6 +138,22 @@ export function SettingsMenu({
     enabled: true,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: serviceAccountData } = useQuery<{ email: string }>({
+    queryKey: ['/api/calendar/service-account-email'],
+    enabled: isOpen,
+    staleTime: Infinity,
+    retry: false,
+  });
+  const serviceAccountEmail = serviceAccountData?.email ?? null;
+
+  const handleCopyEmail = () => {
+    if (!serviceAccountEmail) return;
+    navigator.clipboard.writeText(serviceAccountEmail).then(() => {
+      setEmailCopied(true);
+      setTimeout(() => setEmailCopied(false), 2000);
+    });
+  };
 
   const handleBrightnessChange = (value: number[]) => {
     const newBrightness = value[0];
@@ -255,6 +272,23 @@ export function SettingsMenu({
                 <Calendar className="h-4 w-4" />
                 <Label className="text-sm font-medium">Calendar Visibility</Label>
               </div>
+              {serviceAccountEmail && (
+                <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2 space-y-1">
+                  <p className="text-xs text-gray-500">Share a Google Calendar with this email to make it available here.</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-gray-700 truncate flex-1 select-all">{serviceAccountEmail}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 flex-shrink-0 text-gray-400 hover:text-gray-700"
+                      onClick={handleCopyEmail}
+                      title="Copy email"
+                    >
+                      {emailCopied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2 max-h-40 overflow-y-auto pr-6 [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-gray-100 [&::-webkit-scrollbar-thumb]:bg-gray-400 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-gray-100">
                 {isLoading ? (
                   <div className="text-xs text-gray-500">Loading calendars...</div>

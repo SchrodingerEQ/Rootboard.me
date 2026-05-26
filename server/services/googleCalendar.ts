@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { storage } from '../storage';
 import type { CalendarEvent, InsertCalendarEvent } from '@shared/schema';
 
@@ -61,6 +61,17 @@ export class GoogleCalendarService {
 
   getInitError(): string | null {
     return this.initError;
+  }
+
+  getServiceAccountEmail(): string | null {
+    const keyFile = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || './service-account.json';
+    try {
+      if (!existsSync(keyFile)) return null;
+      const key = JSON.parse(readFileSync(keyFile, 'utf-8'));
+      return typeof key.client_email === 'string' ? key.client_email : null;
+    } catch {
+      return null;
+    }
   }
 
   getSyncStatus(): { lastSyncAt: string | null; lastSyncError: string | null; syncing: boolean } {

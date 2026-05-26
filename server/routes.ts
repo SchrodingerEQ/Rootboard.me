@@ -225,6 +225,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(googleCalendarService.getSyncStatus());
   });
 
+  app.get("/api/calendar/service-account-email", (req, res) => {
+    const email = googleCalendarService.getServiceAccountEmail();
+    if (!email) return res.status(404).json({ email: null });
+    res.json({ email });
+  });
+
   app.get("/api/calendar/auth-status", (req, res) => {
     res.set({
       'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
