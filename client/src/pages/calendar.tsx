@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { CalendarFilters } from "@/components/calendar/calendar-filters";
 import { SettingsMenu } from "@/components/calendar/settings-menu";
@@ -78,28 +78,33 @@ export default function CalendarPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Sync enabled/visible sets with the calendar list:
-  // - On first load, enable and show all calendars.
-  // - When a new calendar is added later (e.g. via Settings subscribe), auto-enable it.
+  // Track calendar IDs we have already seen so we only auto-enable genuinely
+  // new ones. This prevents a normal refetch (or post-subscribe invalidation)
+  // from re-enabling calendars the user intentionally toggled off.
+  const seenCalendarIds = useRef<Set<string>>(new Set());
+
   useEffect(() => {
-    if (calendars && calendars.length > 0) {
-      setEnabledCalendars(prev => {
-        const next = new Set(prev);
-        let changed = false;
-        for (const cal of calendars) {
-          if (!next.has(cal.id)) { next.add(cal.id); changed = true; }
-        }
-        return changed ? next : prev;
-      });
-      setVisibleCalendarsInHeader(prev => {
-        const next = new Set(prev);
-        let changed = false;
-        for (const cal of calendars) {
-          if (!next.has(cal.id)) { next.add(cal.id); changed = true; }
-        }
-        return changed ? next : prev;
-      });
-    }
+    if (!calendars || calendars.length === 0) return;
+
+    const newIds = calendars
+      .map(cal => cal.id)
+      .filter(id => !seenCalendarIds.current.has(id));
+
+    if (newIds.length === 0) return; // nothing new — don't touch toggle state
+
+    // Record them so future refetches don't re-enable them
+    for (const id of newIds) seenCalendarIds.current.add(id);
+
+    setEnabledCalendars(prev => {
+      const next = new Set(prev);
+      for (const id of newIds) next.add(id);
+      return next;
+    });
+    setVisibleCalendarsInHeader(prev => {
+      const next = new Set(prev);
+      for (const id of newIds) next.add(id);
+      return next;
+    });
   }, [calendars]);
 
   // Show auth dialog when not authenticated
