@@ -88,6 +88,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Unsubscribe (remove) a calendar from the service account's calendar list
+  app.delete("/api/calendar/calendars/:calendarId", async (req, res) => {
+    try {
+      const calendarId = req.params.calendarId;
+      if (!calendarId) {
+        return res.status(400).json({ message: "calendarId is required" });
+      }
+      await googleCalendarService.unsubscribeFromCalendar(calendarId);
+      // Purge all locally cached events for this calendar so they stop
+      // appearing in views immediately, without waiting for the next sync.
+      const removed = await storage.deleteCalendarEventsByCalendarNotIn(calendarId, []);
+      console.log(`Purged ${removed} local events for removed calendar: ${calendarId}`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Failed to unsubscribe from calendar:', error);
+      res.status(500).json({ message: "Failed to remove calendar" });
+    }
+  });
+
   // Create a new event on Google Calendar (and mirror it locally so the UI
   // reflects the change immediately, without waiting for the next sync).
   app.post("/api/calendar/events", async (req, res) => {

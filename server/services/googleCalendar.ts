@@ -111,6 +111,22 @@ export class GoogleCalendarService {
     }
   }
 
+  async unsubscribeFromCalendar(calendarId: string): Promise<void> {
+    await this.initPromise;
+    if (!this.isInitialized) {
+      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
+    }
+    try {
+      await this.calendar.calendarList.delete({ calendarId });
+    } catch (error: any) {
+      const status = error?.code ?? error?.status ?? error?.response?.status;
+      if (status === 404) {
+        return;
+      }
+      throw error;
+    }
+  }
+
   async syncCalendarEvents(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
     // Coalesce concurrent sync requests so the heavy network/DB work runs only once.
     // Any caller that arrives while a sync is already running shares the same promise

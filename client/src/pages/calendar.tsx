@@ -150,6 +150,13 @@ export default function CalendarPage() {
     });
   };
 
+  // Handle calendar removal: prune from all local sets so events vanish immediately
+  const handleCalendarRemoved = useCallback((calendarId: string) => {
+    seenCalendarIds.current.delete(calendarId);
+    setEnabledCalendars(prev => { const s = new Set(prev); s.delete(calendarId); return s; });
+    setVisibleCalendarsInHeader(prev => { const s = new Set(prev); s.delete(calendarId); return s; });
+  }, []);
+
   // Handle settings menu toggles - controls both header visibility AND event visibility
   const handleCalendarHeaderToggle = (calendarId: string, visible: boolean) => {
     // Update header visibility
@@ -311,6 +318,7 @@ export default function CalendarPage() {
               onCheckForUpdates={checkForUpdates}
               onRollback={startRollback}
               onSubscribeSuccess={manualRefresh}
+              onCalendarRemoved={handleCalendarRemoved}
             />
           ) : undefined}
         />

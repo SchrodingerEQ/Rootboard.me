@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { APP_VERSION } from "@shared/version";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +44,7 @@ interface SettingsMenuProps {
   onCheckForUpdates?: () => void;
   onRollback?: () => void;
   onSubscribeSuccess?: () => void;
+  onCalendarRemoved?: (calendarId: string) => void;
 }
 
 export function SettingsMenu({ 
@@ -44,6 +55,7 @@ export function SettingsMenu({
   onCheckForUpdates,
   onRollback,
   onSubscribeSuccess,
+  onCalendarRemoved,
 }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
@@ -52,6 +64,7 @@ export function SettingsMenu({
   });
   const [calendarIdInput, setCalendarIdInput] = useState('');
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
+  const [calendarToRemove, setCalendarToRemove] = useState<CalendarInfo | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -90,6 +103,33 @@ export function SettingsMenu({
     setSubscribeError(null);
     subscribeMutation.mutate(id);
   };
+
+  const unsubscribeMutation = useMutation({
+    mutationFn: async (calendarId: string) => {
+      const res = await fetch(`/api/calendar/calendars/${encodeURIComponent(calendarId)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.message ?? `Request failed (${res.status})`);
+      }
+      return body;
+    },
+    onSuccess: () => {
+      const removedId = calendarToRemove?.id;
+      const name = calendarToRemove?.summary || removedId || 'Calendar';
+      setCalendarToRemove(null);
+      toast({ title: `Removed "${name}"`, description: 'Calendar unsubscribed.' });
+      if (removedId) onCalendarRemoved?.(removedId);
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/calendars'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
+    },
+    onError: (error: any) => {
+      setCalendarToRemove(null);
+      toast({ title: 'Failed to remove calendar', description: error?.message ?? 'Unknown error', variant: 'destructive' });
+    },
+  });
 
   // Get calendars for selection
   const { data: calendars, isLoading } = useQuery<CalendarInfo[]>({
@@ -139,6 +179,27 @@ export function SettingsMenu({
 
   return (
     <>
+      <AlertDialog open={!!calendarToRemove} onOpenChange={(open) => { if (!open) setCalendarToRemove(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove calendar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will unsubscribe <strong>{calendarToRemove?.summary || calendarToRemove?.id}</strong> from the service account. Events from this calendar will no longer appear. You can re-add it at any time.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unsubscribeMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={unsubscribeMutation.isPending}
+              onClick={() => calendarToRemove && unsubscribeMutation.mutate(calendarToRemove.id)}
+            >
+              {unsubscribeMutation.isPending ? 'Removing…' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -203,7 +264,7 @@ export function SettingsMenu({
                     const color = getCalendarColor(calendar);
                     
                     return (
-                      <div key={calendar.id} className="flex items-center justify-between">
+                      <div key={calendar.id} className="flex items-center justify-between gap-1">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <div 
                             className="w-3 h-3 rounded-full flex-shrink-0"
@@ -211,12 +272,23 @@ export function SettingsMenu({
                           />
                           <span className="text-sm truncate">{calendar.summary}</span>
                         </div>
-                        <Switch
-                          checked={isVisible}
-                          onCheckedChange={(checked) => 
-                            onCalendarToggle(calendar.id, checked)
-                          }
-                        />
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Switch
+                            checked={isVisible}
+                            onCheckedChange={(checked) => 
+                              onCalendarToggle(calendar.id, checked)
+                            }
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                            onClick={() => setCalendarToRemove(calendar)}
+                            title="Remove calendar"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })
