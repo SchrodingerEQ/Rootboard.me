@@ -265,6 +265,8 @@ Save with `Ctrl+O`, `Enter`, then `Ctrl+X`.
 
 > **Database:** leave `DATABASE_URL` commented out. With it unset, the app automatically uses SQLite (`calendar.db` in the project folder), which is the right choice for self-hosted Pi installs.
 
+> **`NODE_ENV=production` is required.** Without it, Express defaults to development mode and tries to start the Vite dev server, causing a "Failed to load url /src/main.tsx" error.
+
 > **No session secret needed.** Service-account auth doesn't use browser sessions, so `SESSION_SECRET` is irrelevant on a self-hosted Pi.
 
 ---
