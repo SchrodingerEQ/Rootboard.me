@@ -108,8 +108,8 @@ function downloadFile(url: string, dest: string): Promise<void> {
 }
 
 function getGitHubConfig(): { owner: string; repo: string } {
-  const owner = process.env.GITHUB_REPO_OWNER || 'YOUR_GITHUB_USERNAME';
-  const repo = process.env.GITHUB_REPO_NAME || 'mcmurry-hurricane-calendar';
+  const owner = process.env.GITHUB_REPO_OWNER || 'SchrodingerEQ';
+  const repo = process.env.GITHUB_REPO_NAME || 'Rootboard.me';
   return { owner, repo };
 }
 
