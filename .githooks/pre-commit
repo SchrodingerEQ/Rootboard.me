@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Pre-commit secret/PII scan via gitleaks.
+# Enabled per-clone with:  git config core.hooksPath .githooks
+# See CLAUDE.md -> "security review before every push/release".
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "ERROR: gitleaks is not installed, but this repo requires it for the"
+  echo "       pre-commit security scan (public repo + auto-update tarball)."
+  echo "  Install:  winget install gitleaks.gitleaks   (Windows)"
+  echo "            brew install gitleaks               (macOS)"
+  echo "  Then retry. Emergency bypass (discouraged):  git commit --no-verify"
+  exit 1
+fi
+
+echo "gitleaks: scanning staged changes..."
+if ! gitleaks git --staged --redact --no-banner -c .gitleaks.toml; then
+  echo
+  echo "X gitleaks found a potential secret or sensitive file in your staged changes."
+  echo "  - True positive: unstage/remove it AND rotate any exposed credential."
+  echo "  - False positive: add an allowlist entry to .gitleaks.toml."
+  exit 1
+fi
+echo "gitleaks: clean."

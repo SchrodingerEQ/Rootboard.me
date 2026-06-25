@@ -1,0 +1,41 @@
+title = "Rootboard.me gitleaks config"
+
+# Inherit gitleaks' maintained default ruleset (private keys, cloud
+# credentials, tokens, high-entropy strings), then layer project-specific
+# rules on top. See CLAUDE.md "security review before every push/release".
+[extend]
+useDefault = true
+
+# --- Project-specific detections -------------------------------------------
+
+[[rules]]
+id = "rootboard-private-key-block"
+description = "Private key block (e.g. Google service-account key material)"
+regex = '''-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----'''
+keywords = ["private key"]
+
+[[rules]]
+id = "rootboard-gcp-sa-email"
+description = "Google service-account email (client_email)"
+regex = '''[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com'''
+keywords = ["gserviceaccount.com"]
+
+# Defense-in-depth on top of .gitignore: refuse to commit known secret/data
+# files even if someone force-adds them or .gitignore is edited.
+[[rules]]
+id = "rootboard-sensitive-file"
+description = "Sensitive secret/data file staged for commit"
+path = '''(?:^|/)(?:service-account\.json|google_credentials\.json|\.env|\.env\.[^/]+|[^/]+\.db|[^/]+\.db-(?:wal|shm|journal))$'''
+
+# --- Allowlist: triaged, safe-by-design ------------------------------------
+
+[allowlist]
+description = "Known-safe matches (intentional templates, docs, code references)"
+paths = [
+  '''(?:^|/)\.env\.example$''',   # template, intentionally tracked (gitignore whitelists it)
+  '''(?:^|/)\.gitleaks\.toml$''', # this config holds rule regexes, not secrets
+]
+regexes = [
+  '''your-project-id\.iam\.gserviceaccount\.com''', # documentation placeholder
+  '''key\.client_email''',                          # source field reference, not a value
+]

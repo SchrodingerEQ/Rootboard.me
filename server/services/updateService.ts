@@ -43,6 +43,16 @@ const PRESERVE_PATHS = [
   'node_modules',
   '.update-backups',
   '.update-temp',
+  // Self-hosted secrets and runtime data. These are gitignored, so they are
+  // NOT contained in the GitHub release tarball. Without preserving them, a
+  // *successful* update would delete them (applyFiles wipes everything not
+  // listed here) and never restore them, breaking Google auth and wiping the
+  // local database. See .gitignore.
+  'service-account.json',
+  'google_credentials.json',
+  'calendar.db',
+  'calendar.db-shm',
+  'calendar.db-wal',
 ];
 
 let currentStatus: UpdateStatus = {
