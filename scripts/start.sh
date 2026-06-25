@@ -62,7 +62,7 @@ while true; do
                         fi
                     done
                     echo "[$(date)] Rollback complete. Reinstalling dependencies and rebuilding..."
-                    npm install 2>/dev/null
+                    npm install --include=dev 2>/dev/null
                     npm run build 2>/dev/null
                     RETRY_COUNT=0
                     echo "[$(date)] Restarting with rolled-back version..."

@@ -203,7 +203,7 @@ export async function applyUpdate(): Promise<void> {
 
     setStatus('installing', 'Installing dependencies (this may take a few minutes)...', 70);
     try {
-      await runStreamed('npm', ['install'], 'installing', 'Installing dependencies', 70, 80);
+      await runStreamed('npm', ['install', '--include=dev'], 'installing', 'Installing dependencies', 70, 80);
     } catch (installError) {
       console.error('npm install failed:', installError);
       setStatus('error', 'Failed to install dependencies. Rolling back...', 0, 'npm install failed');
@@ -372,7 +372,7 @@ export async function rollback(): Promise<{ success: boolean; restoredVersion: s
 
   setStatus('installing', 'Reinstalling dependencies...', 70);
   try {
-    await runStreamed('npm', ['install'], 'installing', 'Reinstalling dependencies', 70, 85);
+    await runStreamed('npm', ['install', '--include=dev'], 'installing', 'Reinstalling dependencies', 70, 85);
   } catch (e) {
     console.error('npm install during rollback failed:', e);
   }
