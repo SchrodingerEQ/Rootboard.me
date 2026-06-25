@@ -85,7 +85,7 @@ export const ScreensaverOverlay = ({ isActive, onExit }: ScreensaverOverlayProps
       >
         <img
           src={logoImage}
-          alt="McMurry Hurricane Logo"
+          alt="ScreenSaver Logo"
           className="w-32 h-32 opacity-30 select-none pointer-events-none screensaver-logo"
           style={{
             filter: 'brightness(0.6) contrast(1.2)',

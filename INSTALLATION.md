@@ -1,6 +1,6 @@
 # Raspberry Pi Installation Guide
 
-A complete, step-by-step guide for setting up the McMurry Hurricane Calendar on a Raspberry Pi with a touchscreen, intended to run 24/7 in kiosk mode.
+A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a touchscreen, intended to run 24/7 in kiosk mode.
 
 > **Tip:** The app also ships an in-browser version of this guide at `/setup` once it's running. Open `http://localhost:5000/setup` from the Pi.
 

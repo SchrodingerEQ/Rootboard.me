@@ -37,7 +37,7 @@ export function PowerSavingOverlay({ isActive, onWake }: PowerSavingOverlayProps
       <div className="flex flex-col items-center">
         <img
           src={logoImage}
-          alt="McMurry Hurricane Logo"
+          alt="ScreenSaver Logo"
           className="w-[768px] h-[768px] opacity-40 select-none pointer-events-none"
         />
         <p className="text-white text-opacity-30 text-sm mt-8 font-light">

@@ -80,7 +80,7 @@ function compareVersions(current: string, latest: string): boolean {
 function httpsGet(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const get = url.startsWith('https') ? https.get : http.get;
-    get(url, { headers: { 'User-Agent': 'McMurry-Hurricane-Calendar-Updater' } }, (res) => {
+    get(url, { headers: { 'User-Agent': 'Rootboard-Calendar-Updater' } }, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         return httpsGet(res.headers.location!).then(resolve).catch(reject);
       }
@@ -99,7 +99,7 @@ function downloadFile(url: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(dest);
     const get = url.startsWith('https') ? https.get : http.get;
-    get(url, { headers: { 'User-Agent': 'McMurry-Hurricane-Calendar-Updater' } }, (res) => {
+    get(url, { headers: { 'User-Agent': 'Rootboard-Calendar-Updater' } }, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         file.close();
         fs.unlinkSync(dest);

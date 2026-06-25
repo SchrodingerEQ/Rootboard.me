@@ -9,7 +9,7 @@ Preferred communication style: Simple, everyday language.
 ## System Architecture
 
 ### UI/UX Decisions
-The application features a Google Calendar-inspired design, utilizing Radix UI components with shadcn/ui styling and Tailwind CSS for a consistent look and feel. It is optimized for 21.5-inch touchscreens with touch-friendly navigation, disabled user selection and right-click for kiosk environments, and a custom McMurry Hurricane logo. A screensaver mode with a floating logo, dimming brightness, and time display activates after inactivity.
+The application features a Google Calendar-inspired design, utilizing Radix UI components with shadcn/ui styling and Tailwind CSS for a consistent look and feel. It is optimized for 21.5-inch touchscreens with touch-friendly navigation, disabled user selection and right-click for kiosk environments, and a custom ScreenSaver logo. A screensaver mode with a floating logo, dimming brightness, and time display activates after inactivity.
 
 ### Technical Implementations
 -   **Frontend**: React 18 with TypeScript, Vite, Wouter for routing, TanStack Query for state management, React Hook Form with Zod for forms.

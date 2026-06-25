@@ -84,7 +84,7 @@ export function CalendarHeader({
         <div className="flex items-center">
           <img 
             src={logoImage} 
-            alt="McMurry Hurricane Logo" 
+            alt="ScreenSaver Logo"
             className="h-16 w-auto"
           />
         </div>

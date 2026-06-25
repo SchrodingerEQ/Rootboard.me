@@ -20,7 +20,7 @@ export default function SetupPage() {
         </div>
 
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">McMurry Hurricane Calendar</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Rootboard</h1>
           <p className="text-lg text-gray-600">
             Raspberry Pi Setup Guide
           </p>
@@ -602,7 +602,7 @@ X-GNOME-Autostart-enabled=true`}
         </Card>
 
         <div className="text-center text-sm text-gray-500 pb-8">
-          McMurry Hurricane Calendar v{APP_VERSION}
+          Rootboard v{APP_VERSION}
         </div>
       </div>
     </div>

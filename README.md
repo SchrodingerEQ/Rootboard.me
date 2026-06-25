@@ -93,7 +93,7 @@ If you are forking or republishing this project, complete these one-time securit
 
 1. **Protect your service-account key.** The `service-account.json` key file is gitignored, but if it ever appeared in screenshots or was accidentally committed, treat it as compromised. In Google Cloud Console → IAM & Admin → Service Accounts, open the account, go to the **Keys** tab, and delete the exposed key. Then create a new JSON key and replace the file on your Pi.
 
-2. **Untrack any debugging artifacts.** The `attached_assets/` folder contains personal screenshots (terminal captures, hostnames, IP addresses) that were used during development. The `.gitignore` excludes the entire folder **with one intentional exception** — `attached_assets/image_1753142842256.png`, which is the McMurry Hurricane logo imported by the app via Vite's `@assets` alias.
+2. **Untrack any debugging artifacts.** The `attached_assets/` folder contains personal screenshots (terminal captures, hostnames, IP addresses) that were used during development. The `.gitignore` excludes the entire folder **with one intentional exception** — `attached_assets/image_1753142842256.png`, which is the ScreenSaverLogo imported by the app via Vite's `@assets` alias.
 
    If your local checkout has other files in `attached_assets/` that were tracked before `.gitignore` was tightened, remove them from the git index (the .gitignore alone does NOT untrack already-tracked files):
    ```bash

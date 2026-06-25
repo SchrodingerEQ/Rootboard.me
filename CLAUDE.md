@@ -4,7 +4,7 @@ Guidance for any AI agent (Claude Code, etc.) working in this repository.
 
 ## Project at a glance
 
-- A touchscreen **Google Calendar kiosk** ("McMurry Hurricane Calendar"), designed to run 24/7 on a Raspberry Pi in Firefox kiosk mode.
+- A touchscreen **Google Calendar kiosk** ("Rootboard"), designed to run 24/7 on a Raspberry Pi in Firefox kiosk mode.
 - Stack: Express + React/Vite (TypeScript), `better-sqlite3` for storage (native module — must be `npm install`ed on the target, never copied between architectures).
 - Self-hosted default: SQLite (`calendar.db`); Google auth via a **service-account JSON key**. `DATABASE_URL` is only used for hosted (Postgres) deployments.
 - Ships an **auto-update** feature (`server/services/updateService.ts`) that downloads the latest GitHub **release source tarball**, applies it, runs `npm install && npm run build`, and restarts under a supervisor (`scripts/start.sh` / systemd).
