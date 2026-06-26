@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { getCalendarDateRange } from "@/lib/date-range";
 import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/pages/calendar";
 import { useOnlineStatus } from "./useOnlineStatus";
@@ -30,27 +31,13 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
   // Only perform queries when online AND screensaver is not active (energy optimization)
   const shouldPerformQueries = isOnline && !isScreensaverActive;
 
-  // Calculate date range based on current view (memoized to reduce recalculation)
-  const getDateRange = useCallback(() => {
-    const start = new Date(currentDate);
-    const end = new Date(currentDate);
-
-    if (currentView === 'month') {
-      start.setDate(1);
-      start.setDate(start.getDate() - start.getDay()); // Start of week containing first day
-      end.setMonth(end.getMonth() + 1, 0);
-      end.setDate(end.getDate() + (6 - end.getDay())); // End of week containing last day
-    } else if (currentView === 'week') {
-      start.setDate(start.getDate() - start.getDay());
-      end.setDate(start.getDate() + 6);
-    } else if (currentView === 'day') {
-      end.setDate(end.getDate() + 1);
-    }
-
-    return { start, end };
-  }, [currentDate, currentView]);
-
-  const { start, end } = useMemo(() => getDateRange(), [getDateRange]);
+  // Date range to fetch for the current view. Normalized to local midnight with
+  // an exclusive end so the window never shifts with the time of day — see
+  // getCalendarDateRange for why (week/day views were dropping events otherwise).
+  const { start, end } = useMemo(
+    () => getCalendarDateRange(currentDate, currentView),
+    [currentDate, currentView],
+  );
 
   // Check authentication status (with offline detection, screensaver pause, and backoff)
   const {
