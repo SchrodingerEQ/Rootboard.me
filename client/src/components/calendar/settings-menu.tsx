@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard } from "lucide-react";
 import { Link } from "wouter";
 import {
   AlertDialog,
@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useOskMode } from "@/hooks/use-osk-mode";
+import type { OskMode } from "@/lib/osk";
 
 interface CalendarInfo {
   id: string;
@@ -63,6 +65,7 @@ export function SettingsMenu({
     const saved = localStorage.getItem('calendar-brightness');
     return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
   });
+  const [oskMode, setOskMode] = useOskMode();
   const [calendarIdInput, setCalendarIdInput] = useState('');
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [calendarToRemove, setCalendarToRemove] = useState<CalendarInfo | null>(null);
@@ -263,6 +266,36 @@ export function SettingsMenu({
                 <Sun className="h-4 w-4 text-gray-600" />
               </div>
               <p className="text-xs text-gray-500">{brightness}%</p>
+            </div>
+
+            <Separator />
+
+            {/* On-screen keyboard */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Keyboard className="h-4 w-4" />
+                <Label className="text-sm font-medium">On-screen keyboard</Label>
+              </div>
+              <div className="flex gap-1.5">
+                {([
+                  { value: 'auto', label: 'Auto' },
+                  { value: 'on', label: 'Always' },
+                  { value: 'off', label: 'Off' },
+                ] as { value: OskMode; label: string }[]).map((opt) => (
+                  <Button
+                    key={opt.value}
+                    size="sm"
+                    variant={oskMode === opt.value ? 'default' : 'outline'}
+                    className="flex-1 h-8"
+                    onClick={() => setOskMode(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 leading-snug">
+                Auto shows a touch keyboard on touchscreens only (e.g. the Pi kiosk).
+              </p>
             </div>
 
             <Separator />

@@ -411,13 +411,25 @@
   .calendar-cell {
     min-height: 140px;
   }
-  
+
   .time-slot {
     height: 65px;
   }
-  
+
   .touch-button {
     min-width: 56px;
     min-height: 56px;
   }
+}
+
+/* On-screen keyboard: when open, lift the centered dialog to the top so the
+   keyboard (fixed at the bottom) doesn't cover the focused field or footer.
+   The dialog is normally centered via top:50% + translateY(-50%); we anchor it
+   near the top and keep only horizontal centering. */
+html[data-osk-open] [role="dialog"] {
+  top: 2.5vh !important;
+  transform: translateX(-50%) !important;
+  max-height: 55vh;
+  overflow-y: auto;
+  transition: top 0.15s ease, transform 0.15s ease;
 }
