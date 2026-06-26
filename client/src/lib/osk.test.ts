@@ -3,7 +3,7 @@
  * Run with:  npx tsx client/src/lib/osk.test.ts
  */
 import assert from "node:assert/strict";
-import { isEditableTarget, shouldShowKeyboard } from "./osk.ts";
+import { isEditableTarget, isTouchCapable, shouldShowKeyboard } from "./osk.ts";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
@@ -59,9 +59,29 @@ check("on → show whenever a field is focused, any pointer", () => {
   assert.ok(shouldShowKeyboard("on", false, true));
   assert.ok(shouldShowKeyboard("on", true, true));
 });
-check("auto → show only on a coarse (touch) pointer", () => {
+check("auto → show only on a touch device", () => {
   assert.ok(shouldShowKeyboard("auto", true, true)); // Pi touchscreen
   assert.ok(!shouldShowKeyboard("auto", false, true)); // Windows mouse
+});
+
+console.log("isTouchCapable");
+check("no signals → not touch (mouse-only desktop)", () =>
+  assert.ok(!isTouchCapable({ anyPointerCoarse: false, maxTouchPoints: 0, hasTouchStart: false })),
+);
+check("empty env → not touch", () => assert.ok(!isTouchCapable({})));
+check("any-pointer:coarse → touch", () =>
+  assert.ok(isTouchCapable({ anyPointerCoarse: true, maxTouchPoints: 0, hasTouchStart: false })),
+);
+check("maxTouchPoints > 0 → touch", () =>
+  assert.ok(isTouchCapable({ anyPointerCoarse: false, maxTouchPoints: 1, hasTouchStart: false })),
+);
+check("ontouchstart present → touch", () =>
+  assert.ok(isTouchCapable({ anyPointerCoarse: false, maxTouchPoints: 0, hasTouchStart: true })),
+);
+check("Pi regression: primary pointer fine but touch available → touch", () => {
+  // The exact kiosk case that broke auto mode: pointer:coarse was false, but
+  // any-pointer:coarse / maxTouchPoints reveal the touchscreen.
+  assert.ok(isTouchCapable({ anyPointerCoarse: true, maxTouchPoints: 10, hasTouchStart: true }));
 });
 
 console.log(`\nAll ${passed} assertions passed.`);

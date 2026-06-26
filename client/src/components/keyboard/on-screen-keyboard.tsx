@@ -5,24 +5,53 @@ import {
   SYMBOL_ROWS,
   backspace,
   insertText,
+  isTouchCapable,
   shouldShowKeyboard,
   type KeyDef,
 } from "@/lib/osk";
 import { useFocusedInput } from "@/hooks/use-focused-input";
 import { useOskMode } from "@/hooks/use-osk-mode";
 
-function useCoarsePointer(): boolean {
-  const [coarse, setCoarse] = useState(
-    () => typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches,
-  );
+function readTouchCapable(): boolean {
+  if (typeof window === "undefined") return false;
+  return isTouchCapable({
+    anyPointerCoarse: !!window.matchMedia?.("(any-pointer: coarse)").matches,
+    maxTouchPoints: typeof navigator !== "undefined" ? navigator.maxTouchPoints : 0,
+    hasTouchStart: "ontouchstart" in window,
+  });
+}
+
+function useTouchDevice(): boolean {
+  // Start from static capability detection (works where the browser reports it),
+  // then latch true on the first real touch interaction. The dynamic latch is
+  // the reliable path on Firefox/Linux kiosks, where the static media/touch
+  // queries frequently under-report touch even though the touchscreen works.
+  const [touch, setTouch] = useState(readTouchCapable);
   useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia("(pointer: coarse)");
-    const handler = () => setCoarse(mq.matches);
-    mq.addEventListener?.("change", handler);
-    return () => mq.removeEventListener?.("change", handler);
-  }, []);
-  return coarse;
+    if (typeof window === "undefined") return;
+    if (touch) return; // already known — no need to listen
+
+    const markTouch = () => setTouch(true);
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "touch") markTouch();
+    };
+    // capture phase so we still see it even if a handler stops propagation.
+    window.addEventListener("pointerdown", onPointerDown, { capture: true, passive: true });
+    window.addEventListener("touchstart", markTouch, { capture: true, passive: true });
+
+    const mq = window.matchMedia?.("(any-pointer: coarse)");
+    const onMq = () => {
+      if (readTouchCapable()) setTouch(true);
+    };
+    mq?.addEventListener?.("change", onMq);
+
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown, { capture: true } as EventListenerOptions);
+      window.removeEventListener("touchstart", markTouch, { capture: true } as EventListenerOptions);
+      mq?.removeEventListener?.("change", onMq);
+    };
+  }, [touch]);
+  return touch;
 }
 
 const isLetter = (s: string) => /^[a-z]$/.test(s);
@@ -35,11 +64,11 @@ const isLetter = (s: string) => /^[a-z]$/.test(s);
 export function OnScreenKeyboard() {
   const focused = useFocusedInput();
   const [mode] = useOskMode();
-  const coarse = useCoarsePointer();
+  const isTouchDevice = useTouchDevice();
   const [layer, setLayer] = useState<"letters" | "symbols">("letters");
   const [shift, setShift] = useState(false);
 
-  const visible = shouldShowKeyboard(mode, coarse, !!focused);
+  const visible = shouldShowKeyboard(mode, isTouchDevice, !!focused);
 
   // Shift the centered dialog up (CSS in index.css keys off this attribute) so
   // the keyboard doesn't cover the focused field and footer buttons.

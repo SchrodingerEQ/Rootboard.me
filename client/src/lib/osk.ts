@@ -38,20 +38,43 @@ export function isEditableTarget(
 
 /**
  * Should the keyboard be visible, given the user's mode preference, whether the
- * device has a coarse (touch) pointer, and whether a text field is focused?
+ * device supports touch input, and whether a text field is focused?
  *  - off  → never
  *  - on   → whenever a field is focused
  *  - auto → only on touch devices (so it stays hidden on a dev box with a mouse)
  */
 export function shouldShowKeyboard(
   mode: OskMode,
-  isCoarsePointer: boolean,
+  isTouchDevice: boolean,
   hasEditableTarget: boolean,
 ): boolean {
   if (!hasEditableTarget) return false;
   if (mode === "off") return false;
   if (mode === "on") return true;
-  return isCoarsePointer; // auto
+  return isTouchDevice; // auto
+}
+
+/**
+ * Static touch-capability detection — the fast path for "auto" mode (used
+ * alongside a runtime latch on the first real touch event, see useTouchDevice).
+ *
+ * Deliberately uses `any-pointer: coarse` (true if ANY available input is
+ * coarse/touch, even when a fine mouse is also present) plus maxTouchPoints and
+ * ontouchstart — NOT `pointer: coarse`, which only reflects the PRIMARY pointer
+ * and is reported as "fine" on many kiosk setups even with a touchscreen (that
+ * was the original bug). Any one signal is enough. Note these are unreliable on
+ * Firefox/Linux, which is why the runtime touch latch is the real guarantee.
+ */
+export function isTouchCapable(env: {
+  anyPointerCoarse?: boolean;
+  maxTouchPoints?: number;
+  hasTouchStart?: boolean;
+}): boolean {
+  return (
+    env.anyPointerCoarse === true ||
+    (env.maxTouchPoints ?? 0) > 0 ||
+    env.hasTouchStart === true
+  );
 }
 
 // A keyboard key is either a literal character to type, or a named control.
