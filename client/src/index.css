@@ -219,9 +219,16 @@
    The dialog is normally centered via top:50% + translateY(-50%); we anchor it
    near the top and keep only horizontal centering. */
 html[data-osk-open] [role="dialog"] {
-  top: 2.5vh !important;
-  transform: translateX(-50%) !important;
-  max-height: 55vh;
+  /* Anchor the dialog near the top via transform, not `top`: the dialog keeps
+     its top:50%, and translateY(2.5vh - 50vh) lands its top edge at 2.5vh.
+     (Overriding `top` directly proved unreliable against the dialog's
+     animation plumbing, while transform overrides demonstrably win.) */
+  transform: translateX(-50%) translateY(calc(2.5vh - 50vh)) !important;
+  /* Fit the dialog to the space actually above the keyboard (~300px incl.
+     margin) instead of a blanket 55vh — at kiosk resolution the old cap cut
+     off the form's Save/Cancel footer, which looked like a missing Save
+     button. The max() guard keeps a usable minimum on short viewports. */
+  max-height: max(40vh, calc(97.5vh - 300px));
   overflow-y: auto;
-  transition: top 0.15s ease, transform 0.15s ease;
+  transition: transform 0.15s ease;
 }

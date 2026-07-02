@@ -362,8 +362,8 @@ export default function CalendarPage() {
         
         {currentView === 'day' && (
           <div className="h-full">
-            <DayView 
-              currentDate={currentDate} 
+            <DayView
+              currentDate={currentDate}
               events={filteredEvents}
               isLoading={isLoading}
               onEventClick={handleEventClick}
@@ -384,11 +384,12 @@ export default function CalendarPage() {
         calendarColor={selectedEvent?.color ?? undefined}
       />
 
+      {/* No defaultStart: new events always pre-fill with today/now, not the
+          date the calendar happens to be navigated to. */}
       <EventFormDialog
         open={formDialogOpen && !isPowerSavingActive}
         onOpenChange={handleFormOpenChange}
         event={editingEvent}
-        defaultStart={currentDate}
       />
 
       {/* Authentication Dialog */}

@@ -25,15 +25,28 @@ interface EventFormDialogProps {
   defaultStart?: Date;
 }
 
-// Format a Date for datetime-local input (no Z, local timezone).
-function toLocalInput(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function toDateInput(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// Times are entered with touch-friendly hour/minute dropdowns instead of the
+// old datetime-local inputs: Firefox's native time segments only accept digits
+// from a physical keyboard, so on the kiosk (touch only, and the on-screen
+// keyboard cannot type into native pickers) times were effectively uneditable.
+export function hourLabel(h: number): string {
+  if (h === 0) return "12 AM";
+  if (h < 12) return `${h} AM`;
+  if (h === 12) return "12 PM";
+  return `${h - 12} PM`;
+}
+
+const BASE_MINUTES = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+/** 5-minute steps, plus the current value if the event has an odd minute. */
+export function minuteOptions(current: number): number[] {
+  if (BASE_MINUTES.includes(current)) return BASE_MINUTES;
+  return [...BASE_MINUTES, current].sort((a, b) => a - b);
 }
 
 function buildDefaults(event: CalendarEvent | null | undefined, defaultStart?: Date) {
@@ -50,8 +63,10 @@ function buildDefaults(event: CalendarEvent | null | undefined, defaultStart?: D
       isAllDay,
       startDate: toDateInput(start),
       endDate: toDateInput(displayEnd),
-      startDateTime: toLocalInput(start),
-      endDateTime: toLocalInput(end),
+      startHour: start.getHours(),
+      startMinute: start.getMinutes(),
+      endHour: end.getHours(),
+      endMinute: end.getMinutes(),
     };
   }
   const start = defaultStart ? new Date(defaultStart) : new Date();
@@ -70,9 +85,11 @@ function buildDefaults(event: CalendarEvent | null | undefined, defaultStart?: D
     calendarId: '',
     isAllDay: false,
     startDate: toDateInput(start),
-    endDate: toDateInput(start),
-    startDateTime: toLocalInput(start),
-    endDateTime: toLocalInput(end),
+    endDate: toDateInput(end), // end may roll into the next day (e.g. 11:30 PM start)
+    startHour: start.getHours(),
+    startMinute: start.getMinutes(),
+    endHour: end.getHours(),
+    endMinute: end.getMinutes(),
   };
 }
 
@@ -127,8 +144,9 @@ export function EventFormDialog({ open, onOpenChange, event, defaultStart }: Eve
       const inclusiveEnd = new Date(`${form.endDate}T00:00:00`);
       endTime = new Date(inclusiveEnd.getTime() + 24 * 60 * 60 * 1000);
     } else {
-      startTime = new Date(form.startDateTime);
-      endTime = new Date(form.endDateTime);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      startTime = new Date(`${form.startDate}T${pad(form.startHour)}:${pad(form.startMinute)}:00`);
+      endTime = new Date(`${form.endDate}T${pad(form.endHour)}:${pad(form.endMinute)}:00`);
     }
     return {
       title: form.title.trim(),
@@ -304,24 +322,49 @@ export function EventFormDialog({ open, onOpenChange, event, defaultStart }: Eve
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="event-start-dt">Start</Label>
-                <Input
-                  id="event-start-dt"
-                  type="datetime-local"
-                  value={form.startDateTime}
-                  onChange={(e) => setForm((f) => ({ ...f, startDateTime: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="event-end-dt">End</Label>
-                <Input
-                  id="event-end-dt"
-                  type="datetime-local"
-                  value={form.endDateTime}
-                  onChange={(e) => setForm((f) => ({ ...f, endDateTime: e.target.value }))}
-                />
-              </div>
+              {([
+                ['Start', 'startDate', 'startHour', 'startMinute'],
+                ['End', 'endDate', 'endHour', 'endMinute'],
+              ] as const).map(([label, dateKey, hourKey, minuteKey]) => (
+                <div key={label} className="space-y-1.5">
+                  <Label htmlFor={`event-${label.toLowerCase()}-date`}>{label}</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id={`event-${label.toLowerCase()}-date`}
+                      type="date"
+                      className="flex-1 min-w-0"
+                      value={form[dateKey]}
+                      onChange={(e) => setForm((f) => ({ ...f, [dateKey]: e.target.value }))}
+                    />
+                    <Select
+                      value={String(form[hourKey])}
+                      onValueChange={(v) => setForm((f) => ({ ...f, [hourKey]: Number(v) }))}
+                    >
+                      <SelectTrigger className="w-[104px] flex-shrink-0" data-testid={`select-${label.toLowerCase()}-hour`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 24 }, (_, h) => (
+                          <SelectItem key={h} value={String(h)}>{hourLabel(h)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      value={String(form[minuteKey])}
+                      onValueChange={(v) => setForm((f) => ({ ...f, [minuteKey]: Number(v) }))}
+                    >
+                      <SelectTrigger className="w-[80px] flex-shrink-0" data-testid={`select-${label.toLowerCase()}-minute`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {minuteOptions(form[minuteKey]).map((m) => (
+                          <SelectItem key={m} value={String(m)}>:{String(m).padStart(2, '0')}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
