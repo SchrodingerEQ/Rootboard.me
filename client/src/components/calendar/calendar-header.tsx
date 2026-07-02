@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon, ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CalendarView } from "@/pages/calendar";
 import logoImage from "@assets/image_1753142842256.png";
@@ -36,6 +36,21 @@ function formatRelative(iso: string): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
+// Reusable Circular icon button
+function IconButton({ children, onClick, title, disabled }: { children: React.ReactNode; onClick?: () => void; title?: string; disabled?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className="touch-button flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-[#5b626d] hover:bg-[var(--rb-chip-hover)] transition-colors disabled:opacity-50"
+      style={{ width: 46, height: 46 }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function CalendarHeader({
   currentView,
   currentDate,
@@ -50,183 +65,109 @@ export function CalendarHeader({
   needsAuth,
   lastSyncAt,
   lastSyncError,
-  settingsButton
+  settingsButton,
 }: CalendarHeaderProps) {
-  // Re-render every 30s so the relative timestamp stays fresh
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30 * 1000);
     return () => clearInterval(id);
   }, []);
+
   const getDateTitle = () => {
     if (currentView === 'month') {
-      return currentDate.toLocaleDateString('en-US', { 
-        month: 'long', 
-        year: 'numeric' 
-      });
+      return { main: currentDate.toLocaleDateString('en-US', { month: 'long' }), sub: currentDate.toLocaleDateString('en-US', { year: 'numeric' }) };
     } else if (currentView === 'week') {
-      return `Week of ${currentDate.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric'
-      })}`;
-    } else if (currentView === 'day') {
-      return currentDate.toLocaleDateString('en-US', { 
-        month: 'long', 
-        day: 'numeric'
-      });
+      return { main: `Week of ${currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`, sub: currentDate.toLocaleDateString('en-US', { year: 'numeric' }) };
     }
+    return { main: currentDate.toLocaleDateString('en-US', { weekday: 'long' }), sub: currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' }) };
   };
 
+  const title = getDateTitle();
+
+  const viewButton = (view: CalendarView, label: string) => (
+    <Button
+      variant="ghost"
+      size="sm"
+      className={`touch-button px-5 rounded-full text-base font-bold transition-colors h-[38px] ${
+        currentView === view
+          ? 'bg-[#2b3038] text-white hover:bg-[#2b3038]'
+          : 'text-[#5b626d] hover:bg-white'
+      }`}
+      onClick={() => onViewChange(view)}
+    >
+      {label}
+    </Button>
+  );
+
   return (
-    <header className="bg-white border-b border-border px-3 py-0.5 flex items-center justify-between shadow-sm">
-      <div className="flex items-center space-x-3">
-        {/* Custom Logo */}
-        <div className="flex items-center">
-          <img 
-            src={logoImage} 
-            alt="ScreenSaver Logo"
-            className="h-16 w-auto"
-          />
+    <header className="bg-white px-7 py-3 flex items-center justify-between">
+      {/* Left: nav + title + today */}
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1">
+          <IconButton onClick={() => onNavigate(-1)} title="Previous"><ChevronLeft size={24} /></IconButton>
+          <IconButton onClick={() => onNavigate(1)} title="Next"><ChevronRight size={24} /></IconButton>
         </div>
-        
-        {/* Navigation Controls */}
-        <div className="flex items-center space-x-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="touch-button px-2 py-1 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))] h-14 w-14"
-            onClick={() => onNavigate(-1)}
-          >
-            <ChevronLeft size={30} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="touch-button px-2 py-1 text-[hsl(var(--google-gray))] hover:bg-[hsl(var(--google-light-gray))] h-14 w-14"
-            onClick={() => onNavigate(1)}
-          >
-            <ChevronRight size={30} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="touch-button px-4 py-2 text-[hsl(var(--google-blue))] hover:bg-blue-50 font-medium text-base h-10"
-            onClick={onToday}
-          >
-            Today
-          </Button>
+        <div className="flex items-baseline gap-2.5">
+          <h1 className="text-[30px] font-extrabold tracking-tight text-[#2b3038] leading-none">{title.main}</h1>
+          <span className="text-[30px] font-normal text-[var(--rb-muted)] leading-none">{title.sub}</span>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="touch-button px-5 h-10 rounded-full bg-[#eef4ff] text-[#2563eb] hover:bg-[#e1ebff] font-bold text-base"
+          onClick={onToday}
+        >
+          Today
+        </Button>
       </div>
-      
-      {/* Current Date Display */}
-      <div className="flex-1 text-center">
-        <h2 className="text-lg font-medium text-[hsl(var(--google-gray))]">
-          {getDateTitle()}
-        </h2>
+
+      {/* Center: logo (enlarged + lowered for balanced top/bottom spacing, height-capped so it doesn't grow the header) */}
+      <div className="flex items-center h-12 overflow-visible">
+        <img src={logoImage} alt="Rootboard" className="h-[84px] w-auto translate-y-[14px]" />
       </div>
-      
-      {/* View Toggle and Actions */}
-      <div className="flex items-center space-x-2">
-        {/* View Toggle Buttons */}
-        <div className="flex items-center space-x-1 bg-[hsl(var(--google-light-gray))] rounded-lg p-0.5">
-          <Button
-            variant={currentView === 'day' ? 'default' : 'ghost'}
-            size="sm"
-            className={`touch-button px-4 py-2 rounded-md transition-colors text-base font-medium h-10 ${
-              currentView === 'day' 
-                ? 'bg-emerald-400 hover:bg-emerald-500 text-white shadow-sm' 
-                : 'text-[hsl(var(--google-gray))] hover:bg-white'
-            }`}
-            onClick={() => onViewChange('day')}
-          >
-            Day
-          </Button>
-          <Button
-            variant={currentView === 'week' ? 'default' : 'ghost'}
-            size="sm"
-            className={`touch-button px-4 py-2 rounded-md transition-colors text-base font-medium h-10 ${
-              currentView === 'week' 
-                ? 'bg-emerald-400 hover:bg-emerald-500 text-white shadow-sm' 
-                : 'text-[hsl(var(--google-gray))] hover:bg-white'
-            }`}
-            onClick={() => onViewChange('week')}
-          >
-            Week
-          </Button>
-          <Button
-            variant={currentView === 'month' ? 'default' : 'ghost'}
-            size="sm"
-            className={`touch-button px-4 py-2 rounded-md transition-colors text-base font-medium h-10 ${
-              currentView === 'month' 
-                ? 'bg-emerald-400 hover:bg-emerald-500 text-white shadow-sm' 
-                : 'text-[hsl(var(--google-gray))] hover:bg-white'
-            }`}
-            onClick={() => onViewChange('month')}
-          >
-            Month
-          </Button>
+
+      {/* Right: view toggle + actions */}
+      <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-1 bg-[var(--rb-chip)] rounded-full p-1">
+          {viewButton('day', 'Day')}
+          {viewButton('week', 'Week')}
+          {viewButton('month', 'Month')}
         </div>
-        
-        {/* New Event Button */}
+
         {onNewEvent && (
           <Button
             size="sm"
-            className="touch-button bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 text-base h-10"
+            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-accent)] hover:bg-[var(--rb-accent-hover)] text-white text-base font-bold shadow-[0_2px_6px_rgba(242,101,90,.35)]"
             onClick={onNewEvent}
             data-testid="button-new-event"
           >
-            <Plus className="mr-1" size={18} />
-            New Event
+            <Plus className="mr-1.5" size={20} strokeWidth={2.6} />
+            Add Event
           </Button>
         )}
 
-        {/* Sleep Button */}
-        <button
-          onClick={onSleep}
-          className="touch-button px-5 py-2 bg-sky-400 hover:bg-sky-500 text-white text-base font-medium rounded-full transition-colors h-10"
-          data-testid="button-sleep"
-        >
-          SLEEP
-        </button>
-        
-        {/* Auth Button */}
         {needsAuth && (
           <Button
             size="sm"
-            className="touch-button bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-base h-10"
+            className="touch-button h-[46px] px-4 rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white text-base font-bold"
             onClick={onAuth}
           >
-            <Key className="mr-1" size={18} />
+            <Key className="mr-1.5" size={18} />
             Connect Google
           </Button>
         )}
-        
-        {/* Sync health indicator */}
+
         {(lastSyncAt || lastSyncError) && (
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div
-                  className="flex items-center space-x-1.5 text-xs text-[hsl(var(--google-gray))] px-2"
-                  data-testid="sync-status-indicator"
-                >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8b919b] px-2" data-testid="sync-status-indicator">
                   {lastSyncError ? (
-                    <AlertTriangle
-                      size={16}
-                      className="text-red-600"
-                      data-testid="sync-error-icon"
-                    />
+                    <AlertTriangle size={16} className="text-red-600" data-testid="sync-error-icon" />
                   ) : (
-                    <span
-                      className="inline-block h-2 w-2 rounded-full bg-emerald-500"
-                      data-testid="sync-ok-dot"
-                    />
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" data-testid="sync-ok-dot" />
                   )}
-                  <span>
-                    {lastSyncAt
-                      ? `Updated: ${formatRelative(lastSyncAt)}`
-                      : "Not yet synced"}
-                  </span>
+                  <span>{lastSyncAt ? `Updated ${formatRelative(lastSyncAt)}` : "Not yet synced"}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -236,29 +177,27 @@ export function CalendarHeader({
                     <div className="text-xs mt-1 break-words">{lastSyncError}</div>
                   </div>
                 ) : (
-                  <div className="text-xs">
-                    Last successful sync:{" "}
-                    {lastSyncAt ? new Date(lastSyncAt).toLocaleString() : "never"}
-                  </div>
+                  <div className="text-xs">Last successful sync: {lastSyncAt ? new Date(lastSyncAt).toLocaleString() : "never"}</div>
                 )}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}
 
-        {/* Refresh Button */}
+        <IconButton onClick={onRefresh} title="Refresh" disabled={isRefreshing}>
+          <RefreshCw className={isRefreshing ? 'animate-spin' : ''} size={22} />
+        </IconButton>
         <Button
+          variant="ghost"
           size="sm"
-          className="touch-button bg-[hsl(var(--google-blue))] text-white hover:bg-[hsl(var(--google-blue-hover))] px-4 py-2 text-base h-10"
-          onClick={onRefresh}
-          disabled={isRefreshing}
+          className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-[#5b626d] text-base font-bold"
+          onClick={onSleep}
+          data-testid="button-sleep"
         >
-          <RefreshCw className={`mr-1 ${isRefreshing ? 'animate-spin' : ''}`} size={18} />
-          Refresh
+          <Moon className="mr-1.5" size={20} />
+          Sleep
         </Button>
-        
-        {/* Settings Button */}
-        {settingsButton}
+        {settingsButton ?? null}
       </div>
     </header>
   );

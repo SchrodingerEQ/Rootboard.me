@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface CalendarInfo {
@@ -19,129 +17,79 @@ interface CalendarFiltersProps {
   visibleCalendarsInHeader: Set<string>;
 }
 
+// Warm family-display profile legend: an avatar + name per calendar. Tapping a
+// profile toggles its events; a disabled profile dims out.
 export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCalendarsInHeader }: CalendarFiltersProps) {
   const { data: calendars, isLoading, error } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
     enabled: true,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 
   const getCalendarColor = (calendar: CalendarInfo): string => {
-    if (calendar.backgroundColor) {
-      return calendar.backgroundColor;
-    }
-    
-    // Generate a consistent color based on calendar ID (same logic as backend)
+    if (calendar.backgroundColor) return calendar.backgroundColor;
+
     const colors = [
-      '#1a73e8', // Blue
-      '#34a853', // Green  
-      '#ea4335', // Red
-      '#ff9800', // Orange
-      '#9c27b0', // Purple
-      '#795548', // Brown
-      '#607d8b', // Blue Grey
-      '#e91e63', // Pink
-      '#4caf50', // Light Green
-      '#ff5722', // Deep Orange
-      '#3f51b5', // Indigo
-      '#009688', // Teal
+      '#2563eb', '#16a34a', '#e11d48', '#ea8c00', '#9333ea',
+      '#795548', '#607d8b', '#e91e63', '#4caf50', '#ff5722', '#3f51b5', '#009688',
     ];
-    
-    // Create a simple hash from the calendar ID to get consistent colors
     let hash = 0;
     for (let i = 0; i < calendar.id.length; i++) {
       hash = ((hash << 5) - hash + calendar.id.charCodeAt(i)) & 0xffffffff;
     }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
+    return colors[Math.abs(hash) % colors.length];
   };
 
-  const getInitials = (name: string): string => {
-    return name
-      .split(' ')
-      .map(word => word[0])
-      .join('')
-      .substring(0, 2)
-      .toUpperCase();
-  };
+  const getInitials = (name: string): string =>
+    name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
-  if (error) {
-    return null; // Hide filter if calendars can't be loaded
-  }
+  if (error) return null;
 
   if (isLoading) {
     return (
-      <div className="flex gap-2 px-4 py-2 bg-white border-b">
+      <div className="flex gap-5 py-1">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-16 rounded-full" />
+          <div key={i} className="flex items-center gap-2">
+            <Skeleton className="h-7 w-7 rounded-full" />
+            <Skeleton className="h-4 w-16" />
+          </div>
         ))}
       </div>
     );
   }
 
-  if (!calendars || !Array.isArray(calendars) || calendars.length < 1) {
-    return null; // Hide filter if no calendars
-  }
+  if (!calendars || !Array.isArray(calendars) || calendars.length < 1) return null;
 
-  // Show only calendars that are marked as visible in the header
-  const visibleCalendars = calendars.filter((calendar: CalendarInfo) => 
-    visibleCalendarsInHeader.has(calendar.id)
-  );
-  
-
-  
-
-
-
-
-  // If no calendars are visible in header, don't show the filter bar
-  if (visibleCalendars.length === 0) {
-    return null;
-  }
+  const visibleCalendars = calendars.filter(c => visibleCalendarsInHeader.has(c.id));
+  if (visibleCalendars.length === 0) return null;
 
   return (
-    <div className="flex gap-1 px-0 py-0.5 bg-white overflow-x-auto">
-      {visibleCalendars.map((calendar: CalendarInfo) => {
+    <div className="flex gap-5 py-1 overflow-x-auto">
+      {visibleCalendars.map((calendar) => {
         const isEnabled = enabledCalendars.has(calendar.id);
         const color = getCalendarColor(calendar);
         const initials = getInitials(calendar.summary);
-        
+
         return (
-          <Button
+          <button
             key={calendar.id}
-            variant="outline"
-            size="sm"
-            className={`
-              flex items-center gap-1 whitespace-nowrap min-w-fit rounded-full px-2 py-0.5 text-xs font-medium h-6
-              transition-all duration-200 border
-              ${isEnabled 
-                ? 'opacity-100 shadow-sm' 
-                : 'opacity-50 hover:opacity-75'
-              }
-            `}
-            style={{
-              backgroundColor: isEnabled ? color : 'white',
-              borderColor: color,
-              color: isEnabled ? 'white' : color,
-            }}
+            className="flex items-center gap-2 whitespace-nowrap min-w-fit transition-opacity touch-button"
+            style={{ opacity: isEnabled ? 1 : 0.4 }}
             onClick={() => onCalendarToggle(calendar.id, !isEnabled)}
             title={`${isEnabled ? 'Hide' : 'Show'} ${calendar.summary} calendar`}
           >
-            <div 
-              className={`
-                w-3 h-3 rounded-full flex items-center justify-center text-xs font-bold
-                ${isEnabled ? 'bg-white/20' : ''}
-              `}
-              style={{
-                backgroundColor: isEnabled ? 'rgba(255,255,255,0.3)' : color,
-                color: isEnabled ? 'white' : 'white',
-              }}
+            <span
+              className="rounded-full flex items-center justify-center text-xs font-extrabold text-white"
+              style={{ width: 30, height: 30, background: color }}
             >
               {initials}
-            </div>
-            <span className="font-medium text-xs">{calendar.summary}</span>
-          </Button>
+            </span>
+            <span className="text-base font-bold text-[#3a4049]">{calendar.summary}</span>
+            {!isEnabled && (
+              <span className="text-xs font-bold text-[#b0b5be]">(hidden)</span>
+            )}
+          </button>
         );
       })}
     </div>

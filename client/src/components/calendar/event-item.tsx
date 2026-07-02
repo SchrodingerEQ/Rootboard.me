@@ -1,5 +1,6 @@
 import type { CalendarEvent } from "@shared/schema";
 import { formatTime } from "@/lib/date-utils";
+import { eventTint, eventTextColor } from "@/lib/color-utils";
 
 interface EventItemProps {
   event: CalendarEvent;
@@ -10,62 +11,55 @@ interface EventItemProps {
   onClick?: (event: CalendarEvent) => void;
 }
 
-// Format time for compact display: "4p" for on-the-hour, "4:30" for off-hour
+// Compact time for month chips: "4p" on the hour, "4:30" otherwise.
 function formatCompactTime(date: Date): string {
   const hours = date.getHours();
   const minutes = date.getMinutes();
   const isPM = hours >= 12;
   const hour12 = hours % 12 || 12;
-  
-  if (minutes === 0) {
-    // On the hour: show as "4p" or "4a"
-    return `${hour12}${isPM ? 'p' : 'a'}`;
-  } else {
-    // Not on the hour: show as "4:30"
-    return `${hour12}:${minutes.toString().padStart(2, '0')}`;
-  }
+  return minutes === 0
+    ? `${hour12}${isPM ? "p" : "a"}`
+    : `${hour12}:${minutes.toString().padStart(2, "0")}`;
 }
 
-export function EventItem({ event, compact = false, timeSlot = false, detailed = false, layout, onClick }: EventItemProps) {
-  const getTextColor = (backgroundColor: string): string => {
-    // Convert hex to RGB to determine if we need light or dark text
-    const hex = backgroundColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    // Calculate brightness using standard formula
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    
-    // Return white text for dark backgrounds, black for light backgrounds
-    return brightness < 128 ? '#ffffff' : '#000000';
-  };
-
-  const backgroundColor = event.color || '#1a73e8';
-  const textColor = getTextColor(backgroundColor);
+export function EventItem({
+  event,
+  compact = false,
+  timeSlot = false,
+  detailed = false,
+  layout,
+  onClick,
+}: EventItemProps) {
+  // Warm family-display treatment: soft tint background + colored accent + dark readable text,
+  // derived from whatever hex the calendar/event carries.
+  const color = event.color || "#2563eb";
+  const tint = eventTint(color);
+  const ink = eventTextColor(color);
   const startTime = new Date(event.startTime);
   const endTime = new Date(event.endTime);
 
   if (detailed) {
     return (
-      <div 
-        className="event-item m-2 p-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-        style={{ backgroundColor, color: textColor }}
+      <div
+        className="event-item m-2 p-3 rounded-2xl cursor-pointer transition hover:brightness-95"
+        style={{ background: tint, borderLeft: `5px solid ${color}` }}
         onClick={() => onClick?.(event)}
       >
-        <div className="font-medium">{event.title}</div>
+        <div className="font-extrabold" style={{ color: ink }}>{event.title}</div>
         {event.isAllDay ? (
-          <div className="text-xs opacity-75">All day</div>
+          <div className="text-xs font-semibold" style={{ color: ink, opacity: 0.8 }}>All day</div>
         ) : (
-          <div className="text-xs opacity-75">
+          <div className="text-xs font-semibold" style={{ color: ink, opacity: 0.8 }}>
             {formatTime(startTime)} - {formatTime(endTime)}
           </div>
         )}
         {event.location && (
-          <div className="text-xs opacity-75">{event.location}</div>
+          <div className="text-xs font-medium" style={{ color: ink, opacity: 0.7 }}>{event.location}</div>
         )}
         {event.description && (
-          <div className="text-xs opacity-75 mt-1 line-clamp-2">{event.description}</div>
+          <div className="text-xs mt-1 line-clamp-2 font-medium" style={{ color: ink, opacity: 0.7 }}>
+            {event.description}
+          </div>
         )}
       </div>
     );
@@ -73,70 +67,74 @@ export function EventItem({ event, compact = false, timeSlot = false, detailed =
 
   if (timeSlot) {
     const baseStyle = {
-      backgroundColor,
-      color: textColor,
-      minHeight: '20px'
+      background: tint,
+      borderLeft: `4px solid ${color}`,
+      color: ink,
+      minHeight: "20px",
     };
 
-    const layoutStyle = layout ? {
-      ...baseStyle,
-      position: 'absolute' as const,
-      width: layout.width,
-      left: layout.left,
-      zIndex: layout.zIndex ?? 1,
-      top: layout.top || '0',
-      height: layout.height || '100%',
-      maxWidth: '100%',
-      boxSizing: 'border-box' as const
-    } : {
-      ...baseStyle,
-      width: 'calc(100% - 4px)'
-    };
+    const layoutStyle = layout
+      ? {
+          ...baseStyle,
+          position: "absolute" as const,
+          width: layout.width,
+          left: layout.left,
+          zIndex: layout.zIndex ?? 1,
+          top: layout.top || "0",
+          height: layout.height || "100%",
+          maxWidth: "100%",
+          boxSizing: "border-box" as const,
+        }
+      : {
+          ...baseStyle,
+          width: "calc(100% - 4px)",
+        };
 
     return (
-      <div 
-        className={`event-item ${layout ? 'absolute' : 'mx-0.5'} px-1 py-0.5 rounded cursor-pointer hover:opacity-90 transition-opacity text-xs overflow-hidden`}
+      <div
+        className={`event-item ${layout ? "absolute" : "mx-0.5"} px-2 py-0.5 rounded-lg cursor-pointer transition hover:brightness-95 text-xs overflow-hidden`}
         style={layoutStyle}
         onClick={() => onClick?.(event)}
-        title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ''}`}
+        title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ""}`}
       >
-        <div className="font-medium text-xs truncate w-full">{event.title}</div>
-        <div className="text-xs opacity-75 truncate w-full">
+        <div className="font-extrabold text-xs truncate w-full" style={{ color: ink }}>{event.title}</div>
+        <div className="text-xs font-semibold truncate w-full" style={{ color: ink, opacity: 0.8 }}>
           {formatTime(startTime)} - {formatTime(endTime)}
         </div>
         {event.location && (
-          <div className="text-xs opacity-75 truncate w-full">{event.location}</div>
+          <div className="text-xs font-medium truncate w-full" style={{ color: ink, opacity: 0.7 }}>{event.location}</div>
         )}
       </div>
     );
   }
 
   if (compact) {
-    // For all-day events, don't show time
     const timeDisplay = event.isAllDay ? null : formatCompactTime(startTime);
-    
+
     return (
-      <div 
-        className="event-item cursor-pointer hover:opacity-90 transition-opacity px-1 py-0.5 rounded text-xs w-full max-w-full overflow-hidden whitespace-nowrap flex items-center gap-1"
-        style={{ backgroundColor, color: textColor }}
-        title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ''}`}
+      <div
+        className="event-item cursor-pointer transition hover:brightness-95 px-2 py-0.5 rounded-md text-xs w-full max-w-full overflow-hidden whitespace-nowrap flex items-center gap-1.5"
+        style={{ background: tint }}
+        title={`${event.title}\n${formatTime(startTime)} - ${formatTime(endTime)}${event.location ? `\n${event.location}` : ""}`}
         onClick={() => onClick?.(event)}
       >
+        <span className="flex-shrink-0 rounded-full" style={{ width: 8, height: 8, background: color }} />
         {timeDisplay && (
-          <span className="flex-shrink-0 font-medium">{timeDisplay}</span>
+          <span className="flex-shrink-0 font-extrabold" style={{ color: ink }}>{timeDisplay}</span>
         )}
-        <span className="truncate">{event.title}</span>
+        <span className="truncate font-semibold" style={{ color: ink }}>{event.title}</span>
       </div>
     );
   }
 
   return (
-    <div 
-      className="event-item cursor-pointer hover:opacity-90 transition-opacity w-full max-w-full overflow-hidden"
-      style={{ backgroundColor, color: textColor }}
+    <div
+      className="event-item cursor-pointer transition hover:brightness-95 w-full max-w-full overflow-hidden px-2 py-0.5 rounded-md flex items-center gap-1.5"
+      style={{ background: tint }}
       onClick={() => onClick?.(event)}
     >
-      {event.title}
+      <span className="flex-shrink-0 rounded-full" style={{ width: 8, height: 8, background: color }} />
+      <span className="truncate font-semibold" style={{ color: ink }}>{event.title}</span>
     </div>
   );
 }
