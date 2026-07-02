@@ -77,6 +77,21 @@ export function isTouchCapable(env: {
   );
 }
 
+/**
+ * Is this element (the new focus target) inside the on-screen keyboard itself?
+ *
+ * The focus tracker uses this to IGNORE focus transfers into the keyboard: the
+ * key buttons preventDefault on pointerdown/mousedown so taps shouldn't move
+ * focus, but some touch stacks (notably Firefox on Linux kiosks) move focus to
+ * the tapped button anyway. Without this check every keypress blurred the
+ * input and closed the keyboard. Duck-typed so tests can pass plain objects.
+ */
+export function isInsideOsk(
+  el: { closest?: (selector: string) => unknown } | null | undefined,
+): boolean {
+  return !!el?.closest?.('[data-osk="true"]');
+}
+
 // A keyboard key is either a literal character to type, or a named control.
 export type KeyDef =
   | { type: "char"; label: string; value: string }

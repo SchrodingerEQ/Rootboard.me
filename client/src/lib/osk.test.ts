@@ -3,7 +3,7 @@
  * Run with:  npx tsx client/src/lib/osk.test.ts
  */
 import assert from "node:assert/strict";
-import { isEditableTarget, isTouchCapable, shouldShowKeyboard } from "./osk.ts";
+import { isEditableTarget, isInsideOsk, isTouchCapable, shouldShowKeyboard } from "./osk.ts";
 
 let passed = 0;
 const check = (name: string, fn: () => void) => {
@@ -82,6 +82,27 @@ check("Pi regression: primary pointer fine but touch available → touch", () =>
   // The exact kiosk case that broke auto mode: pointer:coarse was false, but
   // any-pointer:coarse / maxTouchPoints reveal the touchscreen.
   assert.ok(isTouchCapable({ anyPointerCoarse: true, maxTouchPoints: 10, hasTouchStart: true }));
+});
+
+console.log("isInsideOsk (touchscreen blur-guard)");
+check("element inside the keyboard → true", () =>
+  assert.ok(isInsideOsk({ closest: (sel: string) => (sel === '[data-osk="true"]' ? {} : null) })),
+);
+check("element outside the keyboard → false", () =>
+  assert.ok(!isInsideOsk({ closest: () => null })),
+);
+check("null / body-like element without closest → false", () => {
+  assert.ok(!isInsideOsk(null));
+  assert.ok(!isInsideOsk(undefined));
+  assert.ok(!isInsideOsk({}));
+});
+check("Pi regression: focus stolen by a key button must NOT clear the target", () => {
+  // Firefox/Linux touch moves focus to the tapped key despite preventDefault.
+  // The focus tracker keeps the field when the new activeElement is inside
+  // the keyboard — this is what stopped the keyboard closing on every tap.
+  const keyButton = { closest: (sel: string) => (sel === '[data-osk="true"]' ? {} : null) };
+  const shouldClearTarget = !isEditableTarget(keyButton as any) && !isInsideOsk(keyButton);
+  assert.equal(shouldClearTarget, false);
 });
 
 console.log(`\nAll ${passed} assertions passed.`);

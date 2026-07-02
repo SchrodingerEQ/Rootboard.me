@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   LETTER_ROWS,
   SYMBOL_ROWS,
   backspace,
   insertText,
+  isInsideOsk,
   isTouchCapable,
   shouldShowKeyboard,
   type KeyDef,
@@ -67,8 +68,26 @@ export function OnScreenKeyboard() {
   const isTouchDevice = useTouchDevice();
   const [layer, setLayer] = useState<"letters" | "symbols">("letters");
   const [shift, setShift] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const visible = shouldShowKeyboard(mode, isTouchDevice, !!focused);
+
+  // Cancel touchstart on the keyboard NATIVELY and non-passively. React's
+  // root-level touch listeners are passive, so onTouchStart preventDefault
+  // would be silently ignored. Canceling touchstart stops touch browsers from
+  // focusing the tapped button (and suppresses the compatibility mouse events)
+  // — the primary defense against the tap blurring the input on touchscreens.
+  // Key dispatch is unaffected: pointerdown fires before touchstart.
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+    const onTouchStart = (e: TouchEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+    node.addEventListener("touchstart", onTouchStart, { passive: false });
+    return () => node.removeEventListener("touchstart", onTouchStart);
+  }, [visible]);
 
   // Shift the centered dialog up (CSS in index.css keys off this attribute) so
   // the keyboard doesn't cover the focused field and footer buttons.
@@ -96,6 +115,7 @@ export function OnScreenKeyboard() {
     if (key.type === "char") {
       const value = shift && isLetter(key.value) ? key.value.toUpperCase() : key.value;
       insertText(target, value);
+      restoreFocus(target);
       return;
     }
     switch (key.action) {
@@ -112,9 +132,25 @@ export function OnScreenKeyboard() {
         setLayer((l) => (l === "letters" ? "symbols" : "letters"));
         setShift(false);
         break;
-      case "done":
+      case "done": {
+        // Deliberately closing: release focus from wherever it actually sits.
+        // On touch stacks that moved focus onto the Done key itself, blurring
+        // only the field would be a no-op and the keyboard would never close.
         target.blur();
-        break;
+        const active = document.activeElement as HTMLElement | null;
+        if (active && isInsideOsk(active)) active.blur();
+        return; // don't re-focus
+      }
+    }
+    restoreFocus(target);
+  };
+
+  // If the browser moved focus to the tapped key anyway (Firefox/Linux touch
+  // does, despite all the preventDefaults), put it back on the field so the
+  // caret stays visible and the keyboard stays anchored to its target.
+  const restoreFocus = (target: HTMLElement) => {
+    if (document.activeElement !== target) {
+      target.focus({ preventScroll: true });
     }
   };
 
@@ -125,6 +161,7 @@ export function OnScreenKeyboard() {
 
   return createPortal(
     <div
+      ref={containerRef}
       data-osk="true"
       // mousedown preventDefault is what actually keeps focus on the input: a
       // tap on a button would otherwise move focus to it (even tabIndex=-1),

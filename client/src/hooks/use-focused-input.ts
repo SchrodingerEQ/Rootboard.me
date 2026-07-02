@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { isEditableTarget } from "@/lib/osk";
+import { isEditableTarget, isInsideOsk } from "@/lib/osk";
 
 type EditableEl = HTMLInputElement | HTMLTextAreaElement;
 
@@ -8,9 +8,11 @@ type EditableEl = HTMLInputElement | HTMLTextAreaElement;
  * focusin/focusout at the document level so it works for any field anywhere in
  * the app without per-field wiring.
  *
- * Note: the keyboard prevents default on pointerdown, so tapping keys never
- * moves focus and won't fire focusout — the tracked element stays put while
- * typing.
+ * The keyboard prevents default on pointerdown/mousedown/touchstart so tapping
+ * keys shouldn't move focus — but some touch stacks (Firefox/Linux kiosks)
+ * move focus to the tapped key button regardless. Focus transfers INTO the
+ * keyboard are therefore ignored here: the tracked field survives the tap and
+ * the keyboard re-focuses the field right after handling the key.
  */
 export function useFocusedInput(): EditableEl | null {
   const [el, setEl] = useState<EditableEl | null>(null);
@@ -25,11 +27,13 @@ export function useFocusedInput(): EditableEl | null {
     const onFocusOut = () => {
       // Defer so we can read the new activeElement after focus settles.
       setTimeout(() => {
-        if (!isEditableTarget(document.activeElement as EditableEl)) {
+        const active = document.activeElement;
+        if (isEditableTarget(active as EditableEl)) {
+          setEl(active as EditableEl);
+        } else if (!isInsideOsk(active)) {
           setEl(null);
-        } else {
-          setEl(document.activeElement as EditableEl);
         }
+        // else: focus landed on the keyboard itself — keep the tracked field.
       }, 0);
     };
     document.addEventListener("focusin", onFocusIn);
