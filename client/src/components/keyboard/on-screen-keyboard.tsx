@@ -183,7 +183,13 @@ export function OnScreenKeyboard() {
         if (key) handleKey(key);
       }}
       className="fixed inset-x-0 bottom-0 z-[60] select-none border-t border-border bg-[hsl(var(--google-light-gray),#f1f3f4)] px-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.15)]"
-      style={{ touchAction: "manipulation" }}
+      // pointerEvents auto is LOAD-BEARING: modal Radix dialogs set
+      // `pointer-events: none` on document.body, and this keyboard is portaled
+      // into body — without the explicit re-enable, every tap falls through
+      // the (visible) keyboard to the dialog overlay beneath it, which blurs
+      // the field and closes the keyboard. That was the kiosk bug: the
+      // keyboard's own handlers never ran at all.
+      style={{ touchAction: "manipulation", pointerEvents: "auto" }}
     >
       <div className="mx-auto flex max-w-5xl flex-col gap-1.5">
         {rows.map((row, r) => (
