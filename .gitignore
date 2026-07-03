@@ -53,3 +53,7 @@ npm-debug.log*
 # Editor
 .vscode/
 .idea/
+
+# Local agent documentation (docs/SPEC.md) — deliberately not published;
+# see CLAUDE.md. Public docs are README.md / INSTALLATION.md.
+docs/

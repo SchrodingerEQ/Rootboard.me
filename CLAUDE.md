@@ -2,6 +2,11 @@
 
 Guidance for any AI agent (Claude Code, etc.) working in this repository.
 
+> **Full current spec:** if `docs/SPEC.md` exists in your checkout, read it —
+> it documents the as-built behavior (views, data invariants, OSK/kiosk
+> quirks, update system) in detail. It is local-only (gitignored, so fresh
+> clones won't have it); keep it updated when behavior changes.
+
 ## Project at a glance
 
 - A touchscreen **Google Calendar kiosk** ("Rootboard"), designed to run 24/7 on a Raspberry Pi in Firefox kiosk mode.
