@@ -2,6 +2,7 @@ import { google } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 import { existsSync, readFileSync } from 'fs';
 import { storage } from '../storage';
+import { normalizeGoogleEventTimes } from './googleEventTimes';
 import type { CalendarEvent, InsertCalendarEvent } from '@shared/schema';
 
 export class GoogleCalendarService {
@@ -197,11 +198,9 @@ export class GoogleCalendarService {
                 calendarName: calendar.summary || 'Unknown Calendar',
                 title: googleEvent.summary || 'Untitled Event',
                 description: googleEvent.description || '',
-                startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date!),
-                endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date!),
+                ...normalizeGoogleEventTimes(googleEvent.start, googleEvent.end),
                 location: googleEvent.location || '',
                 color: calendar.backgroundColor || this.getCalendarColorById(calendar.id),
-                isAllDay: !!googleEvent.start?.date,
               };
 
               let event: CalendarEvent;
@@ -312,12 +311,7 @@ export class GoogleCalendarService {
   }
 
   private parseGoogleEventTimes(googleEvent: any): { startTime: Date; endTime: Date; isAllDay: boolean } {
-    const isAllDay = !!googleEvent.start?.date;
-    return {
-      startTime: new Date(googleEvent.start?.dateTime || googleEvent.start?.date),
-      endTime: new Date(googleEvent.end?.dateTime || googleEvent.end?.date),
-      isAllDay,
-    };
+    return normalizeGoogleEventTimes(googleEvent.start, googleEvent.end);
   }
 
   async createEvent(input: {

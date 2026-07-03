@@ -54,8 +54,10 @@ function buildDefaults(event: CalendarEvent | null | undefined, defaultStart?: D
     const start = new Date(event.startTime);
     const end = new Date(event.endTime);
     const isAllDay = !!event.isAllDay;
-    // Google all-day end is exclusive (next day). Show the inclusive last day.
-    const displayEnd = isAllDay ? new Date(end.getTime() - 24 * 60 * 60 * 1000) : end;
+    // Show the inclusive last day. Stepping back 1ms works for both stored
+    // all-day formats: an exclusive next-day midnight lands on the last day,
+    // and an inclusive 23:59:59.999 stays on it.
+    const displayEnd = isAllDay ? new Date(end.getTime() - 1) : end;
     return {
       title: event.title,
       location: event.location ?? '',
