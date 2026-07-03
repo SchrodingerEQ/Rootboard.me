@@ -69,8 +69,31 @@ function buildDefaults(event: CalendarEvent | null | undefined, defaultStart?: D
       endMinute: end.getMinutes(),
     };
   }
-  const start = defaultStart ? new Date(defaultStart) : new Date();
-  // Snap to next half hour by default
+  const { start, end } = defaultNewEventWindow(defaultStart ? new Date(defaultStart) : new Date());
+  return {
+    title: '',
+    location: '',
+    calendarId: '',
+    isAllDay: false,
+    startDate: toDateInput(start),
+    endDate: toDateInput(end),
+    startHour: start.getHours(),
+    startMinute: start.getMinutes(),
+    endHour: end.getHours(),
+    endMinute: end.getMinutes(),
+  };
+}
+
+/**
+ * Default time window for a new event: next half hour, one hour long — but
+ * always entirely on the SAME day as `now`. Late in the evening the naive
+ * "+1 hour" rolled the end (and after 11:30 PM even the start) into the next
+ * day, so the form opened showing tomorrow's date. Clamp instead: start no
+ * later than 11:00 PM, end no later than 11:55 PM.
+ */
+export function defaultNewEventWindow(now: Date): { start: Date; end: Date } {
+  const day = toDateInput(now);
+  const start = new Date(now);
   start.setSeconds(0, 0);
   if (start.getMinutes() > 30) {
     start.setHours(start.getHours() + 1);
@@ -78,19 +101,17 @@ function buildDefaults(event: CalendarEvent | null | undefined, defaultStart?: D
   } else if (start.getMinutes() > 0) {
     start.setMinutes(30);
   }
+  if (toDateInput(start) !== day) {
+    // Snapping crossed midnight (opened at 11:31 PM+) — pull back into today.
+    start.setTime(now.getTime());
+    start.setHours(23, 0, 0, 0);
+  }
   const end = new Date(start.getTime() + 60 * 60 * 1000);
-  return {
-    title: '',
-    location: '',
-    calendarId: '',
-    isAllDay: false,
-    startDate: toDateInput(start),
-    endDate: toDateInput(end), // end may roll into the next day (e.g. 11:30 PM start)
-    startHour: start.getHours(),
-    startMinute: start.getMinutes(),
-    endHour: end.getHours(),
-    endMinute: end.getMinutes(),
-  };
+  if (toDateInput(end) !== day) {
+    end.setTime(start.getTime());
+    end.setHours(23, 55, 0, 0);
+  }
+  return { start, end };
 }
 
 export function EventFormDialog({ open, onOpenChange, event, defaultStart }: EventFormDialogProps) {
