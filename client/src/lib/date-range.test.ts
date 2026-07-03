@@ -44,14 +44,15 @@ const check = (name: string, fn: () => void) => {
 // Viewed instant: a weekday afternoon (carries a 17:30 wall-clock time).
 const viewed = new Date(2026, 5, 25, 17, 30, 0, 0); // 2026-06-25 17:30 local
 
-console.log("DAY view");
+console.log("DAY view (agenda window: month grid + 14-day lookahead)");
 {
   const win = getCalendarDateRange(viewed, "day");
-  check("starts at local midnight", () =>
-    assert.equal(win.start.getHours() + win.start.getMinutes(), 0),
-  );
-  check("spans exactly 24h", () =>
-    assert.equal(win.end.getTime() - win.start.getTime(), DAY),
+  check("starts on a Sunday at local midnight (month grid start)", () => {
+    assert.equal(win.start.getDay(), 0);
+    assert.equal(win.start.getHours() + win.start.getMinutes(), 0);
+  });
+  check("start covers the first of the viewed month", () =>
+    assert.ok(win.start <= new Date(2026, 5, 1)),
   );
   // A 9am event on the viewed day — the classic casualty of the old bug.
   const morn = new Date(2026, 5, 25, 9, 0);
@@ -62,6 +63,23 @@ console.log("DAY view");
   check("OLD logic DROPPED that 9am event (regression proof)", () =>
     assert.ok(!overlaps(morn, mornEnd, oldRange(viewed, "day"))),
   );
+  // Mini-month dots: an event on the 1st of the viewed month, well before
+  // the viewed day, must be inside the window.
+  const firstOfMonth = new Date(2026, 5, 1, 9, 0);
+  const firstOfMonthEnd = new Date(2026, 5, 1, 10, 0);
+  check("includes an event on the 1st of the month (mini-month dots)", () =>
+    assert.ok(overlaps(firstOfMonth, firstOfMonthEnd, win)),
+  );
+  // Coming-up countdowns: an event ~10 days after the viewed day.
+  const upcoming = new Date(2026, 6, 5, 9, 0);
+  const upcomingEnd = new Date(2026, 6, 5, 10, 0);
+  check("includes an event 10 days ahead (coming-up countdowns)", () =>
+    assert.ok(overlaps(upcoming, upcomingEnd, win)),
+  );
+  check("window end is at least 14 days past the month grid", () => {
+    const monthWin = getCalendarDateRange(viewed, "month");
+    assert.equal(win.end.getTime() - monthWin.end.getTime(), 14 * DAY);
+  });
 }
 
 console.log("WEEK view");

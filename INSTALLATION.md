@@ -59,6 +59,7 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
    - **Username/password:** `pi` / a strong password. (The instructions below assume the username `pi`. If you pick something else, replace `/home/pi` with `/home/yourname` everywhere.)
    - **Wi-Fi:** SSID + password.
    - **Locale:** your timezone and keyboard layout.
+     > **US users:** Raspberry Pi OS defaults to the UK locale (`en_GB`), which makes the browser's date fields display **day-first** (`02/07/2026` for July 2). If your dates look "wrong" in the event form, that's why. Set the locale here in Imager, or fix it later with `sudo raspi-config nonint do_change_locale en_US.UTF-8` and reboot.
    - **Enable SSH** (optional but recommended — makes remote setup much easier).
 5. Click **Write**, wait for it to finish, then move the card to the Pi.
 6. Plug in HDMI, USB touch, power, and let it boot. First boot takes 1–2 minutes.
@@ -483,6 +484,13 @@ And confirm `/etc/NetworkManager/conf.d/wifi-powersave-off.conf` exists.
 The UI scales fine, but you can adjust browser zoom in `kiosk.sh`:
 ```bash
 chromium-browser --force-device-scale-factor=1.25 ...
+```
+
+### Event form dates look swapped (e.g. 02/07/2026 for July 2)
+The Pi's system locale is `en_GB` (the Raspberry Pi OS default), so the browser renders date fields day-first. The stored dates are correct — only the display order differs. Fix:
+```bash
+sudo raspi-config nonint do_change_locale en_US.UTF-8
+sudo reboot
 ```
 
 ### Need to access the Pi remotely

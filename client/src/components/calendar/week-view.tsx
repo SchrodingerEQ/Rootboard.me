@@ -6,6 +6,7 @@ import {
   getEventPosition as computeEventPosition,
   calculateEventLayout as computeEventLayout,
 } from "@/lib/calendar-layout";
+import { useWeather, dailyKey, type WeatherDaily } from "@/hooks/use-weather";
 import type { CalendarEvent } from "@shared/schema";
 
 interface WeekViewProps {
@@ -70,9 +71,17 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
     backgroundSize: `100% ${h}px`,
   });
 
-  // ----- Day header (weekday + date badge) -----
+  const weather = useWeather();
+  const dailyByDate = useMemo(() => {
+    const map = new Map<string, WeatherDaily>();
+    for (const d of weather.daily) map.set(d.date, d);
+    return map;
+  }, [weather.daily]);
+
+  // ----- Day header (weekday + date badge + optional hi/lo) -----
   const DayHeader = ({ date }: { date: Date }) => {
     const todayDate = isToday(date);
+    const forecast = dailyByDate.get(dailyKey(date));
     return (
       <div
         className="flex-1 flex flex-col items-center gap-1 py-2"
@@ -91,6 +100,11 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
         >
           {date.getDate()}
         </span>
+        {forecast && (
+          <span className="text-[13px] font-bold text-[var(--rb-faint)]" data-testid="week-hilo">
+            {forecast.hi}°/{forecast.lo}°
+          </span>
+        )}
       </div>
     );
   };

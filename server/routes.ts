@@ -4,6 +4,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { googleCalendarService } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
+import { getWeather } from "./services/weatherService";
 import { APP_VERSION } from "@shared/version";
 
 // Shared request body schema for create/update event endpoints. Times come
@@ -33,6 +34,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       version: APP_VERSION,
       timestamp: new Date().toISOString()
     });
+  });
+
+  // Weather (Open-Meteo, cached server-side; { enabled: false } until a
+  // location is configured in .env — the client hides all weather UI then).
+  app.get("/api/weather", async (req, res) => {
+    res.json(await getWeather());
   });
 
   // Calendar events routes

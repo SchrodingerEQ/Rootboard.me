@@ -1,15 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface CalendarInfo {
-  id: string;
-  summary: string;
-  primary: boolean;
-  backgroundColor?: string;
-  foregroundColor?: string;
-  selected: boolean;
-  accessRole: string;
-}
+import { getCalendarColor, getInitials, type CalendarInfo } from "@/lib/calendar-meta";
 
 interface CalendarFiltersProps {
   onCalendarToggle: (calendarId: string, enabled: boolean) => void;
@@ -26,23 +17,6 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
-
-  const getCalendarColor = (calendar: CalendarInfo): string => {
-    if (calendar.backgroundColor) return calendar.backgroundColor;
-
-    const colors = [
-      '#2563eb', '#16a34a', '#e11d48', '#ea8c00', '#9333ea',
-      '#795548', '#607d8b', '#e91e63', '#4caf50', '#ff5722', '#3f51b5', '#009688',
-    ];
-    let hash = 0;
-    for (let i = 0; i < calendar.id.length; i++) {
-      hash = ((hash << 5) - hash + calendar.id.charCodeAt(i)) & 0xffffffff;
-    }
-    return colors[Math.abs(hash) % colors.length];
-  };
-
-  const getInitials = (name: string): string =>
-    name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
 
   if (error) return null;
 

@@ -1,11 +1,11 @@
-import { useMemo, useRef, useEffect } from "react";
-import { EventItem } from "./event-item";
+import { useMemo, useRef, useEffect, useState } from "react";
+import { MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { isToday } from "@/lib/date-utils";
-import {
-  getEventPosition as computeEventPosition,
-  calculateEventLayout as computeEventLayout,
-} from "@/lib/calendar-layout";
+import { MiniMonth } from "./mini-month";
+import { ComingUp, type CountdownItem } from "./coming-up";
+import { isToday, formatTime } from "@/lib/date-utils";
+import { eventTint, eventTextColor } from "@/lib/color-utils";
+import { getCalendarColor, getInitials, type CalendarInfo } from "@/lib/calendar-meta";
 import type { CalendarEvent } from "@shared/schema";
 
 interface DayViewProps {
@@ -14,25 +14,55 @@ interface DayViewProps {
   isLoading: boolean;
   onEventClick?: (event: CalendarEvent) => void;
   enabledCalendars?: Set<string>;
+  /** Full loaded window (month grid + lookahead), for mini-month dots + countdowns. */
+  monthEvents?: CalendarEvent[];
+  /** Calendar metadata for avatar names/colors. */
+  calendars?: CalendarInfo[];
 }
 
-const timeSlots = Array.from({ length: 24 }, (_, i) => {
-  const hour = i === 0 ? 12 : i > 12 ? i - 12 : i;
-  const ampm = i < 12 ? 'AM' : 'PM';
-  return `${hour} ${ampm}`;
-});
+function durationLabel(start: Date, end: Date): string {
+  const mins = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
 
-const GRID_LINE = '#ededed';
+// Agenda-style Day view: left rail (mini-month + coming-up countdowns) and a
+// main panel listing today's events as large tinted cards. Replaces the old
+// 24-hour timeline (see git history for the timeline version).
+export function DayView({ currentDate, events, isLoading, onEventClick, enabledCalendars, monthEvents, calendars }: DayViewProps) {
+  const listRef = useRef<HTMLDivElement>(null);
+  const upNextRef = useRef<HTMLDivElement>(null);
 
-export function DayView({ currentDate, events, isLoading, onEventClick, enabledCalendars }: DayViewProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const TIME_SLOT_HEIGHT = 65;
+  // Live clock so past-dimming and "Up next" stay correct on the 24/7 kiosk.
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
+  // The mini-month can browse other months without changing the app's day;
+  // it snaps back whenever the actual viewed day changes.
+  const [railMonth, setRailMonth] = useState(() => new Date(currentDate));
+  useEffect(() => setRailMonth(new Date(currentDate)), [currentDate]);
+  const shiftRailMonth = (dir: number) =>
+    setRailMonth(prev => {
+      const next = new Date(prev);
+      next.setDate(1);
+      next.setMonth(next.getMonth() + dir);
+      return next;
+    });
+
+  const filterEnabled = (list: CalendarEvent[]) =>
+    enabledCalendars && enabledCalendars.size > 0
+      ? list.filter(e => enabledCalendars.has(e.calendarId))
+      : list;
+
+  // Today's agenda: events starting on the viewed day, or spanning it.
   const dayEvents = useMemo(() => {
-    const filteredEvents = enabledCalendars && enabledCalendars.size > 0
-      ? events.filter(event => enabledCalendars.has(event.calendarId))
-      : events;
-    return filteredEvents.filter(event => {
+    return filterEnabled(events).filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
       return eventStart.toDateString() === currentDate.toDateString() || (eventStart <= currentDate && eventEnd >= currentDate);
@@ -40,111 +70,210 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
   }, [events, currentDate, enabledCalendars]);
 
   const allDayEvents = useMemo(() => dayEvents.filter(e => e.isAllDay), [dayEvents]);
-  const timedEvents = useMemo(() => dayEvents.filter(e => !e.isAllDay), [dayEvents]);
+  const timedEvents = useMemo(
+    () =>
+      dayEvents
+        .filter(e => !e.isAllDay)
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
+    [dayEvents],
+  );
 
-  const getEventPosition = (event: CalendarEvent) => computeEventPosition(event, currentDate, TIME_SLOT_HEIGHT, 22);
-  const calculateEventLayout = (allEvents: CalendarEvent[], currentEvent: CalendarEvent) => computeEventLayout(allEvents, currentEvent);
+  const poolEvents = useMemo(() => filterEnabled(monthEvents ?? events), [monthEvents, events, enabledCalendars]);
+
+  // Mini-month dots: day-of-month → color of that day's first event.
+  const eventDays = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const event of poolEvents) {
+      const start = new Date(event.startTime);
+      if (start.getMonth() === railMonth.getMonth() && start.getFullYear() === railMonth.getFullYear()) {
+        const day = start.getDate();
+        if (!map.has(day)) map.set(day, event.color || '#2563eb');
+      }
+    }
+    return map;
+  }, [poolEvents, railMonth]);
+
+  // Coming up: next few events strictly after today.
+  const countdowns = useMemo<CountdownItem[]>(() => {
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date(startOfToday);
+    endOfToday.setDate(endOfToday.getDate() + 1);
+
+    return poolEvents
+      .filter(e => new Date(e.startTime) >= endOfToday)
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+      .slice(0, 3)
+      .map(e => {
+        const start = new Date(e.startTime);
+        const eventDay = new Date(start);
+        eventDay.setHours(0, 0, 0, 0);
+        const days = Math.max(1, Math.round((eventDay.getTime() - startOfToday.getTime()) / 86_400_000));
+        const dateLabel = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return {
+          days,
+          title: e.title,
+          whenLabel: e.isAllDay ? dateLabel : `${dateLabel} · ${formatTime(start)}`,
+          color: e.color || '#2563eb',
+        };
+      });
+  }, [poolEvents, now]);
+
+  // "Up next": first event that hasn't ended yet (only meaningful on today).
+  const upNextId = useMemo(() => {
+    if (!isToday(currentDate)) return null;
+    const next = timedEvents.find(e => new Date(e.endTime) > now);
+    return next ? next.id : null;
+  }, [timedEvents, now, currentDate]);
+
+  const stillToCome = useMemo(
+    () => timedEvents.filter(e => new Date(e.startTime) > now).length,
+    [timedEvents, now],
+  );
 
   useEffect(() => {
-    if (!isLoading && scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 7 * TIME_SLOT_HEIGHT;
+    if (!isLoading && upNextRef.current) {
+      upNextRef.current.scrollIntoView({ block: 'start' });
     }
-  }, [isLoading]);
+  }, [isLoading, upNextId]);
 
-  const getCurrentTimePosition = () => {
-    const now = new Date();
-    if (!isToday(currentDate)) return -1;
-    return (now.getHours() * 60 + now.getMinutes()) / (24 * 60) * 100;
-  };
-
-  const gridLineBg = {
-    backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${TIME_SLOT_HEIGHT - 1}px, ${GRID_LINE} ${TIME_SLOT_HEIGHT - 1}px, ${GRID_LINE} ${TIME_SLOT_HEIGHT}px)`,
-    backgroundSize: `100% ${TIME_SLOT_HEIGHT}px`,
-  };
+  const calendarFor = (event: CalendarEvent) => calendars?.find(c => c.id === event.calendarId);
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-canvas)]">
-        <div className="flex bg-white flex-shrink-0 z-10 border-b border-[var(--border)]">
-          <div className="w-20 flex-shrink-0 h-14" />
-          <div className="flex-1 h-14 flex items-center justify-center"><Skeleton className="h-6 w-48 rounded-md" /></div>
-        </div>
-        <div className="flex w-full flex-1 overflow-y-auto">
-          <div className="w-20 flex-shrink-0">
-            {timeSlots.map((time, i) => (
-              <div key={i} className="flex items-start justify-end text-xs font-bold text-[var(--rb-faint)] px-2 pt-1" style={{ height: 65 }}>{time}</div>
+      <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)]" style={{ padding: '22px 28px' }}>
+        <aside className="flex flex-col gap-[18px] flex-shrink-0" style={{ width: 380 }}>
+          <div className="bg-white rounded-[18px] p-4"><Skeleton className="h-6 w-32 mb-3 rounded-md" /><Skeleton className="h-48 w-full rounded-xl" /></div>
+          <div className="bg-white rounded-[18px] p-4">
+            <Skeleton className="h-4 w-24 mb-3 rounded-md" />
+            {Array.from({ length: 2 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 mb-3"><Skeleton className="h-[54px] w-[54px] rounded-[14px]" /><Skeleton className="h-5 flex-1 rounded-md" /></div>
             ))}
           </div>
-          <div className="flex-1 relative bg-white">
-            {timeSlots.map((_, i) => (
-              <div key={i} className="time-slot">{i % 3 === 0 && <Skeleton className="h-12 w-5/6 m-2 rounded-xl" />}</div>
-            ))}
-          </div>
-        </div>
+        </aside>
+        <section className="flex-1 bg-white rounded-[18px] p-6">
+          <Skeleton className="h-8 w-64 mb-6 rounded-md" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4 mb-4"><Skeleton className="h-6 w-[96px] rounded-md" /><Skeleton className="h-[72px] flex-1 rounded-[14px]" /></div>
+          ))}
+        </section>
       </div>
     );
   }
 
-  const isTodayDate = isToday(currentDate);
-  const timePosition = getCurrentTimePosition();
-
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-canvas)]">
-      {/* Fixed Day Header */}
-      <div className="flex bg-white flex-shrink-0 z-10 border-b border-[var(--border)]">
-        <div className="w-20 flex-shrink-0 h-14" />
-        <div className="flex-1 h-14 flex items-center justify-center gap-3" style={{ background: isTodayDate ? 'var(--rb-today-wash)' : 'transparent' }}>
-          {isTodayDate && <span className="inline-flex items-center justify-center rounded-full text-base font-extrabold text-white" style={{ width: 34, height: 34, background: 'var(--rb-accent)' }}>{currentDate.getDate()}</span>}
-          <h3 className="text-xl font-extrabold text-[#2b3038]">
-            {currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
-          </h3>
-        </div>
-      </div>
+    <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] overflow-hidden" style={{ padding: '22px 28px' }}>
+      {/* Left rail */}
+      <aside className="flex flex-col gap-[18px] flex-shrink-0 overflow-y-auto scrollbar-thin" style={{ width: 380 }}>
+        <MiniMonth date={railMonth} eventDays={eventDays} onPrev={() => shiftRailMonth(-1)} onNext={() => shiftRailMonth(1)} />
+        <ComingUp items={countdowns} />
+      </aside>
 
-      {/* All-Day Events */}
-      {allDayEvents.length > 0 && (
-        <div className="flex bg-white flex-shrink-0 border-b border-[var(--border)]">
-          <div className="w-20 flex-shrink-0 flex items-center justify-end pr-2">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--rb-faint)]">All&nbsp;day</span>
-          </div>
-          <div className="flex-1 p-2 min-h-[46px]" style={{ background: isTodayDate ? 'var(--rb-today-col-wash)' : 'transparent' }}>
-            <div className="flex flex-wrap gap-1.5">
-              {allDayEvents.map(event => <EventItem key={event.id} event={event} compact onClick={onEventClick} />)}
+      {/* Agenda panel */}
+      <section className="flex-1 bg-[var(--rb-surface)] rounded-[18px] flex flex-col min-w-0" style={{ boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
+        <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 flex-shrink-0">
+          <div>
+            <h2 className="text-[26px] leading-tight text-[#2b3038]" style={{ fontWeight: 900 }}>Today's Schedule</h2>
+            <div className="text-base font-semibold text-[var(--rb-muted)] mt-0.5">
+              {timedEvents.length} {timedEvents.length === 1 ? 'event' : 'events'}
+              {isToday(currentDate) ? ` · ${stillToCome} still to come` : ''}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Scrollable time grid */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
-        <div className="flex w-full" style={{ height: `${24 * TIME_SLOT_HEIGHT}px` }}>
-          <div className="w-20 flex-shrink-0 flex flex-col">
-            {timeSlots.map((time, i) => (
-              <div key={i} className="flex items-start justify-end text-xs font-bold text-[var(--rb-faint)] px-2 flex-shrink-0" style={{ height: TIME_SLOT_HEIGHT, transform: 'translateY(-7px)' }}>{time}</div>
-            ))}
-          </div>
-          <div className="flex-1 flex">
-            <div className="flex-1 relative" style={{ minWidth: 0, background: isTodayDate ? 'var(--rb-today-col-wash)' : '#ffffff' }}>
-              <div className="absolute inset-0" style={gridLineBg} />
-              {timedEvents.map(event => {
-                const position = getEventPosition(event);
-                if (!position) return null;
-                const layout = calculateEventLayout(timedEvents, event);
+          {allDayEvents.length > 0 && (
+            <div className="flex flex-wrap justify-end gap-1.5 max-w-[45%]">
+              {allDayEvents.map(event => {
+                const color = event.color || '#2563eb';
                 return (
-                  <EventItem
+                  <button
                     key={event.id}
-                    event={event}
-                    timeSlot
-                    onClick={onEventClick}
-                    layout={{ ...layout, height: `${position.height}px`, top: `${position.top}px` }}
-                  />
+                    onClick={() => onEventClick?.(event)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold truncate"
+                    style={{ background: eventTint(color), color: eventTextColor(color) }}
+                  >
+                    <span className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: color }} />
+                    <span className="truncate">{event.title}</span>
+                  </button>
                 );
               })}
-              {timePosition >= 0 && <div className="current-time-indicator" style={{ top: `${timePosition}%` }} />}
             </div>
-          </div>
+          )}
+        </header>
+
+        <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-thin px-6 pb-6">
+          {timedEvents.length === 0 && allDayEvents.length === 0 ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <div className="text-xl font-extrabold text-[var(--rb-muted)]">Nothing scheduled today</div>
+                <div className="text-sm font-semibold text-[var(--rb-faint)] mt-1">Enjoy the open day</div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {timedEvents.map(event => {
+                const start = new Date(event.startTime);
+                const end = new Date(event.endTime);
+                const color = event.color || '#2563eb';
+                const cal = calendarFor(event);
+                const avatarColor = cal ? getCalendarColor(cal) : color;
+                const avatarInitials = getInitials(cal?.summary || event.calendarName || '?');
+                const isPast = end <= now && isToday(currentDate);
+                const isUpNext = event.id === upNextId;
+
+                return (
+                  <div
+                    key={event.id}
+                    ref={isUpNext ? upNextRef : undefined}
+                    className="flex gap-4 items-stretch"
+                    style={{ opacity: isPast ? 0.5 : 1, scrollMarginTop: 8 }}
+                    data-testid={isUpNext ? 'agenda-up-next' : 'agenda-row'}
+                  >
+                    <div className="flex flex-col items-end justify-center flex-shrink-0 text-right" style={{ width: 96 }}>
+                      <span className="text-[19px] leading-tight text-[#2b3038]" style={{ fontWeight: 800 }}>{formatTime(start)}</span>
+                      <span className="text-sm font-semibold text-[var(--rb-faint)]">{formatTime(end)}</span>
+                    </div>
+
+                    <button
+                      onClick={() => onEventClick?.(event)}
+                      className="flex-1 flex items-center gap-4 text-left px-5 py-4 min-w-0 hover:brightness-95 transition-[filter]"
+                      style={{
+                        background: eventTint(color),
+                        borderRadius: 14,
+                        borderLeft: `6px solid ${color}`,
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-[19px] leading-tight text-[#2b3038] truncate" style={{ fontWeight: 800 }}>{event.title}</span>
+                          {isUpNext && (
+                            <span className="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-extrabold text-white" style={{ background: 'var(--rb-accent)' }}>
+                              Up next
+                            </span>
+                          )}
+                        </div>
+                        {event.location && (
+                          <div className="flex items-center gap-1 mt-1 text-sm font-semibold text-[var(--rb-muted)] truncate">
+                            <MapPin size={14} className="flex-shrink-0" />
+                            <span className="truncate">{event.location}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <span className="text-sm font-bold" style={{ color: eventTextColor(color) }}>{durationLabel(start, end)}</span>
+                        <span
+                          className="rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+                          style={{ width: 38, height: 38, background: avatarColor }}
+                        >
+                          {avatarInitials}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }

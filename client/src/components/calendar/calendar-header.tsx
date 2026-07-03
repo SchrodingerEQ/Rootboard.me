@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle, Plus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { WeatherIcon } from "./weather-icon";
+import { useWeather } from "@/hooks/use-weather";
 import type { CalendarView } from "@/pages/calendar";
 import logoImage from "@assets/image_1753142842256.png";
 
@@ -73,6 +75,8 @@ export function CalendarHeader({
     return () => clearInterval(id);
   }, []);
 
+  const weather = useWeather();
+
   const getDateTitle = () => {
     if (currentView === 'month') {
       return { main: currentDate.toLocaleDateString('en-US', { month: 'long' }), sub: currentDate.toLocaleDateString('en-US', { year: 'numeric' }) };
@@ -119,6 +123,20 @@ export function CalendarHeader({
         >
           Today
         </Button>
+
+        {weather.isEnabled && weather.current && (
+          <div
+            className="flex items-center gap-2 h-10 px-4 rounded-full bg-[var(--rb-chip)]"
+            data-testid="weather-chip"
+          >
+            <WeatherIcon icon={weather.current.icon} size={18} className="text-[#5b626d]" />
+            <span className="text-base font-extrabold text-[#2b3038]">{weather.current.temp}°</span>
+            <span className="text-sm font-bold text-[var(--rb-muted)]">
+              {weather.current.label}
+              {weather.location ? ` · ${weather.location}` : ""}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Center: logo (enlarged + lowered for balanced top/bottom spacing, height-capped so it doesn't grow the header) */}

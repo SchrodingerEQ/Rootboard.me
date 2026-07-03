@@ -34,7 +34,16 @@ export function getCalendarDateRange(
     end.setTime(start.getTime());
     end.setDate(end.getDate() + 7); // exclusive end → next Sunday midnight (full 7 days)
   } else if (currentView === "day") {
-    end.setDate(end.getDate() + 1); // exclusive end → next midnight (full 24h)
+    // The agenda Day view needs more than the single day: the mini-month
+    // shows event dots for the whole visible month grid, and "Coming up"
+    // counts down to the next few future events. Fetch the same grid window
+    // as month view plus a two-week lookahead; DayView filters the agenda
+    // down to the viewed day itself.
+    start.setDate(1);
+    start.setDate(start.getDate() - start.getDay()); // Sunday of the first grid week
+    end.setMonth(end.getMonth() + 1, 0); // last day of the viewed month
+    end.setDate(end.getDate() + (6 - end.getDay())); // Saturday of the last grid week
+    end.setDate(end.getDate() + 1 + 14); // exclusive end + 14-day lookahead
   }
 
   return { start, end };
