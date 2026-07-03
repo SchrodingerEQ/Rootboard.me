@@ -378,22 +378,25 @@ export function SettingsMenu({
 
             {/* Add Calendar by ID */}
             <div className="space-y-1.5">
+              {/* 44px-tall input/button: kiosk touch targets, and roomier when
+                  the on-screen keyboard is driving this field. */}
               <div className="flex gap-2">
                 <Input
                   value={calendarIdInput}
                   onChange={(e) => { setCalendarIdInput(e.target.value); setSubscribeError(null); }}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubscribe()}
                   placeholder="email@example.com or calendar ID"
-                  className="text-xs h-8 flex-1"
+                  className="text-sm h-11 flex-1"
                   disabled={subscribeMutation.isPending}
                 />
                 <Button
                   size="sm"
-                  className="h-8 px-3 bg-emerald-500 hover:bg-emerald-600 text-white"
+                  className="h-11 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold"
                   onClick={handleSubscribe}
                   disabled={!calendarIdInput.trim() || subscribeMutation.isPending}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-5 w-5" />
+                  Add
                 </Button>
               </div>
               {subscribeError && (

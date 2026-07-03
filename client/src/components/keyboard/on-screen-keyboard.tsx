@@ -106,6 +106,22 @@ export function OnScreenKeyboard() {
     }
   }, [visible]);
 
+  // Bring the focused field into view once the keyboard is up — inside capped
+  // scroll containers (dialog forms, the Settings popover) the field can start
+  // out below the keyboard line.
+  useEffect(() => {
+    if (visible && focused) {
+      const id = setTimeout(() => {
+        try {
+          focused.scrollIntoView({ block: "center", behavior: "smooth" });
+        } catch {
+          /* older engines without options support — ignore */
+        }
+      }, 180); // after the dialog-lift transition settles
+      return () => clearTimeout(id);
+    }
+  }, [visible, focused]);
+
   if (!visible || !focused) return null;
 
   const rows = layer === "letters" ? LETTER_ROWS : SYMBOL_ROWS;
@@ -207,7 +223,7 @@ export function OnScreenKeyboard() {
                   className={
                     "flex h-12 items-center justify-center rounded-md border text-lg font-medium shadow-sm transition-colors " +
                     (active
-                      ? "border-[hsl(var(--google-blue))] bg-[hsl(var(--google-blue))] text-white"
+                      ? "border-[#2b3038] bg-[#2b3038] text-white"
                       : key.type === "ctrl"
                         ? "border-border bg-gray-200 text-gray-800 active:bg-gray-300"
                         : "border-border bg-white text-gray-900 active:bg-gray-100")

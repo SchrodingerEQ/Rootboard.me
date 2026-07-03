@@ -218,7 +218,11 @@
    keyboard (fixed at the bottom) doesn't cover the focused field or footer.
    The dialog is normally centered via top:50% + translateY(-50%); we anchor it
    near the top and keep only horizontal centering. */
-html[data-osk-open] [role="dialog"] {
+/* Radix POPOVER content also carries role="dialog", but it is positioned by
+   its popper wrapper — recentering it like a modal would fling it off its
+   anchor (that broke the Settings panel when the keyboard opened). Scope the
+   lift to true centered dialogs only. */
+html[data-osk-open] [role="dialog"]:not([data-radix-popper-content-wrapper] *) {
   /* Anchor the dialog near the top via transform, not `top`: the dialog keeps
      its top:50%, and translateY(2.5vh - 50vh) lands its top edge at 2.5vh.
      (Overriding `top` directly proved unreliable against the dialog's
@@ -231,4 +235,12 @@ html[data-osk-open] [role="dialog"] {
   max-height: max(40vh, calc(97.5vh - 300px));
   overflow-y: auto;
   transition: transform 0.15s ease;
+}
+
+/* Popovers (e.g. the Settings panel) stay anchored, but while the keyboard is
+   open cap their height so their content scrolls above it instead of running
+   underneath (the "add calendar ID" field sits near the panel's bottom). */
+html[data-osk-open] [data-radix-popper-content-wrapper] [role="dialog"] {
+  max-height: max(35vh, calc(92vh - 300px));
+  overflow-y: auto;
 }
