@@ -15,6 +15,7 @@ import { NavRail, type Section } from "@/components/nav-rail";
 import ChoresPage from "@/pages/chores";
 import DinnerPage from "@/pages/dinner";
 import { useCalendar } from "@/hooks/use-calendar";
+import { useChores } from "@/hooks/use-chores";
 import { useToast } from "@/hooks/use-toast";
 import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
@@ -88,7 +89,11 @@ export default function CalendarPage() {
     autoRefresh,
     checkAuthStatus
   } = useCalendar(currentDate, currentView);
-  
+
+  // Hoisted here (rather than inside ChoresPage) so the rail badge stays live
+  // while on Calendar/Dinner, not just while the Chores section is showing.
+  const chores = useChores();
+
   // Get calendars for dialog metadata
   const { data: calendars } = useQuery<any[]>({
     queryKey: ['/api/calendar/calendars'],
@@ -314,6 +319,7 @@ export default function CalendarPage() {
       <NavRail
         active={section}
         onNavigate={setSection}
+        choreBadgeCount={chores.openChoreCount}
         settingsButton={authStatus?.authenticated ? (
           <SettingsMenu
             compactTrigger
@@ -404,7 +410,7 @@ export default function CalendarPage() {
           </>
         )}
 
-        {section === 'chores' && <ChoresPage onSleep={handleSleep} />}
+        {section === 'chores' && <ChoresPage onSleep={handleSleep} chores={chores} />}
         {section === 'dinner' && <DinnerPage onSleep={handleSleep} />}
       </div>
 
