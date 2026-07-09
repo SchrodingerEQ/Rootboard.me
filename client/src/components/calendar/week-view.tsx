@@ -167,7 +167,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
       )}
 
       {/* Scrollable time grid */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden">
         <div className="flex w-full" style={{ height: `${24 * TIME_SLOT_HEIGHT}px` }}>
           <div className="w-16 flex-shrink-0 flex flex-col">
             {timeSlots.map((time, i) => (

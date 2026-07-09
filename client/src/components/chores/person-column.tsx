@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Plus } from "lucide-react";
-import { PERSON_PALETTE, type Person } from "@/lib/chores-state";
+import { CHORE_CAP, PERSON_PALETTE, type Person } from "@/lib/chores-state";
 import { ChoreCardStack } from "./chore-card-stack";
 
 interface PersonColumnProps {
@@ -17,6 +17,7 @@ export function PersonColumn({ person, onToggleChore, onAddChore }: PersonColumn
   const initials = person.name.slice(0, 2).toUpperCase();
   const activeCount = person.chores.filter((c) => !c.done).length;
   const countLabel = activeCount === 0 ? "All done!" : `${activeCount} left`;
+  const atCap = person.chores.length >= CHORE_CAP;
 
   const confirmAdd = () => {
     const title = draft.trim();
@@ -67,7 +68,15 @@ export function PersonColumn({ person, onToggleChore, onAddChore }: PersonColumn
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         <ChoreCardStack chores={person.chores} color={pal.color} onToggle={onToggleChore} />
 
-        {isAdding ? (
+        {atCap ? (
+          <div
+            className="w-full flex items-center justify-center"
+            style={{ marginTop: 4, height: 50, fontSize: 16, fontWeight: 700, color: pal.text, opacity: 0.55 }}
+            data-testid={`hint-chore-cap-${person.id}`}
+          >
+            {CHORE_CAP} chores max — use Reset chores to clear the list
+          </div>
+        ) : isAdding ? (
           <div className="flex gap-2" style={{ marginTop: 4 }}>
             <input
               type="text"

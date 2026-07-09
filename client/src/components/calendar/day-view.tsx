@@ -164,7 +164,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
   return (
     <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] overflow-hidden" style={{ padding: '22px 28px' }}>
       {/* Left rail */}
-      <aside className="flex flex-col gap-[18px] flex-shrink-0 overflow-y-auto scrollbar-thin" style={{ width: 380 }}>
+      <aside className="flex flex-col gap-[18px] flex-shrink-0 overflow-y-auto" style={{ width: 380 }}>
         <MiniMonth date={railMonth} eventDays={eventDays} onPrev={() => shiftRailMonth(-1)} onNext={() => shiftRailMonth(1)} />
         <ComingUp items={countdowns} />
       </aside>
@@ -199,7 +199,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
           )}
         </header>
 
-        <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-thin px-6 pb-6">
+        <div ref={listRef} className="flex-1 overflow-y-auto px-6 pb-6">
           {timedEvents.length === 0 && allDayEvents.length === 0 ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">

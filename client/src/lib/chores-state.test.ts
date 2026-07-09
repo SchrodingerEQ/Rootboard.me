@@ -7,6 +7,7 @@
 import assert from "node:assert/strict";
 import {
   PERSON_PALETTE,
+  CHORE_CAP,
   toggleChore,
   addChore,
   addPerson,
@@ -131,6 +132,24 @@ console.log("toggleChore — tally floor at 0");
     const after = toggleChore(rigged, personId, choreId);
     assert.equal(after.people[0].doneToday, 0);
     assert.equal(after.people[0].chores[0].done, false);
+  });
+}
+
+console.log("CHORE_CAP");
+{
+  let s = addPerson(emptyState(), "Mum");
+  const personId = s.people[0].id;
+  for (let i = 0; i < CHORE_CAP; i++) s = addChore(s, personId, `Chore ${i + 1}`);
+  check("cap is 40 and a full list holds exactly 40 chores", () => {
+    assert.equal(CHORE_CAP, 40);
+    assert.equal(s.people[0].chores.length, 40);
+  });
+  check("adding a 41st chore is a no-op (same reference)", () => {
+    assert.equal(addChore(s, personId, "One too many"), s);
+  });
+  check("completing chores does NOT free cap space (cap counts done + active)", () => {
+    const done = toggleChore(s, personId, s.people[0].chores[0].id);
+    assert.equal(addChore(done, personId, "Still too many"), done);
   });
 }
 

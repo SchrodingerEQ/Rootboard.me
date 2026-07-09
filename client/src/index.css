@@ -169,26 +169,24 @@
     border: 2px solid white;
   }
 
-  /* Custom scrollbar for week/day time grids — Firefox-only fallback props now
-     (the app-wide 28px webkit rule below governs everywhere else; this class's
-     own ::-webkit-scrollbar* overrides were removed so it doesn't fight that
-     rule in Chromium-based dev/preview browsers). */
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: #d9d6cf rgba(243, 244, 246, 0.3);
-  }
 }
 
 /* ===== Global rule — touch scrollbars (twice the default width) =====
-   Applies app-wide (Chores/Dinner columns, week/day time grids via
-   .scrollbar-thin's Firefox fallback, Settings panel lists, etc). */
-* {
+   Applies app-wide: Chores columns, Dinner dialogs, week/day time grids,
+   Settings panel lists, etc. (The old .scrollbar-thin class is gone — its
+   scrollbar-width:thin gave the week/day grids a 10px bar.) */
+@supports not selector(::-webkit-scrollbar) {
   /* Firefox (the kiosk browser) ignores ::-webkit-scrollbar entirely, and its
      own scrollbar-width has no numeric/px option — `auto` (the widest fixed
      keyword) is the accepted best-effort there; 28px is unreachable in
-     Firefox CSS. */
-  scrollbar-width: auto;
-  scrollbar-color: #d9d5cc transparent;
+     Firefox CSS. This block MUST stay scoped to non-webkit browsers: setting
+     the standard scrollbar-color/scrollbar-width props on an element makes
+     Chromium (121+) IGNORE its ::-webkit-scrollbar styling, which silently
+     shrank every "28px" scrollbar back to the ~15px default. */
+  * {
+    scrollbar-width: auto;
+    scrollbar-color: #d9d5cc transparent;
+  }
 }
 
 ::-webkit-scrollbar {

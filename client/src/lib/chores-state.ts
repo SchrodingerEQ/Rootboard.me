@@ -53,6 +53,12 @@ export const PERSON_PALETTE: PersonPaletteEntry[] = [
   { color: "#607d8b", tint: "#e8eef1", text: "#46606c" }, // slate
 ];
 
+/** Max chores per person (done + active). Mirrors the Dinner screen's
+ *  MEAL_CAP pattern: keeps columns scrollable-but-sane and the persisted
+ *  blob bounded. addChore() is a no-op at the cap; the column's add button
+ *  shows a "40 chores max" hint instead. */
+export const CHORE_CAP = 40;
+
 /** Family's tuned reorder-animation duration (ms). Named per the build plan. */
 export const REORDER_MS = 850;
 export const REORDER_EASING = "cubic-bezier(.22,1,.36,1)";
@@ -156,10 +162,13 @@ export function toggleChore(state: ChoresState, personId: string, choreId: strin
   });
 }
 
-/** Appends a new active chore. Blank (trimmed) titles are a no-op. */
+/** Appends a new active chore. Blank (trimmed) titles and a list already at
+ *  CHORE_CAP are no-ops (same reference). */
 export function addChore(state: ChoresState, personId: string, title: string): ChoresState {
   const trimmed = title.trim();
   if (!trimmed) return state;
+  const person = state.people.find((p) => p.id === personId);
+  if (person && person.chores.length >= CHORE_CAP) return state;
   return mapPerson(state, personId, (p) => ({
     ...p,
     chores: [...p.chores, { id: makeId("chore"), title: trimmed, done: false }],
