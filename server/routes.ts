@@ -29,9 +29,10 @@ const createEventBodySchema = eventWriteBodySchema.and(
 
 // Whole-blob app-state store backing the Chores and Dinner screens. Keys are
 // whitelisted (no arbitrary key writes) and values are size-capped since this
-// DB lives on a Raspberry Pi.
+// DB lives on a Raspberry Pi. APP_STATE_MAX_LENGTH must stay below Express's
+// 100 KB JSON body limit (server/index.ts); chores/dinner blobs are a few KB.
 const APP_STATE_KEYS = new Set(['chores', 'dinner']);
-const APP_STATE_MAX_LENGTH = 200_000;
+const APP_STATE_MAX_LENGTH = 64_000;
 
 const appStateBodySchema = z.object({
   value: z.any().refine((v) => v !== undefined, { message: "value is required" }),
