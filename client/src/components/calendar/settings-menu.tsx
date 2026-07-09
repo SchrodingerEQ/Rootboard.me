@@ -228,8 +228,8 @@ export function SettingsMenu({
         <PopoverTrigger asChild>
           {compactTrigger ? (
             <button
-              className="touch-button flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-[#5b626d] hover:bg-[var(--rb-chip-hover)] transition-colors"
-              style={{ width: 52, height: 52 }}
+              className="flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-[#5b626d] hover:bg-[var(--rb-chip-hover)] transition-colors"
+              style={{ width: 52, height: 52, touchAction: "manipulation" }}
               title="Settings"
               data-testid="button-settings"
             >
