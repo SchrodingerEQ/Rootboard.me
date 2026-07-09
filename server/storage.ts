@@ -21,17 +21,22 @@ export interface IStorage {
 
   deleteCalendarEventsByCalendarNotIn(calendarId: string, googleEventIds: string[]): Promise<number>;
   deleteCalendarEventsEndedBefore(cutoff: Date): Promise<number>;
+
+  getAppState(key: string): Promise<string | null>;
+  setAppState(key: string, value: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private calendarEvents: Map<number, CalendarEvent>;
+  private appState: Map<string, string>;
   private currentUserId: number;
   private currentEventId: number;
 
   constructor() {
     this.users = new Map();
     this.calendarEvents = new Map();
+    this.appState = new Map();
     this.currentUserId = 1;
     this.currentEventId = 1;
   }
@@ -130,6 +135,14 @@ export class MemStorage implements IStorage {
       }
     }
     return deleted;
+  }
+
+  async getAppState(key: string): Promise<string | null> {
+    return this.appState.get(key) ?? null;
+  }
+
+  async setAppState(key: string, value: string): Promise<void> {
+    this.appState.set(key, value);
   }
 }
 

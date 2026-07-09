@@ -27,6 +27,16 @@ const createEventBodySchema = eventWriteBodySchema.and(
   z.object({ calendarId: z.string().min(1, "calendarId is required") })
 );
 
+// Whole-blob app-state store backing the Chores and Dinner screens. Keys are
+// whitelisted (no arbitrary key writes) and values are size-capped since this
+// DB lives on a Raspberry Pi.
+const APP_STATE_KEYS = new Set(['chores', 'dinner']);
+const APP_STATE_MAX_LENGTH = 200_000;
+
+const appStateBodySchema = z.object({
+  value: z.any().refine((v) => v !== undefined, { message: "value is required" }),
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Version endpoint for update checking
   app.get("/api/version", (req, res) => {
@@ -308,6 +318,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Failed to get backups:', error);
       res.status(500).json({ message: "Failed to get backups list" });
+    }
+  });
+
+  // App-state key-value store (whole-JSON-blob persistence for the Chores
+  // and Dinner screens). Same-origin kiosk UI endpoints, like the events
+  // routes above — no localhost-only guard.
+  app.get("/api/state/:key", async (req, res) => {
+    const key = req.params.key;
+    if (!APP_STATE_KEYS.has(key)) {
+      return res.status(400).json({ message: `Unknown state key: ${key}` });
+    }
+    try {
+      const raw = await storage.getAppState(key);
+      res.json({ key, value: raw === null ? null : JSON.parse(raw) });
+    } catch (error) {
+      console.error(`Failed to get app state for key "${key}":`, error);
+      res.status(500).json({ message: "Failed to fetch state" });
+    }
+  });
+
+  app.put("/api/state/:key", async (req, res) => {
+    const key = req.params.key;
+    if (!APP_STATE_KEYS.has(key)) {
+      return res.status(400).json({ message: `Unknown state key: ${key}` });
+    }
+    const parsed = appStateBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Invalid state payload",
+        errors: parsed.error.flatten(),
+      });
+    }
+    const serialized = JSON.stringify(parsed.data.value);
+    if (serialized.length > APP_STATE_MAX_LENGTH) {
+      return res.status(400).json({
+        message: `State value too large (${serialized.length} chars, max ${APP_STATE_MAX_LENGTH})`,
+      });
+    }
+    try {
+      await storage.setAppState(key, serialized);
+      res.json({ success: true });
+    } catch (error) {
+      console.error(`Failed to set app state for key "${key}":`, error);
+      res.status(500).json({ message: "Failed to save state" });
     }
   });
 

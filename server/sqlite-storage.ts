@@ -43,6 +43,12 @@ export class SQLiteStorage implements IStorage {
 
       CREATE INDEX IF NOT EXISTS idx_events_time ON calendar_events(start_time, end_time);
       CREATE INDEX IF NOT EXISTS idx_events_google_id ON calendar_events(google_event_id, calendar_id);
+
+      CREATE TABLE IF NOT EXISTS app_state (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log('SQLite database initialized');
   }
@@ -180,6 +186,19 @@ export class SQLiteStorage implements IStorage {
   async deleteCalendarEventsEndedBefore(cutoff: Date): Promise<number> {
     const result = this.db.prepare('DELETE FROM calendar_events WHERE end_time < ?').run(cutoff.toISOString());
     return result.changes;
+  }
+
+  async getAppState(key: string): Promise<string | null> {
+    const row = this.db.prepare('SELECT value FROM app_state WHERE key = ?').get(key) as any;
+    return row ? row.value : null;
+  }
+
+  async setAppState(key: string, value: string): Promise<void> {
+    const now = new Date().toISOString();
+    this.db.prepare(`
+      INSERT INTO app_state (key, value, updated_at) VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `).run(key, value, now);
   }
 
   close(): void {
