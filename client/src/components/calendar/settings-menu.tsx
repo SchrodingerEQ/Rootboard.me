@@ -48,10 +48,12 @@ interface SettingsMenuProps {
   onRollback?: () => void;
   onSubscribeSuccess?: () => void;
   onCalendarRemoved?: (calendarId: string) => void;
+  /** Compact circular trigger (52px, rail-chip styling) for use in the nav rail, instead of the default header icon button. */
+  compactTrigger?: boolean;
 }
 
-export function SettingsMenu({ 
-  visibleCalendarsInHeader, 
+export function SettingsMenu({
+  visibleCalendarsInHeader,
   onCalendarToggle,
   setBrightness: externalSetBrightness,
   currentBrightness = 1.0,
@@ -59,6 +61,7 @@ export function SettingsMenu({
   onRollback,
   onSubscribeSuccess,
   onCalendarRemoved,
+  compactTrigger = false,
 }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
@@ -223,13 +226,24 @@ export function SettingsMenu({
 
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-12 w-12 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-          >
-            <Settings className="h-6 w-6" />
-          </Button>
+          {compactTrigger ? (
+            <button
+              className="touch-button flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-[#5b626d] hover:bg-[var(--rb-chip-hover)] transition-colors"
+              style={{ width: 52, height: 52 }}
+              title="Settings"
+              data-testid="button-settings"
+            >
+              <Settings size={22} />
+            </button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-12 w-12 text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            >
+              <Settings className="h-6 w-6" />
+            </Button>
+          )}
         </PopoverTrigger>
         <PopoverContent className="w-[416px] p-0" align="end">
           <div className="p-4 space-y-4">

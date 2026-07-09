@@ -11,6 +11,9 @@ import { EventFormDialog } from "@/components/calendar/event-form-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { UpdateNotification } from "@/components/calendar/update-notification";
+import { NavRail, type Section } from "@/components/nav-rail";
+import ChoresPage from "@/pages/chores";
+import DinnerPage from "@/pages/dinner";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useToast } from "@/hooks/use-toast";
 import { useScreensaver } from "@/hooks/useScreensaver";
@@ -20,7 +23,22 @@ import { CalendarEvent } from "@shared/schema";
 
 export type CalendarView = "day" | "week" | "month";
 
+const SECTION_STORAGE_KEY = "rootboard-section";
+
+function isSection(value: string | null): value is Section {
+  return value === "calendar" || value === "chores" || value === "dinner";
+}
+
 export default function CalendarPage() {
+  const [section, setSection] = useState<Section>(() => {
+    const saved = localStorage.getItem(SECTION_STORAGE_KEY);
+    return isSection(saved) ? saved : "calendar";
+  });
+
+  useEffect(() => {
+    localStorage.setItem(SECTION_STORAGE_KEY, section);
+  }, [section]);
+
   const [currentView, setCurrentView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set());
@@ -292,92 +310,107 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <div className="bg-white border-b border-border shadow-sm">
-        {/* Main header row */}
-        <CalendarHeader
-          currentView={currentView}
-          currentDate={currentDate}
-          onViewChange={setCurrentView}
-          onNavigate={navigateCalendar}
-          onToday={goToToday}
-          onRefresh={handleRefresh}
-          onAuth={handleAuth}
-          onSleep={handleSleep}
-          onNewEvent={authStatus?.authenticated ? handleNewEvent : undefined}
-          isRefreshing={isRefreshing}
-          needsAuth={authStatus?.needsAuth}
-          lastSyncAt={syncStatus?.lastSyncAt ?? null}
-          lastSyncError={syncStatus?.lastSyncError ?? null}
-          settingsButton={authStatus?.authenticated ? (
-            <SettingsMenu 
-              visibleCalendarsInHeader={visibleCalendarsInHeader}
-              onCalendarToggle={handleCalendarHeaderToggle}
-              setBrightness={screensaver.setBrightness}
-              currentBrightness={screensaver.currentBrightness}
-              onCheckForUpdates={checkForUpdates}
-              onRollback={startRollback}
-              onSubscribeSuccess={manualRefresh}
-              onCalendarRemoved={handleCalendarRemoved}
-            />
-          ) : undefined}
-        />
-        
-        {/* Second row with Calendar Filters */}
-        {authStatus?.authenticated && (
-          <div className="flex items-center px-3 py-0.5 border-t border-gray-100">
-            <CalendarFilters 
-              onCalendarToggle={handleCalendarEventToggle}
-              enabledCalendars={enabledCalendars}
-              visibleCalendarsInHeader={visibleCalendarsInHeader}
-            />
-          </div>
+    <div className="h-screen flex bg-background">
+      <NavRail
+        active={section}
+        onNavigate={setSection}
+        settingsButton={authStatus?.authenticated ? (
+          <SettingsMenu
+            compactTrigger
+            visibleCalendarsInHeader={visibleCalendarsInHeader}
+            onCalendarToggle={handleCalendarHeaderToggle}
+            setBrightness={screensaver.setBrightness}
+            currentBrightness={screensaver.currentBrightness}
+            onCheckForUpdates={checkForUpdates}
+            onRollback={startRollback}
+            onSubscribeSuccess={manualRefresh}
+            onCalendarRemoved={handleCalendarRemoved}
+          />
+        ) : undefined}
+      />
+
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {section === 'calendar' && (
+          <>
+            <div className="bg-white border-b border-border shadow-sm">
+              {/* Main header row */}
+              <CalendarHeader
+                currentView={currentView}
+                currentDate={currentDate}
+                onViewChange={setCurrentView}
+                onNavigate={navigateCalendar}
+                onToday={goToToday}
+                onRefresh={handleRefresh}
+                onAuth={handleAuth}
+                onSleep={handleSleep}
+                onNewEvent={authStatus?.authenticated ? handleNewEvent : undefined}
+                isRefreshing={isRefreshing}
+                needsAuth={authStatus?.needsAuth}
+                lastSyncAt={syncStatus?.lastSyncAt ?? null}
+                lastSyncError={syncStatus?.lastSyncError ?? null}
+              />
+
+              {/* Second row with Calendar Filters */}
+              {authStatus?.authenticated && (
+                <div className="flex items-center px-3 py-0.5 border-t border-gray-100">
+                  <CalendarFilters
+                    onCalendarToggle={handleCalendarEventToggle}
+                    enabledCalendars={enabledCalendars}
+                    visibleCalendarsInHeader={visibleCalendarsInHeader}
+                  />
+                </div>
+              )}
+            </div>
+
+            <main className="flex-1 overflow-hidden">
+              {currentView === 'month' && (
+                <div className="h-full">
+                  <MonthView
+                    currentDate={currentDate}
+                    events={events}
+                    isLoading={isLoading}
+                    enabledCalendars={enabledCalendars}
+                    onEventClick={handleEventClick}
+                  />
+                </div>
+              )}
+
+              {currentView === 'week' && (
+                <div className="h-full">
+                  <WeekView
+                    currentDate={currentDate}
+                    events={filteredEvents}
+                    isLoading={isLoading}
+                    enabledCalendars={enabledCalendars}
+                    onEventClick={handleEventClick}
+                  />
+                </div>
+              )}
+
+              {currentView === 'day' && (
+                <div className="h-full">
+                  <DayView
+                    currentDate={currentDate}
+                    events={filteredEvents}
+                    isLoading={isLoading}
+                    onEventClick={handleEventClick}
+                    enabledCalendars={enabledCalendars}
+                    monthEvents={filteredEvents}
+                    calendars={calendars}
+                  />
+                </div>
+              )}
+            </main>
+          </>
         )}
+
+        {section === 'chores' && <ChoresPage onSleep={handleSleep} />}
+        {section === 'dinner' && <DinnerPage onSleep={handleSleep} />}
       </div>
-      
-      <main className="flex-1 overflow-hidden">
-        {currentView === 'month' && (
-          <div className="h-full">
-            <MonthView 
-              currentDate={currentDate} 
-              events={events}
-              isLoading={isLoading}
-              enabledCalendars={enabledCalendars}
-              onEventClick={handleEventClick}
-            />
-          </div>
-        )}
-        
-        {currentView === 'week' && (
-          <div className="h-full">
-            <WeekView 
-              currentDate={currentDate} 
-              events={filteredEvents}
-              isLoading={isLoading}
-              enabledCalendars={enabledCalendars}
-              onEventClick={handleEventClick}
-            />
-          </div>
-        )}
-        
-        {currentView === 'day' && (
-          <div className="h-full">
-            <DayView
-              currentDate={currentDate}
-              events={filteredEvents}
-              isLoading={isLoading}
-              onEventClick={handleEventClick}
-              enabledCalendars={enabledCalendars}
-              monthEvents={filteredEvents}
-              calendars={calendars}
-            />
-          </div>
-        )}
-      </main>
 
       <LoadingIndicator isVisible={isRefreshing} />
-      
-      <EventDetailsDialog 
+
+      <EventDetailsDialog
         event={selectedEvent}
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
@@ -395,7 +428,7 @@ export default function CalendarPage() {
       />
 
       {/* Authentication Dialog */}
-      <AuthDialog 
+      <AuthDialog
         open={authDialogOpen && !isPowerSavingActive}
         onOpenChange={setAuthDialogOpen}
         error={authStatus?.error}
@@ -416,7 +449,7 @@ export default function CalendarPage() {
       />
 
       {/* Power Saving Overlay (manual SLEEP button or auto after 2 min inactivity) */}
-      <PowerSavingOverlay 
+      <PowerSavingOverlay
         isActive={isPowerSavingActive}
         onWake={handleWake}
       />

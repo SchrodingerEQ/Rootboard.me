@@ -5,7 +5,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { WeatherIcon } from "./weather-icon";
 import { useWeather } from "@/hooks/use-weather";
 import type { CalendarView } from "@/pages/calendar";
-import logoImage from "@assets/image_1753142842256.png";
 
 interface CalendarHeaderProps {
   currentView: CalendarView;
@@ -21,7 +20,6 @@ interface CalendarHeaderProps {
   needsAuth?: boolean;
   lastSyncAt?: string | null;
   lastSyncError?: string | null;
-  settingsButton?: React.ReactNode;
 }
 
 function formatRelative(iso: string): string {
@@ -67,7 +65,6 @@ export function CalendarHeader({
   needsAuth,
   lastSyncAt,
   lastSyncError,
-  settingsButton,
 }: CalendarHeaderProps) {
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -137,11 +134,6 @@ export function CalendarHeader({
             </span>
           </div>
         )}
-      </div>
-
-      {/* Center: logo (enlarged + lowered for balanced top/bottom spacing, height-capped so it doesn't grow the header) */}
-      <div className="flex items-center h-12 overflow-visible">
-        <img src={logoImage} alt="Rootboard" className="h-[84px] w-auto translate-y-[14px]" />
       </div>
 
       {/* Right: view toggle + actions */}
@@ -215,7 +207,6 @@ export function CalendarHeader({
           <Moon className="mr-1.5" size={20} />
           Sleep
         </Button>
-        {settingsButton ?? null}
       </div>
     </header>
   );
