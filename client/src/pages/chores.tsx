@@ -111,7 +111,11 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
       </header>
 
       {!isLoaded ? (
-        <div className="flex-1" />
+        <div className="flex-1 flex items-center justify-center">
+          <span style={{ fontSize: 18, fontWeight: 600, color: "var(--rb-muted)" }}>
+            Loading chores…
+          </span>
+        </div>
       ) : showSetup ? (
         <EditPeople
           people={people}
