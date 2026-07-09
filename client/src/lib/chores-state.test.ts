@@ -276,6 +276,28 @@ console.log("normalizeChoresState — defends the load path against stale/malfor
     assert.equal(s.people[0].chores.length, 1); // entries missing a title are dropped
     assert.equal(s.people[0].chores[0].done, false);
   });
+  check("colorIdx out of range/non-integer is clamped to 0, not passed through", () => {
+    // Regression: Number.isFinite(-1) and Number.isFinite(3.5) are both true,
+    // so the old guard let them through as-is. PERSON_PALETTE[-1 % 8] and
+    // PERSON_PALETTE[3.5] are both undefined -> white-screens the Chores
+    // section on render. Every value here must degrade to 0.
+    for (const badColorIdx of [-1, 3.5, 42]) {
+      const s = normalizeChoresState({
+        tallyDate: "2026-07-08",
+        people: [{ id: "p1", name: "Mum", colorIdx: badColorIdx, doneToday: 0, chores: [] }],
+      });
+      assert.equal(s.people[0].colorIdx, 0, `colorIdx ${badColorIdx} should coerce to 0`);
+    }
+  });
+  check("doneToday negative or fractional is clamped to 0, not passed through", () => {
+    for (const badDoneToday of [-2, 1.5]) {
+      const s = normalizeChoresState({
+        tallyDate: "2026-07-08",
+        people: [{ id: "p1", name: "Mum", colorIdx: 0, doneToday: badDoneToday, chores: [] }],
+      });
+      assert.equal(s.people[0].doneToday, 0, `doneToday ${badDoneToday} should coerce to 0`);
+    }
+  });
 }
 
 console.log(`\nAll ${passed} assertions passed.`);

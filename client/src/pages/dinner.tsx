@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { List, Moon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VotingStrip } from "@/components/dinner/voting-strip";
@@ -6,17 +6,18 @@ import { PlannerGrid } from "@/components/dinner/planner-grid";
 import { MealPickerDialog } from "@/components/dinner/meal-picker-dialog";
 import { MealListDialog } from "@/components/dinner/meal-list-dialog";
 import { ResetVotesDialog } from "@/components/dinner/reset-votes-dialog";
-import { useDinner } from "@/hooks/use-dinner";
+import type { UseDinnerReturn } from "@/hooks/use-dinner";
 import { dateKeyToDate, localDateKey } from "@/lib/dinner-state";
 
 interface DinnerPageProps {
   onSleep: () => void;
+  dinner: UseDinnerReturn;
 }
 
 type ActiveModal = { kind: "add-vote" } | { kind: "add-day"; dateKey: string } | null;
+const DATE_TICK_MS = 60_000;
 
-export default function DinnerPage({ onSleep }: DinnerPageProps) {
-  const dinner = useDinner();
+export default function DinnerPage({ onSleep, dinner }: DinnerPageProps) {
   const {
     isLoaded,
     candidates,
@@ -37,7 +38,20 @@ export default function DinnerPage({ onSleep }: DinnerPageProps) {
   const [listOpen, setListOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
 
-  const todayKey = localDateKey();
+  // Sitting on the Dinner screen across midnight otherwise leaves the
+  // "Today" ring on yesterday until something else happens to re-render
+  // (the weekly purge tick deliberately returns the same reference most
+  // days). Cheap 60s poll, only setState when the local date actually
+  // changed, so this re-renders exactly once at midnight.
+  const [todayKey, setTodayKey] = useState(() => localDateKey());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const next = localDateKey();
+      setTodayKey((prev) => (prev === next ? prev : next));
+    }, DATE_TICK_MS);
+    return () => clearInterval(id);
+  }, []);
+
   const dateLabel = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",

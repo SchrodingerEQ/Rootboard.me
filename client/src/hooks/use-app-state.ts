@@ -53,7 +53,13 @@ export function useAppState<T>({
   const [state, setState] = useState<T>(emptyState);
   const [isLoaded, setIsLoaded] = useState(false);
   const persistTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const putRetryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadSucceededRef = useRef(false);
+  // Always the latest state, so a PUT retry firing later persists what the
+  // family has since typed/tapped, not a stale closure from when the retry
+  // was scheduled.
+  const latestStateRef = useRef(state);
+  latestStateRef.current = state;
   // Swallows the persist effect's first run right after a successful load,
   // so re-saving the state we just fetched doesn't fire a pointless PUT.
   const skipNextPersistRef = useRef(true);
@@ -98,6 +104,33 @@ export function useAppState<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- key is constant per call site; emptyState/normalize are stable pure functions.
   }, [key]);
 
+  const clearPutRetry = () => {
+    if (putRetryTimer.current) {
+      clearTimeout(putRetryTimer.current);
+      putRetryTimer.current = null;
+    }
+  };
+
+  // PUTs `value`. On failure, schedules a retry — a wifi blip must not
+  // silently drop a mutation just because the kiosk has nobody around to
+  // click "retry" (the GET load path already retries forever; the PUT path
+  // previously had none). The retry re-reads latestStateRef at fire time
+  // (not the `value` this call closed over) so it persists whatever's
+  // current, and keeps re-scheduling itself on repeated failure — mirroring
+  // the load retry's "keep trying until it works" posture. Any newer
+  // mutation supersedes/cancels a pending retry via clearPutRetry() in the
+  // debounce effect below, so we never race a stale retry against a fresh
+  // debounced PUT.
+  const persistNow = (value: T) => {
+    apiRequest("PUT", `/api/state/${key}`, { value }).catch((err) => {
+      console.error(`Failed to persist ${key} state:`, err);
+      putRetryTimer.current = setTimeout(() => {
+        putRetryTimer.current = null;
+        persistNow(latestStateRef.current);
+      }, LOAD_RETRY_MS);
+    });
+  };
+
   // Debounced whole-blob persist on every change, once a load has actually
   // succeeded (isLoaded alone isn't enough of a guard — check the ref too).
   // Skip the run that fires immediately after load finishes, so we don't PUT
@@ -110,12 +143,15 @@ export function useAppState<T>({
     }
     if (persistTimer.current) clearTimeout(persistTimer.current);
     persistTimer.current = setTimeout(() => {
-      apiRequest("PUT", `/api/state/${key}`, { value: state }).catch((err) => {
-        console.error(`Failed to persist ${key} state:`, err);
-      });
+      persistNow(state);
     }, PERSIST_DEBOUNCE_MS);
     return () => {
       if (persistTimer.current) clearTimeout(persistTimer.current);
+      // A newer scheduled persist (the next debounced PUT, triggered by this
+      // very state change) supersedes any retry left over from an earlier
+      // failed PUT. Also clears it on unmount, so a retry never fires (and
+      // never PUTs) after this hook is gone.
+      clearPutRetry();
     };
   }, [state, isLoaded, key]);
 

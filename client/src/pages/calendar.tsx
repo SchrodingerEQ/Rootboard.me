@@ -16,6 +16,7 @@ import ChoresPage from "@/pages/chores";
 import DinnerPage from "@/pages/dinner";
 import { useCalendar } from "@/hooks/use-calendar";
 import { useChores } from "@/hooks/use-chores";
+import { useDinner } from "@/hooks/use-dinner";
 import { useToast } from "@/hooks/use-toast";
 import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
@@ -93,6 +94,13 @@ export default function CalendarPage() {
   // Hoisted here (rather than inside ChoresPage) so the rail badge stays live
   // while on Calendar/Dinner, not just while the Chores section is showing.
   const chores = useChores();
+
+  // Hoisted here (rather than inside DinnerPage) so switching sections never
+  // unmounts the hook: its debounced persist effect would otherwise clear
+  // its pending PUT timer without flushing on unmount (losing a vote/edit
+  // made within the debounce window), and its in-memory vote cooldown would
+  // reset, letting the cooldown be bypassed by bouncing sections.
+  const dinner = useDinner();
 
   // Get calendars for dialog metadata
   const { data: calendars } = useQuery<any[]>({
@@ -411,7 +419,7 @@ export default function CalendarPage() {
         )}
 
         {section === 'chores' && <ChoresPage onSleep={handleSleep} chores={chores} />}
-        {section === 'dinner' && <DinnerPage onSleep={handleSleep} />}
+        {section === 'dinner' && <DinnerPage onSleep={handleSleep} dinner={dinner} />}
       </div>
 
       <LoadingIndicator isVisible={isRefreshing} />

@@ -37,20 +37,30 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
   const order = [...chores.filter((c) => !c.done), ...chores.filter((c) => c.done)];
   const height = Math.max(chores.length * (CARD_HEIGHT_PX + CARD_GAP_PX) - CARD_GAP_PX, 0);
 
+  // Each timer removes its own entry from timers.current when it fires, so
+  // the array doesn't grow unbounded over months of kiosk uptime — only
+  // still-pending timers need to be there for the unmount bulk-clear below.
+  const trackTimer = (timer: ReturnType<typeof setTimeout>) => {
+    timers.current.push(timer);
+  };
+  const untrackTimer = (timer: ReturnType<typeof setTimeout>) => {
+    timers.current = timers.current.filter((t) => t !== timer);
+  };
+
   const handleToggle = (chore: Chore) => {
     if (!chore.done) {
       const burstId = `${chore.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       setBursts((prev) => [...prev, { id: burstId, choreId: chore.id, particles: generateConfettiParticles(), fired: false }]);
-      timers.current.push(
-        setTimeout(() => {
-          setBursts((prev) => prev.map((b) => (b.id === burstId ? { ...b, fired: true } : b)));
-        }, 30),
-      );
-      timers.current.push(
-        setTimeout(() => {
-          setBursts((prev) => prev.filter((b) => b.id !== burstId));
-        }, CONFETTI_FADE_MS + 200),
-      );
+      const fireTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+        setBursts((prev) => prev.map((b) => (b.id === burstId ? { ...b, fired: true } : b)));
+        untrackTimer(fireTimer);
+      }, 30);
+      trackTimer(fireTimer);
+      const clearTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
+        setBursts((prev) => prev.filter((b) => b.id !== burstId));
+        untrackTimer(clearTimer);
+      }, CONFETTI_FADE_MS + 200);
+      trackTimer(clearTimer);
     }
     onToggle(chore.id);
   };

@@ -97,12 +97,26 @@ function isPersonLike(p: unknown): p is Person {
   return !!p && typeof p === "object" && typeof (p as Person).id === "string";
 }
 
+/** Clamps to a valid PERSON_PALETTE index: must be an integer in [0, 7],
+ *  else falls back to 0. (A raw `Number.isFinite` check let -1 or 3.5
+ *  through, and PERSON_PALETTE[-1 % 8] is undefined — white-screens the
+ *  Chores section, the exact failure class normalize exists to prevent.) */
+function normalizeColorIdx(colorIdx: unknown): number {
+  return Number.isInteger(colorIdx) && (colorIdx as number) >= 0 && (colorIdx as number) <= 7 ? (colorIdx as number) : 0;
+}
+
+/** Floors to a non-negative integer; anything else (negative, fractional,
+ *  non-numeric) falls back to 0. */
+function normalizeDoneToday(doneToday: unknown): number {
+  return Number.isInteger(doneToday) && (doneToday as number) >= 0 ? (doneToday as number) : 0;
+}
+
 function normalizePerson(p: Person): Person {
   return {
     id: p.id,
     name: typeof p.name === "string" ? p.name : "",
-    colorIdx: Number.isFinite(p.colorIdx) ? p.colorIdx : 0,
-    doneToday: Number.isFinite(p.doneToday) && p.doneToday >= 0 ? p.doneToday : 0,
+    colorIdx: normalizeColorIdx(p.colorIdx),
+    doneToday: normalizeDoneToday(p.doneToday),
     chores: Array.isArray(p.chores) ? p.chores.filter(isChoreLike).map((c) => ({ id: c.id, title: c.title, done: !!c.done })) : [],
   };
 }
