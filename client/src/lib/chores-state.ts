@@ -19,8 +19,8 @@ export interface Person {
   name: string;
   colorIdx: number;
   /** Completed-today tally. Increments on complete, decrements (floor 0) on
-   *  un-complete. Survives resetChores(); zeroed by rolloverTallies() at local
-   *  midnight. */
+   *  un-complete. Survives clearPersonChores(); zeroed by rolloverTallies()
+   *  at local midnight. */
   doneToday: number;
   chores: Chore[];
 }
@@ -198,15 +198,14 @@ export function setPersonColor(state: ChoresState, personId: string, colorIdx: n
   return mapPerson(state, personId, (p) => ({ ...p, colorIdx }));
 }
 
-/** Marks every chore (for every person) active again. Tallies untouched. */
-export function resetChores(state: ChoresState): ChoresState {
-  return {
-    ...state,
-    people: state.people.map((p) => ({
-      ...p,
-      chores: p.chores.map((c) => (c.done ? { ...c, done: false } : c)),
-    })),
-  };
+/** Removes every chore (done and active) from ONE person's list — the header
+ *  "Reset chores" flow asks which person, then clears their whole list.
+ *  doneToday is untouched (they keep credit for what they finished today).
+ *  No-op (same reference) for an unknown person or an already-empty list. */
+export function clearPersonChores(state: ChoresState, personId: string): ChoresState {
+  const person = state.people.find((p) => p.id === personId);
+  if (!person || person.chores.length === 0) return state;
+  return mapPerson(state, personId, (p) => ({ ...p, chores: [] }));
 }
 
 /** Zeroes every person's doneToday tally and stamps tallyDate when the local

@@ -13,7 +13,7 @@ import {
   removePerson,
   renamePerson,
   setPersonColor,
-  resetChores,
+  clearPersonChores,
   rolloverTallies,
   openChoreCount,
   doneTodayTotal,
@@ -134,22 +134,32 @@ console.log("toggleChore — tally floor at 0");
   });
 }
 
-console.log("resetChores");
+console.log("clearPersonChores");
 {
   let s = addPerson(emptyState(), "Mum");
-  const personId = s.people[0].id;
-  s = addChore(s, personId, "Fold laundry");
-  s = addChore(s, personId, "Water plants");
+  s = addPerson(s, "Dad");
+  const mumId = s.people[0].id;
+  const dadId = s.people[1].id;
+  s = addChore(s, mumId, "Fold laundry");
+  s = addChore(s, mumId, "Water plants");
+  s = addChore(s, dadId, "Take out bins");
   const choreId = s.people[0].chores[0].id;
-  s = toggleChore(s, personId, choreId); // done, doneToday=1
+  s = toggleChore(s, mumId, choreId); // Mum doneToday=1
   const tallyBefore = s.people[0].doneToday;
-  s = resetChores(s);
-  check("all chores become active again", () => {
-    assert.ok(s.people[0].chores.every((c) => !c.done));
+  s = clearPersonChores(s, mumId);
+  check("removes every chore (done and active) for that person only", () => {
+    assert.deepEqual(s.people[0].chores, []);
+    assert.equal(s.people[1].chores.length, 1);
   });
-  check("tally survives resetChores untouched", () => {
+  check("tally survives clearPersonChores untouched", () => {
     assert.equal(s.people[0].doneToday, tallyBefore);
     assert.equal(s.people[0].doneToday, 1);
+  });
+  check("unknown person id is a no-op (same reference)", () => {
+    assert.equal(clearPersonChores(s, "person_nope"), s);
+  });
+  check("clearing an already-empty list is a no-op (same reference)", () => {
+    assert.equal(clearPersonChores(s, mumId), s);
   });
 }
 
@@ -228,10 +238,13 @@ console.log("selectors");
   check("doneTodayTotal counts currently-completed chores across all people", () => {
     assert.equal(doneTodayTotal(s), 1);
   });
-  s = resetChores(s);
-  check("doneTodayTotal drops back to 0 after resetChores (live-done based), while per-person doneToday tally is untouched", () => {
+  s = clearPersonChores(s, mumId);
+  check("doneTodayTotal drops to 0 after clearing Mum's list (live-done based), while her doneToday tally is untouched", () => {
     assert.equal(doneTodayTotal(s), 0);
     assert.equal(s.people[0].doneToday, 1);
+  });
+  check("openChoreCount only counts Dad's remaining chore after the clear", () => {
+    assert.equal(openChoreCount(s), 1);
   });
 }
 

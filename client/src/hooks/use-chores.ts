@@ -10,7 +10,7 @@ import {
   openChoreCount,
   removePerson,
   renamePerson,
-  resetChores,
+  clearPersonChores,
   rolloverTallies,
   setPersonColor,
   toggleChore,
@@ -59,7 +59,10 @@ export function useChores() {
     (personId: string, colorIdx: number) => setState((s) => setPersonColor(s, personId, colorIdx)),
     [setState],
   );
-  const onResetChores = useCallback(() => setState((s) => resetChores(s)), [setState]);
+  const onClearPersonChores = useCallback(
+    (personId: string) => setState((s) => clearPersonChores(s, personId)),
+    [setState],
+  );
 
   return {
     state,
@@ -74,7 +77,7 @@ export function useChores() {
     onRemovePerson,
     onRenamePerson,
     onSetPersonColor,
-    onResetChores,
+    onClearPersonChores,
   };
 }
 

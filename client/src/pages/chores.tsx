@@ -23,7 +23,7 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
     onRemovePerson,
     onRenamePerson,
     onSetPersonColor,
-    onResetChores,
+    onClearPersonChores,
   } = chores;
 
   const [isSetup, setIsSetup] = useState(false);
@@ -141,8 +141,9 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
       <ResetConfirmDialog
         open={resetOpen}
         onOpenChange={setResetOpen}
-        onConfirm={() => {
-          onResetChores();
+        people={people}
+        onConfirm={(personId) => {
+          onClearPersonChores(personId);
           setResetOpen(false);
         }}
       />
