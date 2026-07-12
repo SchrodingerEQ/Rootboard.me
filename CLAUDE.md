@@ -62,3 +62,35 @@ Git history retains it even after deletion, and this repo is public — so **tre
 - `reusePort` is enabled on non-Windows only (`server/index.ts`) — it throws `ENOTSUP` on Windows.
 - After changing `server/**`, rebuild (`npm run build`) — the server is bundled into `dist/index.js`.
 - On the Pi the app runs as the `touchscreen-scheduler` systemd service → `scripts/start.sh` (health-check + auto-rollback supervisor). Files preserved across updates are listed in `PRESERVE_PATHS` (`updateService.ts`) and the `start.sh` rollback case — keep those two in sync.
+
+<!-- Crucible Creations — company principles digest.
+     Source of truth: SchrodingerEQ/Crucible-HQ/CLAUDE.md
+     Maintained by agent-ops. Do not edit here; propose changes in HQ. -->
+
+## Crucible Creations principles (digest)
+
+This product is built by Crucible Creations. All work in this repo
+follows these non-negotiable rules:
+
+1. **Privacy**: Never add analytics, tracking, telemetry, or
+   third-party data collection. No user accounts unless functionally
+   required.
+2. **Transparent pricing**: Any pricing/paywall surface must disclose
+   exactly what's included. Never gate previously free functionality
+   or a user's existing work/data behind a charge.
+3. **Clear purpose**: UI copy and store text state plainly what the
+   product does and doesn't do. No overpromising.
+4. **Value only accrues**: Never remove or degrade shipped
+   functionality. Feature removal requires founder ratification in HQ
+   — flag it, don't do it.
+5. **Low overhead**: Prefer client-side/serverless approaches; treat
+   any new ongoing infrastructure cost as a decision to flag, not a
+   default.
+6. **No dark patterns**: No manipulative flows anywhere — cancellation,
+   upsells, notifications, engagement mechanics. We compete against
+   companies that do this.
+7. **Escalate, don't decide**: Monetization, pricing, legal, and
+   feature-removal questions are decided in Crucible-HQ, not in this
+   repo.
+
+<!-- end digest -->
