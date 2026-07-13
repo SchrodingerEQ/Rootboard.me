@@ -57,9 +57,16 @@ while true; do
                     done
                     for item in "$LATEST_BACKUP"/*; do
                         basename=$(basename "$item")
-                        if [ "$basename" != "version.txt" ]; then
-                            cp -r "$item" "$APP_DIR/"
-                        fi
+                        case "$basename" in
+                            # Repo metadata is filtered the same way in
+                            # updateService.ts (isRepoMetadata) — keep in sync.
+                            version.txt|*.md|.claude|docs|.github|setup)
+                                continue
+                                ;;
+                            *)
+                                cp -r "$item" "$APP_DIR/"
+                                ;;
+                        esac
                     done
                     echo "[$(date)] Rollback complete. Reinstalling dependencies and rebuilding..."
                     npm install --include=dev 2>/dev/null

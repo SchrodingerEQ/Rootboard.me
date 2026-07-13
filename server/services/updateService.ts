@@ -55,6 +55,23 @@ const PRESERVE_PATHS = [
   'calendar.db-wal',
 ];
 
+// Repo metadata that ships in the GitHub release source tarball but has no
+// business on a kiosk: markdown docs, agent config, CI workflows, setup
+// scripts. Filtered out of updates and backups (but deliberately NOT out of
+// the stale-file deletion pass, so metadata already on devices from old
+// releases gets cleaned up). scripts/start.sh applies the same set when
+// restoring from backup — keep the two in sync.
+// replit.md is exempt: the existing filters preserve it on-device and the
+// *.md rule must not change that.
+function isRepoMetadata(name: string): boolean {
+  if (name === 'replit.md') return false;
+  return name.endsWith('.md') ||
+         name === '.claude' ||
+         name === 'docs' ||
+         name === '.github' ||
+         name === 'setup';
+}
+
 let currentStatus: UpdateStatus = {
   status: 'idle',
   message: 'No update in progress',
@@ -265,7 +282,8 @@ async function createBackup(): Promise<void> {
     return !PRESERVE_PATHS.includes(f) &&
            !f.startsWith('.update-') &&
            f !== 'node_modules' &&
-           f !== '.git';
+           f !== '.git' &&
+           !isRepoMetadata(f);
   });
 
   for (const file of filesToBackup) {
@@ -301,7 +319,8 @@ function applyFiles(sourceDir: string): void {
            f !== '.replit' &&
            f !== 'replit.nix' &&
            f !== 'replit.md' &&
-           f !== 'data';
+           f !== 'data' &&
+           !isRepoMetadata(f);
   });
 
   for (const file of newFiles) {
