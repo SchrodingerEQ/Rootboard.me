@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  EMOJI_ROWS,
   LETTER_ROWS,
   SYMBOL_ROWS,
   backspace,
@@ -9,6 +10,7 @@ import {
   isTouchCapable,
   shouldShowKeyboard,
   type KeyDef,
+  type OskLayer,
 } from "@/lib/osk";
 import { useFocusedInput } from "@/hooks/use-focused-input";
 import { useOskMode } from "@/hooks/use-osk-mode";
@@ -66,7 +68,7 @@ export function OnScreenKeyboard() {
   const focused = useFocusedInput();
   const [mode] = useOskMode();
   const isTouchDevice = useTouchDevice();
-  const [layer, setLayer] = useState<"letters" | "symbols">("letters");
+  const [layer, setLayer] = useState<OskLayer>("letters");
   const [shift, setShift] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -124,13 +126,16 @@ export function OnScreenKeyboard() {
 
   if (!visible || !focused) return null;
 
-  const rows = layer === "letters" ? LETTER_ROWS : SYMBOL_ROWS;
+  const rows = layer === "letters" ? LETTER_ROWS : layer === "symbols" ? SYMBOL_ROWS : EMOJI_ROWS;
 
   const handleKey = (key: KeyDef) => {
     const target = focused;
     if (key.type === "char") {
       const value = shift && isLetter(key.value) ? key.value.toUpperCase() : key.value;
       insertText(target, value);
+      // One-shot shift, like phone keyboards: it applies to the next
+      // character only, then releases itself.
+      if (shift) setShift(false);
       restoreFocus(target);
       return;
     }
@@ -145,7 +150,7 @@ export function OnScreenKeyboard() {
         insertText(target, " ");
         break;
       case "layer":
-        setLayer((l) => (l === "letters" ? "symbols" : "letters"));
+        setLayer(key.layer);
         setShift(false);
         break;
       case "done": {
@@ -198,7 +203,11 @@ export function OnScreenKeyboard() {
         const key = rows[r]?.[c];
         if (key) handleKey(key);
       }}
-      className="fixed inset-x-0 bottom-0 z-[60] select-none border-t border-border bg-[hsl(var(--google-light-gray),#f1f3f4)] px-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-2px_10px_rgba(0,0,0,0.15)]"
+      // Floating boxed panel, lifted off the bottom edge. The background is a
+      // SOLID color on purpose (the old hsl(var(--google-light-gray),...) was
+      // an undefined variable — invalid CSS, so the whole panel was
+      // transparent and the app showed through between the keys).
+      className="fixed bottom-4 left-1/2 z-[60] w-[min(64rem,calc(100vw-24px))] -translate-x-1/2 select-none rounded-2xl border-2 border-[#c9c4b8] bg-[#e8e6e1] p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.28)]"
       // pointerEvents auto is LOAD-BEARING: modal Radix dialogs set
       // `pointer-events: none` on document.body, and this keyboard is portaled
       // into body — without the explicit re-enable, every tap falls through
@@ -207,30 +216,39 @@ export function OnScreenKeyboard() {
       // keyboard's own handlers never ran at all.
       style={{ touchAction: "manipulation", pointerEvents: "auto" }}
     >
-      <div className="mx-auto flex max-w-5xl flex-col gap-1.5">
+      <div className="flex flex-col">
         {rows.map((row, r) => (
-          <div key={r} className="flex gap-1.5">
+          <div key={r} className="flex">
             {row.map((key, c) => {
               const active = key.type === "ctrl" && key.action === "shift" && shift;
               return (
-                <button
+                // The CELL is the touch target (it carries the row/col dispatch
+                // attributes), padded so the visual gaps between keys are still
+                // pressable — the panel has no dead zones, and every tap lands
+                // on the key whose visual it is nearest.
+                <div
                   key={c}
-                  type="button"
-                  tabIndex={-1}
                   data-osk-row={r}
                   data-osk-col={c}
-                  style={{ flexGrow: key.type === "ctrl" ? (key.flex ?? 1) : 1, flexBasis: 0 }}
-                  className={
-                    "flex h-12 items-center justify-center rounded-md border text-lg font-medium shadow-sm transition-colors " +
-                    (active
-                      ? "border-[#2b3038] bg-[#2b3038] text-white"
-                      : key.type === "ctrl"
-                        ? "border-border bg-gray-200 text-gray-800 active:bg-gray-300"
-                        : "border-border bg-white text-gray-900 active:bg-gray-100")
-                  }
+                  className="group p-[3px]"
+                  style={{ flexGrow: key.type === "ctrl" ? (key.flex ?? 1) : 1, flexBasis: 0, minWidth: 0 }}
                 >
-                  {labelFor(key)}
-                </button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className={
+                      "pointer-events-none flex h-14 w-full items-center justify-center rounded-lg border font-medium shadow-sm transition-colors " +
+                      (layer === "emoji" && key.type === "char" ? "text-2xl " : "text-lg ") +
+                      (active
+                        ? "border-[#2b3038] bg-[#2b3038] text-white"
+                        : key.type === "ctrl"
+                          ? "border-[#d5d0c6] bg-[#d9d5cc] text-gray-800 group-active:bg-[#cbc6bb]"
+                          : "border-[#d5d0c6] bg-white text-gray-900 group-active:bg-gray-100")
+                    }
+                  >
+                    {labelFor(key)}
+                  </button>
+                </div>
               );
             })}
           </div>

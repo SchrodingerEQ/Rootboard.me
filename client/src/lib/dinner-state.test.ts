@@ -12,7 +12,7 @@ import {
   removeSavedMeal,
   addCandidate,
   vote,
-  resetVotes,
+  resetVoting,
   setDinner,
   removeDinner,
   purgeOldDinners,
@@ -106,7 +106,7 @@ console.log("addCandidate");
   });
 }
 
-console.log("vote / resetVotes");
+console.log("vote / resetVoting");
 {
   let s = addCandidate(addCandidate(emptyDinnerState(), "Pizza"), "Burgers");
   const pizzaId = s.candidates[0].id;
@@ -131,15 +131,21 @@ console.log("vote / resetVotes");
     assert.equal(maxVoteCount([]), 0);
   });
 
-  s = resetVotes(s);
-  check("resetVotes zeroes every candidate's votes; the meals themselves stay", () => {
-    assert.ok(s.candidates.every((c) => c.votes === 0));
-    assert.equal(s.candidates.length, 2);
+  const savedBefore = s.savedMeals;
+  s = resetVoting(s);
+  check("resetVoting clears every candidate (options AND votes) so new options can be added", () => {
+    assert.equal(s.candidates.length, 0);
+    assert.equal(s.savedMeals, savedBefore);
   });
-  check("resetVotes on an already-zeroed state is a no-op (same reference)", () => {
+  check("resetVoting on an empty board is a no-op (same reference)", () => {
     const before = s;
-    const after = resetVotes(s);
+    const after = resetVoting(s);
     assert.equal(after, before);
+  });
+  check("after resetVoting the board accepts new candidates again", () => {
+    const refilled = addCandidate(s, "Stir fry");
+    assert.equal(refilled.candidates.length, 1);
+    assert.equal(refilled.candidates[0].votes, 0);
   });
 }
 

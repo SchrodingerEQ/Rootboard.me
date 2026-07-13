@@ -89,10 +89,14 @@ export function CalendarHeader({
     <Button
       variant="ghost"
       size="sm"
+      // hover:text-* must be pinned on BOTH states: the ghost variant's
+      // hover:text-accent-foreground is dark ink, and on the touchscreen
+      // :hover sticks to the last tapped button — on the selected (dark)
+      // button that made the label dark-on-dark, i.e. invisible.
       className={`touch-button px-5 rounded-full text-base font-bold transition-colors h-[38px] ${
         currentView === view
-          ? 'bg-[#2b3038] text-white hover:bg-[#2b3038]'
-          : 'text-[#5b626d] hover:bg-white'
+          ? 'bg-[#2b3038] text-white hover:bg-[#2b3038] hover:text-white'
+          : 'text-[#5b626d] hover:bg-white hover:text-[#5b626d]'
       }`}
       onClick={() => onViewChange(view)}
     >

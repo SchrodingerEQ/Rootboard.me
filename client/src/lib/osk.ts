@@ -92,10 +92,14 @@ export function isInsideOsk(
   return !!el?.closest?.('[data-osk="true"]');
 }
 
+export type OskLayer = "letters" | "symbols" | "emoji";
+
 // A keyboard key is either a literal character to type, or a named control.
+// Layer-switch keys carry the layer they switch TO.
 export type KeyDef =
   | { type: "char"; label: string; value: string }
-  | { type: "ctrl"; label: string; action: "shift" | "backspace" | "space" | "layer" | "done"; flex?: number };
+  | { type: "ctrl"; label: string; action: "shift" | "backspace" | "space" | "done"; flex?: number }
+  | { type: "ctrl"; label: string; action: "layer"; layer: OskLayer; flex?: number };
 
 const ch = (value: string, label = value): KeyDef => ({ type: "char", label, value });
 
@@ -108,9 +112,10 @@ export const LETTER_ROWS: KeyDef[][] = [
     { type: "ctrl", label: "⌫", action: "backspace", flex: 1.5 },
   ],
   [
-    { type: "ctrl", label: "123", action: "layer", flex: 1.5 },
+    { type: "ctrl", label: "123", action: "layer", layer: "symbols", flex: 1.5 },
     ch("@"),
-    { type: "ctrl", label: "space", action: "space", flex: 5 },
+    { type: "ctrl", label: "😀", action: "layer", layer: "emoji" },
+    { type: "ctrl", label: "space", action: "space", flex: 4 },
     ch("."),
     { type: "ctrl", label: "Done", action: "done", flex: 1.5 },
   ],
@@ -130,9 +135,26 @@ export const SYMBOL_ROWS: KeyDef[][] = [
     { type: "ctrl", label: "⌫", action: "backspace", flex: 1.5 },
   ],
   [
-    { type: "ctrl", label: "ABC", action: "layer", flex: 1.5 },
-    { type: "ctrl", label: "space", action: "space", flex: 6 },
+    { type: "ctrl", label: "ABC", action: "layer", layer: "letters", flex: 1.5 },
+    { type: "ctrl", label: "😀", action: "layer", layer: "emoji" },
+    { type: "ctrl", label: "space", action: "space", flex: 5 },
     ch("."),
+    { type: "ctrl", label: "Done", action: "done", flex: 1.5 },
+  ],
+];
+
+// Emojis likely to show up in family calendar events (birthdays, sports,
+// meals, travel, holidays). Kept to widely-supported single emoji — no
+// ZWJ sequences — so they render on the kiosk's Firefox and round-trip
+// through Google Calendar (which stores titles as plain Unicode) cleanly.
+export const EMOJI_ROWS: KeyDef[][] = [
+  ["🎂", "🎁", "🎉", "🎈", "⭐", "❤️", "😀", "😂", "😍", "😎"].map((c) => ch(c)),
+  ["⚽", "🏀", "🏈", "⚾", "🎾", "🏊", "🚴", "🎮", "🎵", "🎬"].map((c) => ch(c)),
+  ["🍕", "🌮", "🍔", "🍦", "☕", "🎄", "✈️", "🚗", "🏫", "🏥"].map((c) => ch(c)),
+  [
+    { type: "ctrl", label: "ABC", action: "layer", layer: "letters", flex: 1.5 },
+    { type: "ctrl", label: "space", action: "space", flex: 5.5 },
+    { type: "ctrl", label: "⌫", action: "backspace", flex: 1.5 },
     { type: "ctrl", label: "Done", action: "done", flex: 1.5 },
   ],
 ];
@@ -183,16 +205,42 @@ export function insertText(el: HTMLInputElement | HTMLTextAreaElement, text: str
   setCaret(el, start + text.length);
 }
 
+/**
+ * UTF-16 length of the last grapheme in `text`. Backspace must delete whole
+ * graphemes: emoji are 2+ code units, and slicing one unit off leaves a lone
+ * surrogate — an invalid string that would corrupt the event title on its way
+ * to Google Calendar. Uses Intl.Segmenter where available (handles variation
+ * selectors like ❤️ too); the fallback at least never splits surrogate pairs.
+ */
+export function lastGraphemeLength(text: string): number {
+  if (!text) return 0;
+  const Segmenter = (Intl as { Segmenter?: new (locale?: string, opts?: { granularity: string }) => { segment(s: string): Iterable<{ segment: string }> } }).Segmenter;
+  if (Segmenter) {
+    const segments = Array.from(new Segmenter(undefined, { granularity: "grapheme" }).segment(text));
+    const last = segments[segments.length - 1];
+    return last ? last.segment.length || 1 : 1;
+  }
+  const lastUnit = text.charCodeAt(text.length - 1);
+  const prevUnit = text.length >= 2 ? text.charCodeAt(text.length - 2) : -1;
+  const isSurrogatePair = lastUnit >= 0xdc00 && lastUnit <= 0xdfff && prevUnit >= 0xd800 && prevUnit <= 0xdbff;
+  return isSurrogatePair ? 2 : 1;
+}
+
+/** Pure backspace: delete the selection, or the whole grapheme before the
+ *  caret when the selection is collapsed. */
+export function deleteBackward(value: string, start: number, end: number): { value: string; caret: number } {
+  if (start !== end) {
+    return { value: value.slice(0, start) + value.slice(end), caret: start };
+  }
+  if (start === 0) return { value, caret: 0 };
+  const len = lastGraphemeLength(value.slice(0, start));
+  return { value: value.slice(0, start - len) + value.slice(end), caret: start - len };
+}
+
 export function backspace(el: HTMLInputElement | HTMLTextAreaElement) {
   const [start, end] = getSelection(el);
-  if (start === end) {
-    if (start === 0) return;
-    const next = el.value.slice(0, start - 1) + el.value.slice(end);
-    setValue(el, next);
-    setCaret(el, start - 1);
-  } else {
-    const next = el.value.slice(0, start) + el.value.slice(end);
-    setValue(el, next);
-    setCaret(el, start);
-  }
+  if (start === end && start === 0) return;
+  const next = deleteBackward(el.value, start, end);
+  setValue(el, next.value);
+  setCaret(el, next.caret);
 }

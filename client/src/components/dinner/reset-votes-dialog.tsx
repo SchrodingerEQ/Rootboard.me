@@ -25,10 +25,10 @@ export function ResetVotesDialog({ open, onOpenChange, onConfirm }: ResetVotesDi
       >
         <AlertDialogHeader>
           <AlertDialogTitle style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "#2b3038" }}>
-            Reset all votes?
+            Reset the vote?
           </AlertDialogTitle>
           <AlertDialogDescription style={{ fontSize: 18, fontWeight: 500, color: "#5b626d" }}>
-            Every meal's vote count goes back to zero. The meals stay on the board.
+            All meal options and their votes are cleared from the board so new options can be added. Your saved meal list is not affected.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-row gap-3">

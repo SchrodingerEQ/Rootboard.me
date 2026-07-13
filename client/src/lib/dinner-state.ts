@@ -106,11 +106,13 @@ export function vote(state: DinnerState, candidateId: string): DinnerState {
   return changed ? { ...state, candidates } : state;
 }
 
-/** Zeroes every candidate's vote count; the candidates themselves (the
- *  meals) stay. No-op (same reference) if every count is already 0. */
-export function resetVotes(state: DinnerState): DinnerState {
-  if (state.candidates.every((c) => c.votes === 0)) return state;
-  return { ...state, candidates: state.candidates.map((c) => (c.votes === 0 ? c : { ...c, votes: 0 })) };
+/** Clears the voting board: every candidate (meal option) AND its votes go,
+ *  so a fresh set of options can be added. This is also the only way to free
+ *  up filled slots. Saved meals are untouched. No-op (same reference) if the
+ *  board is already empty. */
+export function resetVoting(state: DinnerState): DinnerState {
+  if (state.candidates.length === 0) return state;
+  return { ...state, candidates: [] };
 }
 
 /** Sets/overwrites the dinner for a date key. Blank (trimmed) titles are a no-op. */

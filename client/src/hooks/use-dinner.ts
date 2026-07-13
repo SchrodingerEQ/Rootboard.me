@@ -11,7 +11,7 @@ import {
   purgeOldDinners,
   removeDinner,
   removeSavedMeal,
-  resetVotes,
+  resetVoting,
   setDinner,
   vote,
 } from "@/lib/dinner-state";
@@ -74,7 +74,7 @@ export function useDinner() {
   );
 
   const onResetVotes = useCallback(() => {
-    setState((s) => resetVotes(s));
+    setState((s) => resetVoting(s));
     setCooldownUntil(0);
   }, [setState]);
 
