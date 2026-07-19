@@ -94,3 +94,10 @@ follows these non-negotiable rules:
    repo.
 
 <!-- end digest -->
+
+## Task tracking
+Open work for this project is tracked in TASKS.md at repo root.
+Check it when asked what's next or what's outstanding; when you
+complete work that matches an open item, propose checking it off
+(confirm with me first). Add new discovered work there, not in
+ad-hoc notes.
