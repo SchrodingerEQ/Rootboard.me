@@ -2,10 +2,18 @@
 
 Guidance for any AI agent (Claude Code, etc.) working in this repository.
 
-> **Full current spec:** if `docs/SPEC.md` exists in your checkout, read it —
-> it documents the as-built behavior (views, data invariants, OSK/kiosk
-> quirks, update system) in detail. It is local-only (gitignored, so fresh
-> clones won't have it); keep it updated when behavior changes.
+> **Full current spec:** read `docs/SPEC.md` — it documents the as-built
+> behavior (views, data invariants, OSK/kiosk quirks, update system) in
+> detail. Keep it updated when behavior changes.
+>
+> **Decision records:** `docs/decisions/` holds short "why X over Y" notes.
+> When you make a non-obvious design choice (library, architecture,
+> protocol, policy), add a note there. See `docs/README.md` for the format.
+>
+> ⚠️ `docs/` is **tracked and public** (it syncs the project across
+> machines via the repo — see `docs/decisions/0001`). Everything written
+> there falls under the security review below: no hostnames, IPs, real
+> names, or other deployment specifics — use generic placeholders.
 
 ## Project at a glance
 

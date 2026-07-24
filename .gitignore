@@ -54,6 +54,5 @@ npm-debug.log*
 .vscode/
 .idea/
 
-# Local agent documentation (docs/SPEC.md) — deliberately not published;
-# see CLAUDE.md. Public docs are README.md / INSTALLATION.md.
-docs/
+# docs/ is tracked and public (see docs/decisions/0001) — keep deployment
+# specifics (hostnames, IPs, real names) out of everything in it.

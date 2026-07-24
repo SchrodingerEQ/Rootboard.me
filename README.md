@@ -120,4 +120,4 @@ If you are forking or republishing this project, complete these one-time securit
 
 ## License
 
-Add your preferred license here.
+This project is licensed under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0). You are free to use, modify, and redistribute it, including for network/hosted use, provided derivative works are shared under the same license.
