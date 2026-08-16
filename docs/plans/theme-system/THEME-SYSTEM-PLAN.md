@@ -4,6 +4,13 @@
 **Decided:** July 18, 2026
 **Scope of initial rollout:** Built-in themes only. Community themes are explicitly deferred (see "Deferred" section).
 
+> **Update 2026-08-15:** The founder-ratified community-widget-system
+> direction ([decision 0006](../../decisions/0006-community-widget-system.md))
+> touches many of the same ~20 files as Phase 0. Plan the widget-contract
+> extraction and the Phase 0 color sweep as a **single refactoring phase**
+> with one combined plan doc under `docs/plans/` (tracked in `TASKS.md`),
+> rather than two passes over the same files.
+
 ---
 
 ## Summary
@@ -53,7 +60,7 @@ Manifest requirements:
 
 ## Phases
 
-### Phase 0 — Color sweep (prerequisite; do first, do alone)
+### Phase 0 — Color sweep (prerequisite; do first, do alone — see 2026-08-15 update: now part of the combined widget-contract refactor, still with no feature work mixed in)
 Replace ~150 hardcoded hex colors across ~20 component files with named CSS variables, extending the `--rb-*` palette with semantic names (e.g., nav active pink → `--rb-nav-active-bg`, badge orange → `--rb-badge`). Move confetti colors and the screensaver gradient into variables too.
 **Success test: the app is pixel-identical before and after.** No logic changes. No feature work mixed in.
 → Claude Code kickoff prompt: `phase0-color-sweep-prompt.md`

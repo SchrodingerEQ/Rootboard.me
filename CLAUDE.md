@@ -14,6 +14,16 @@ Guidance for any AI agent (Claude Code, etc.) working in this repository.
 > machines via the repo — see `docs/decisions/0001`). Everything written
 > there falls under the security review below: no hostnames, IPs, real
 > names, or other deployment specifics — use generic placeholders.
+>
+> ⚠️ **Business information never goes in this repo.** Monetization,
+> pricing, margins, revenue strategy, legal/trademark plans, and
+> sales/pilot logistics live in Crucible-HQ `departments/pm/rootboard/`
+> (private repo — it syncs across machines too, so strategy material
+> still travels with the project). This applies to tracked files,
+> commit messages, and release notes alike. A decision record that turns
+> on business strategy gets a numbering **stub** here pointing to
+> "private planning records" (see `docs/decisions/0005`). Technical and
+> community-facing direction stays public.
 
 ## Project at a glance
 
@@ -44,6 +54,14 @@ These are gitignored — confirm none are staged or force-added:
 - Internal **IP addresses** (`192.168.x.x` / `10.x.x.x` etc.), the kiosk's **hostname**, the Linux **username** it runs under, and absolute home paths (`/home/<user>/...`). Use generic placeholders in docs, never the real deployment's values.
 - Real names beyond the project's public branding.
 - Remember: **commit messages and release notes are public too.**
+
+### 4. No business/strategy information
+- Monetization, pricing, margins, revenue strategy, trademark/legal
+  plans, sales/pilot logistics — none of it in tracked files, commit
+  messages, or release notes. It belongs in Crucible-HQ
+  `departments/pm/rootboard/` (see the warning block at the top).
+  Grep the staged diff for tells like dollar amounts, `pricing`,
+  `margin`, `revenue`, `trademark`, `BOM`.
 
 ### How to actually run the check
 1. `git status` — verify no untracked secret/data file is about to be added. **Avoid blind `git add -A`/`git add .`**; stage files deliberately.
