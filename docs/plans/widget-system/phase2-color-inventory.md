@@ -576,6 +576,9 @@ These are **not** assigned variables. The area gates must allowlist them.
 
 Phase 2 color sweep closed out 2026-08-19 (Task 12). Full-repo hex,
 rgb(a), and Tailwind palette-class gates reconcile against the §13
-exception list with no unallowlisted hits; `npm run check`, `npm test`,
-and `npm run build` are green. The approved-drift record in §2 is
+exception list with no unallowlisted hits; the client side of
+`npm run check` is clean, `npm test` passes, and `npm run build`
+succeeds. Three pre-existing `server/` tsc errors (server/storage.ts:120,
+server/storage.ts:131, server/vite.ts:39) are unrelated to this sweep
+and tracked separately. The approved-drift record in §2 is
 documented in `docs/SPEC.md` §3.9.

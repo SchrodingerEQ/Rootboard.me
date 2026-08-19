@@ -109,7 +109,7 @@ export function PersonColumn({ person, onToggleChore, onAddChore }: PersonColumn
           <button
             type="button"
             onClick={() => setIsAdding(true)}
-            className="touch-button w-full flex items-center justify-center gap-2 opacity-65 hover:opacity-100 hover:bg-rb-surface/50"
+            className="touch-button w-full flex items-center justify-center gap-2 opacity-65 hover:opacity-100 hover:bg-[var(--rb-on-tint-hover)]"
             style={{ marginTop: 4, height: 50, border: "none", background: "transparent", borderRadius: 14, fontSize: 17, fontWeight: 800, color: pal.text }}
             data-testid={`button-add-chore-${person.id}`}
           >

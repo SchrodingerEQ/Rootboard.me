@@ -119,6 +119,8 @@
   --rb-on-tint-ring: rgba(255, 255, 255, 0.7);
   --rb-on-tint-fill: rgba(255, 255, 255, 0.65);
   --rb-on-tint-chip: rgba(255, 255, 255, 0.6);
+  --rb-on-tint-hover-strong: rgba(255, 255, 255, 0.55);
+  --rb-on-tint-hover: rgba(255, 255, 255, 0.5);
 
   /* ===== On-screen keyboard ===== */
   --rb-key-panel-bg: #e8e6e1;

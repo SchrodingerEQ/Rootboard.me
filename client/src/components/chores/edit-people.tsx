@@ -98,7 +98,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
                       type="button"
                       onClick={() => startEdit(p)}
                       title="Edit name"
-                      className="flex-1 min-w-0 flex items-center gap-2 text-left rounded-[10px] hover:bg-rb-surface/55"
+                      className="flex-1 min-w-0 flex items-center gap-2 text-left rounded-[10px] hover:bg-[var(--rb-on-tint-hover-strong)]"
                       style={{ border: "none", background: "transparent", padding: "6px 8px", fontSize: 20, fontWeight: 800, color: pal.text }}
                       data-testid={`button-edit-name-${p.id}`}
                     >
