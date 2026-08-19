@@ -79,11 +79,11 @@ export default function DinnerPage({ onSleep, dinner }: DinnerPageProps) {
   return (
     <div className="h-full flex flex-col" style={{ background: "var(--rb-canvas)" }}>
       <header
-        className="bg-white flex items-center justify-between"
-        style={{ padding: "18px 28px", boxShadow: "0 1px 0 rgba(0,0,0,.05)" }}
+        className="bg-rb-surface flex items-center justify-between"
+        style={{ padding: "18px 28px", boxShadow: "0 1px 0 var(--rb-shadow-soft)" }}
       >
         <div className="flex items-baseline gap-3">
-          <h1 className="text-[30px] font-extrabold tracking-tight text-[#2b3038] leading-none">Dinner</h1>
+          <h1 className="text-[30px] font-extrabold tracking-tight text-rb-ink leading-none">Dinner</h1>
           <span style={{ fontSize: 20, fontWeight: 500, color: "var(--rb-muted)" }}>{dateLabel}</span>
         </div>
 
@@ -91,7 +91,7 @@ export default function DinnerPage({ onSleep, dinner }: DinnerPageProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-[#5b626d] text-base font-bold"
+            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-rb-ink-secondary text-base font-bold"
             onClick={() => setListOpen(true)}
             data-testid="button-edit-meal-list"
           >
@@ -102,7 +102,7 @@ export default function DinnerPage({ onSleep, dinner }: DinnerPageProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-[#5b626d] text-base font-bold"
+            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-rb-ink-secondary text-base font-bold"
             onClick={onSleep}
             data-testid="button-sleep"
           >

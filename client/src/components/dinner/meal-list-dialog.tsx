@@ -38,15 +38,15 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
       >
         <DialogHeader>
           <div className="flex items-center" style={{ gap: 12, margin: "0 0 4px" }}>
-            <DialogTitle style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "#2b3038" }}>
+            <DialogTitle style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "var(--rb-ink)" }}>
               Meal list
             </DialogTitle>
             <span
               style={{
                 fontSize: 15,
                 fontWeight: 800,
-                color: isFull ? "#e11d48" : "#5b626d",
-                background: isFull ? "#fce4ea" : "var(--rb-chip)",
+                color: isFull ? "var(--rb-danger)" : "var(--rb-ink-secondary)",
+                background: isFull ? "var(--rb-danger-wash)" : "var(--rb-chip)",
                 padding: "5px 14px",
                 borderRadius: 999,
               }}
@@ -68,10 +68,10 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
             <div
               key={m}
               className="flex items-center"
-              style={{ gap: 12, background: "#fbfaf7", borderRadius: 12, padding: "10px 14px" }}
+              style={{ gap: 12, background: "var(--rb-surface-sunken)", borderRadius: 12, padding: "10px 14px" }}
               data-testid={`row-saved-meal-${m}`}
             >
-              <span className="flex-1" style={{ fontSize: 18, fontWeight: 700, color: "#2b3038" }}>
+              <span className="flex-1" style={{ fontSize: 18, fontWeight: 700, color: "var(--rb-ink)" }}>
                 {m}
               </span>
               <button
@@ -79,14 +79,14 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
                 onClick={() => onRemove(m)}
                 title="Remove"
                 className="touch-button flex-shrink-0 flex items-center justify-center rounded-full"
-                style={{ width: 44, height: 44, border: "none", background: "var(--rb-chip)", color: "#5b626d" }}
+                style={{ width: 44, height: 44, border: "none", background: "var(--rb-chip)", color: "var(--rb-ink-secondary)" }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#fce4ea";
-                  e.currentTarget.style.color = "#e11d48";
+                  e.currentTarget.style.background = "var(--rb-danger-wash)";
+                  e.currentTarget.style.color = "var(--rb-danger)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "var(--rb-chip)";
-                  e.currentTarget.style.color = "#5b626d";
+                  e.currentTarget.style.color = "var(--rb-ink-secondary)";
                 }}
                 data-testid={`button-remove-saved-meal-${m}`}
               >
@@ -106,16 +106,16 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
             }}
             placeholder="Add a meal to the list…"
             className="flex-1 min-w-0 outline-none"
-            style={{ height: 56, border: "2px solid #e7e4dd", borderRadius: 14, padding: "0 18px", fontSize: 19, fontWeight: 600, color: "#2b3038", background: "#fbfaf7" }}
+            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: 14, padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
             data-testid="input-add-saved-meal"
           />
           <button
             type="button"
             onClick={confirmAdd}
-            className="touch-button flex-shrink-0 text-white"
-            style={{ height: 56, padding: "0 24px", border: "none", background: "#2b3038", fontSize: 18, fontWeight: 700, borderRadius: 14 }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#3a4049")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "#2b3038")}
+            className="touch-button flex-shrink-0 text-rb-on-color-ink"
+            style={{ height: 56, padding: "0 24px", border: "none", background: "var(--rb-btn-dark-bg)", fontSize: 18, fontWeight: 700, borderRadius: 14 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-btn-dark-hover-bg)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-btn-dark-bg)")}
             data-testid="button-add-saved-meal"
           >
             Add
@@ -125,8 +125,8 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
         <button
           type="button"
           onClick={() => onOpenChange(false)}
-          className="touch-button w-full text-white"
-          style={{ height: 58, border: "none", background: "var(--rb-accent)", fontSize: 19, fontWeight: 800, borderRadius: 999, boxShadow: "0 2px 6px rgba(242,101,90,.35)" }}
+          className="touch-button w-full text-rb-on-color-ink"
+          style={{ height: 58, border: "none", background: "var(--rb-accent)", fontSize: 19, fontWeight: 800, borderRadius: 999, boxShadow: "0 2px 6px var(--rb-shadow-accent)" }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-accent-hover)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-accent)")}
           data-testid="button-done-meal-list"
