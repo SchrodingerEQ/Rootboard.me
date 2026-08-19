@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CalendarHeader } from "@/components/calendar/calendar-header";
 import { CalendarFilters } from "@/components/calendar/calendar-filters";
 import { MonthView } from "@/components/calendar/month-view";
@@ -29,6 +29,13 @@ interface CalendarSectionProps {
    * toggle write it via onCalendarEventToggle); passed down for filtering. */
   enabledCalendars: Set<string>;
   onCalendarEventToggle: (calendarId: string, enabled: boolean) => void;
+  /** Hands the shell this section's real manualRefresh (from useCalendar), so
+   * SettingsMenu's onSubscribeSuccess can trigger the same sync path — same
+   * online guard, isRefreshing/LoadingIndicator, throttle bookkeeping,
+   * invalidations, and mutation-based error containment — instead of a
+   * hand-rolled duplicate. CalendarSection is always mounted, so this
+   * registration is always live. */
+  onRegisterRefresh?: (fn: () => void) => void;
 }
 
 export function CalendarSection({
@@ -38,6 +45,7 @@ export function CalendarSection({
   visibleCalendarsInHeader,
   enabledCalendars,
   onCalendarEventToggle,
+  onRegisterRefresh,
 }: CalendarSectionProps) {
   const [currentView, setCurrentView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -64,6 +72,12 @@ export function CalendarSection({
     enabled: true,
     staleTime: 5 * 60 * 1000,
   });
+
+  // Hand the shell this section's real manualRefresh so SettingsMenu's
+  // onSubscribeSuccess can reuse it (see onRegisterRefresh prop doc above).
+  useEffect(() => {
+    onRegisterRefresh?.(manualRefresh);
+  }, [onRegisterRefresh, manualRefresh]);
 
   // Show auth dialog when not authenticated
   useEffect(() => {

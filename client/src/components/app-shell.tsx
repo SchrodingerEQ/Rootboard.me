@@ -10,8 +10,9 @@ import { useChores } from "@/hooks/use-chores";
 import { useDinner } from "@/hooks/use-dinner";
 import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { useScreensaverState } from "@/hooks/useScreensaverState";
 import type { Section } from "@/lib/app-types";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
@@ -39,7 +40,6 @@ export default function AppShell() {
   const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set());
   const [visibleCalendarsInHeader, setVisibleCalendarsInHeader] = useState<Set<string>>(new Set());
   const [isPowerSaving, setIsPowerSaving] = useState(false);
-  const queryClient = useQueryClient();
 
   // Version checking for updates
   const { showUpdateNotification, latestVersion, releaseNotes, releaseName, releaseUrl, dismissUpdate, startUpdate, startRollback, updateStatus, isUpdating, checkForUpdates } = useVersionCheck();
@@ -72,9 +72,28 @@ export default function AppShell() {
   // authStatus to gate its trigger button. This used to come from
   // CalendarSection's useCalendar() instance; now the shell owns a small,
   // independent query for it (same queryKey, so it shares cache/network
-  // with CalendarSection's own auth-status query via react-query).
+  // with CalendarSection's own auth-status query via react-query). Options
+  // below are copied verbatim from use-calendar.ts's auth-status query
+  // (lines 43-60) so the two observers on this key never diverge — same
+  // online/screensaver gating, retry/backoff, and staleness.
+  const isOnline = useOnlineStatus();
+  const isScreensaverActive = useScreensaverState();
+  const shouldPerformQueries = isOnline && !isScreensaverActive;
+
   const { data: authStatus } = useQuery<AuthStatus>({
     queryKey: ['/api/calendar/auth-status'],
+    queryFn: async () => {
+      const response = await fetch('/api/calendar/auth-status', { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to check auth status');
+      }
+      return response.json();
+    },
+    enabled: shouldPerformQueries, // Pause when offline or screensaver active
+    retry: isOnline ? 3 : false,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    refetchOnWindowFocus: false,
+    staleTime: 60 * 1000,
   });
 
   // Hoisted here (rather than inside ChoresPage) so the rail badge stays live
@@ -172,31 +191,17 @@ export default function AppShell() {
   };
 
   // Settings coupling #2: onSubscribeSuccess used to be manualRefresh from
-  // CalendarSection's useCalendar() instance. Mirrors manualRefresh's actual
-  // request sequence (see use-calendar.ts): POST /api/calendar/sync with the
-  // same wide sync window (3 months back to 12 months forward), invalidate
-  // the events query on success, and — matching the hook's separate
-  // "sync mutation settled" effect — invalidate sync-status regardless of
-  // outcome.
-  const handleSubscribeSuccess = useCallback(async () => {
-    const syncStart = new Date();
-    syncStart.setMonth(syncStart.getMonth() - 3);
-    syncStart.setDate(1);
-
-    const syncEnd = new Date();
-    syncEnd.setMonth(syncEnd.getMonth() + 12);
-    syncEnd.setDate(0); // Last day of that month
-
-    try {
-      await apiRequest('POST', '/api/calendar/sync', {
-        startDate: syncStart.toISOString(),
-        endDate: syncEnd.toISOString(),
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
-    } finally {
-      queryClient.invalidateQueries({ queryKey: ['/api/calendar/sync-status'] });
-    }
-  }, [queryClient]);
+  // CalendarSection's useCalendar() instance. Rather than re-deriving that
+  // request sequence by hand (which drifted from the original: no online
+  // guard, no isRefreshing/LoadingIndicator, no throttle bookkeeping, no
+  // in-flight guard, and an unhandled rejection on sync failure),
+  // CalendarSection hands up its real manualRefresh via onRegisterRefresh,
+  // and we call it through a ref so SettingsMenu always invokes the current
+  // instance without needing manualRefresh to be a stable dependency here.
+  const refreshRef = useRef<() => void>(() => {});
+  const registerRefresh = useCallback((fn: () => void) => {
+    refreshRef.current = fn;
+  }, []);
 
   return (
     <div className="h-screen flex bg-background">
@@ -213,7 +218,7 @@ export default function AppShell() {
             currentBrightness={screensaver.currentBrightness}
             onCheckForUpdates={checkForUpdates}
             onRollback={startRollback}
-            onSubscribeSuccess={handleSubscribeSuccess}
+            onSubscribeSuccess={() => refreshRef.current()}
             onCalendarRemoved={handleCalendarRemoved}
           />
         ) : undefined}
@@ -227,6 +232,7 @@ export default function AppShell() {
           visibleCalendarsInHeader={visibleCalendarsInHeader}
           enabledCalendars={enabledCalendars}
           onCalendarEventToggle={handleCalendarEventToggle}
+          onRegisterRefresh={registerRefresh}
         />
 
         {section === 'chores' && <ChoresPage onSleep={handleSleep} chores={chores} />}
