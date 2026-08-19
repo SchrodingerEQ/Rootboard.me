@@ -47,7 +47,9 @@ while true; do
                     for item in "$APP_DIR"/*; do
                         basename=$(basename "$item")
                         case "$basename" in
-                            .env|data|node_modules|.update-backups|.update-temp|.git|.replit|replit.nix|replit.md|service-account.json|google_credentials.json|calendar.db*)
+                            # Preserve list mirrors PRESERVE_PATHS in
+                            # updateService.ts — keep in sync.
+                            .env|data|node_modules|.update-backups|.update-temp|.git|.replit|replit.nix|replit.md|service-account.json|google_credentials.json|calendar.db*|widgets)
                                 continue
                                 ;;
                             *)
