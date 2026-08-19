@@ -159,6 +159,12 @@ interface WidgetHost {
   ui: {
     /** Numeric badge on this widget's nav-rail button (null clears). */
     setBadge(count: number | null): void;
+
+    /** Requests the shell's power-saving overlay (screensaver) immediately,
+     *  as if the kiosk had gone idle. The overlay itself is shell-owned —
+     *  this only triggers it; the widget has no control over dimming,
+     *  timing, or exit. */
+    sleep(): void;
   };
 }
 ```
@@ -167,8 +173,13 @@ interface WidgetHost {
 chores/dinner need `storage` (today: `app_state` blobs) and `setBadge`
 (today: hoisted hook feeding the rail badge); calendar and any
 weather-like widget need `fetch` and refresh cadence; theming needs the
-CSS variables; per-widget options need `settings`. Nothing first-party
-needs more, so nothing more is exposed.
+CSS variables; per-widget options need `settings`; `ui.sleep()` was added
+by founder ratification because all three first-party widgets (calendar,
+chores, dinner) carry an explicit Sleep button that puts the kiosk into
+its power-saving overlay on demand — the overlay itself remains entirely
+shell-owned (widgets cannot dim, time, or dismiss it themselves; `sleep()`
+only requests that the shell start it, exactly as an idle timeout would).
+Nothing else first-party needs more, so nothing more is exposed.
 
 **Storage key mapping:** community widgets use `app_state` key
 `widget:<id>` (server whitelist becomes the legacy set `{chores,
