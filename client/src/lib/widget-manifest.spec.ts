@@ -101,6 +101,75 @@ describe("widgetManifestSchema", () => {
     });
     expect(result.success).toBe(false);
   });
+
+  test("accepts name at exactly 40 characters", () => {
+    const name40 = "a".repeat(40);
+    const result = widgetManifestSchema.safeParse({ ...validManifest, name: name40 });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects empty name", () => {
+    const result = widgetManifestSchema.safeParse({ ...validManifest, name: "" });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects name exceeding 40 characters", () => {
+    const name41 = "a".repeat(41);
+    const result = widgetManifestSchema.safeParse({ ...validManifest, name: name41 });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts description at exactly 200 characters", () => {
+    const desc200 = "x".repeat(200);
+    const result = widgetManifestSchema.safeParse({
+      ...validManifest,
+      description: desc200,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects description exceeding 200 characters", () => {
+    const desc201 = "x".repeat(201);
+    const result = widgetManifestSchema.safeParse({
+      ...validManifest,
+      description: desc201,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts refresh.intervalSeconds at exactly 30", () => {
+    const result = widgetManifestSchema.safeParse({
+      ...validManifest,
+      refresh: { intervalSeconds: 30 },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects refresh.intervalSeconds below 30", () => {
+    const result = widgetManifestSchema.safeParse({
+      ...validManifest,
+      refresh: { intervalSeconds: 29 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects non-integer refresh.intervalSeconds", () => {
+    const result = widgetManifestSchema.safeParse({
+      ...validManifest,
+      refresh: { intervalSeconds: 60.5 },
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects entry with mid-path traversal '..'", () => {
+    const result = widgetManifestSchema.safeParse({ ...validManifest, entry: "a/../b" });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts entry with dots in filename (not traversal)", () => {
+    const result = widgetManifestSchema.safeParse({ ...validManifest, entry: "a..b" });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("widgetIdSchema", () => {
