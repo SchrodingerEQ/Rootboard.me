@@ -5,7 +5,9 @@ import { storage } from "./storage";
 import { googleCalendarService } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
 import { getWeather } from "./services/weatherService";
+import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
 import { APP_VERSION } from "@shared/version";
+import { dashboardConfigSchema } from "@shared/dashboard-config";
 
 // Shared request body schema for create/update event endpoints. Times come
 // over the wire as ISO strings; coerce to Date so downstream code works
@@ -27,12 +29,18 @@ const createEventBodySchema = eventWriteBodySchema.and(
   z.object({ calendarId: z.string().min(1, "calendarId is required") })
 );
 
-// Whole-blob app-state store backing the Chores and Dinner screens. Keys are
-// whitelisted (no arbitrary key writes) and values are size-capped since this
-// DB lives on a Raspberry Pi. APP_STATE_MAX_LENGTH must stay below Express's
-// 100 KB JSON body limit (server/index.ts); chores/dinner blobs are a few KB.
+// Whole-blob app-state store backing the Chores and Dinner screens, plus
+// per-widget state under the "widget:<id>" namespace (widget host, Phase 3).
+// Keys are whitelisted (no arbitrary key writes) and values are size-capped
+// since this DB lives on a Raspberry Pi. APP_STATE_MAX_LENGTH must stay below
+// Express's 100 KB JSON body limit (server/index.ts); blobs are a few KB.
 const APP_STATE_KEYS = new Set(['chores', 'dinner']);
+const WIDGET_STATE_KEY_RE = /^widget:[a-z0-9][a-z0-9-]{1,40}$/;
 const APP_STATE_MAX_LENGTH = 64_000;
+
+function isValidStateKey(key: string): boolean {
+  return APP_STATE_KEYS.has(key) || WIDGET_STATE_KEY_RE.test(key);
+}
 
 const appStateBodySchema = z.object({
   value: z.any().refine((v) => v !== undefined, { message: "value is required" }),
@@ -327,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // routes above — no localhost-only guard.
   app.get("/api/state/:key", async (req, res) => {
     const key = req.params.key;
-    if (!APP_STATE_KEYS.has(key)) {
+    if (!isValidStateKey(key)) {
       return res.status(400).json({ message: `Unknown state key: ${key}` });
     }
     try {
@@ -341,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/state/:key", async (req, res) => {
     const key = req.params.key;
-    if (!APP_STATE_KEYS.has(key)) {
+    if (!isValidStateKey(key)) {
       return res.status(400).json({ message: `Unknown state key: ${key}` });
     }
     const parsed = appStateBodySchema.safeParse(req.body);
@@ -363,6 +371,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error(`Failed to set app state for key "${key}":`, error);
       res.status(500).json({ message: "Failed to save state" });
+    }
+  });
+
+  // Dashboard config (widget host, Phase 3): a single human-editable JSON
+  // file the kiosk owner can SSH in and hand-edit. Same-origin kiosk UI
+  // endpoint, like the routes above — no localhost-only guard.
+  app.get("/api/config/dashboard", (req, res) => {
+    const { config, source } = readDashboardConfig();
+    res.json({ config, source });
+  });
+
+  app.put("/api/config/dashboard", (req, res) => {
+    const parsed = dashboardConfigSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Invalid dashboard config",
+        errors: parsed.error.flatten(),
+      });
+    }
+    try {
+      writeDashboardConfig(parsed.data);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Failed to write dashboard config:", error);
+      res.status(500).json({ message: "Failed to save dashboard config" });
     }
   });
 
