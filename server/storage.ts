@@ -117,7 +117,7 @@ export class MemStorage implements IStorage {
   async deleteCalendarEventsByCalendarNotIn(calendarId: string, googleEventIds: string[]): Promise<number> {
     const idsSet = new Set(googleEventIds);
     let deleted = 0;
-    for (const [id, event] of this.calendarEvents) {
+    for (const [id, event] of Array.from(this.calendarEvents.entries())) {
       if (event.calendarId === calendarId && !idsSet.has(event.googleEventId)) {
         this.calendarEvents.delete(id);
         deleted++;
@@ -128,7 +128,7 @@ export class MemStorage implements IStorage {
 
   async deleteCalendarEventsEndedBefore(cutoff: Date): Promise<number> {
     let deleted = 0;
-    for (const [id, event] of this.calendarEvents) {
+    for (const [id, event] of Array.from(this.calendarEvents.entries())) {
       if (event.endTime < cutoff) {
         this.calendarEvents.delete(id);
         deleted++;
