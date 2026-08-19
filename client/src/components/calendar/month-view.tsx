@@ -9,14 +9,13 @@ interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
-  enabledCalendars?: Set<string>;
   onEventClick?: (event: CalendarEvent) => void;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_VISIBLE = 4;
 
-export function MonthView({ currentDate, events, isLoading, enabledCalendars, onEventClick }: MonthViewProps) {
+export function MonthView({ currentDate, events, isLoading, onEventClick }: MonthViewProps) {
   const monthDays = useMemo(() => getMonthCalendar(currentDate), [currentDate]);
 
   // Limit the grid to 5 rows: drop trailing week(s) that fall entirely in the
@@ -47,10 +46,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
     const dayEnds = monthDays.map(d => { const x = new Date(d); x.setHours(23, 59, 59, 999); return x.getTime(); });
     dayKeys.forEach(k => eventsMap.set(k, []));
 
-    const usingFilter = enabledCalendars && enabledCalendars.size > 0;
-
     for (const event of events) {
-      if (usingFilter && !enabledCalendars!.has(event.calendarId)) continue;
       const startMs = new Date(event.startTime).getTime();
       const endMs = new Date(event.endTime).getTime();
 
@@ -74,7 +70,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
     });
 
     return eventsMap;
-  }, [events, enabledCalendars, monthDays]);
+  }, [events, monthDays]);
 
   const getEventsForDate = (date: Date) => eventsByDate.get(date.toDateString()) || [];
 

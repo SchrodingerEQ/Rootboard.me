@@ -193,10 +193,16 @@ from Open-Meteo and cached server-side.
   and `visibleCalendarsInHeader`. New calendar ids auto-enable exactly
   once (a `seenCalendarIds` ref prevents refetches from re-enabling a
   calendar the user turned off). Header chips toggle visibility only;
-  Settings toggles both. Empty `enabledCalendars` = no events shown.
-  Inconsistency to know about: MonthView filters internally from raw
-  events; Week/Day receive pre-filtered events. Same behavior, different
-  data path.
+  Settings toggles both. Empty `enabledCalendars` = no events shown,
+  consistently across all three views. Single filtering path: `calendar.tsx`
+  computes `filteredEvents` once and passes it to Month/Week/Day alike;
+  MonthView no longer filters internally (its `enabledCalendars` prop was
+  removed). Week/Day still also receive `enabledCalendars` and re-filter
+  internally — redundant against already-filtered input, but harmless,
+  since they're the same set the events were filtered by. (Previously
+  MonthView filtered raw `events` itself and bypassed its filter entirely
+  on an empty set, showing all events while Week/Day showed none — that
+  divergence is gone.)
 - **Month:** 7-col grid, 5 rows unless the month genuinely spills into a
   6th week; max 4 event chips per cell, overflow opens a day dialog;
   events bucketed all-day-first, then start time, then calendarId.

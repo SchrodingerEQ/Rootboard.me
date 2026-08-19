@@ -380,9 +380,8 @@ export default function CalendarPage() {
                 <div className="h-full">
                   <MonthView
                     currentDate={currentDate}
-                    events={events}
+                    events={filteredEvents}
                     isLoading={isLoading}
-                    enabledCalendars={enabledCalendars}
                     onEventClick={handleEventClick}
                   />
                 </div>
