@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { BUILTIN_WIDGETS } from "@/widgets/registry";
 import { createWidgetHost, type WidgetHostHandle } from "@/lib/widget-host-services";
-import { applyWidgetSettingsPatch } from "@/lib/widget-config";
+import { applyWidgetSettingsPatch, sanitizeSettingsPatch } from "@/lib/widget-config";
 import {
   CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
   CALENDAR_WIDGET_ID,
@@ -262,6 +262,17 @@ export default function AppShell() {
         source: cached.source,
       });
 
+      // Cancel any in-flight fetch of this key (in particular configQuery's
+      // 60s refetchInterval poll) right after the optimistic write, not
+      // before: the read-build-write above must stay synchronous with no
+      // `await` in between (see the "Race safety" comment on
+      // writeDashboardConfig above) so two same-tick calls each see the
+      // other's already-applied optimistic write. `cancelQueries` is itself
+      // async, so it has to come after that chain — but it still runs well
+      // before the slow part (the network PUT below), which is the actual
+      // window an in-flight poll could resolve in and revert this write.
+      await queryClient.cancelQueries({ queryKey: ["/api/config/dashboard"] });
+
       try {
         await apiRequest("PUT", "/api/config/dashboard", next);
       } catch (error) {
@@ -289,7 +300,22 @@ export default function AppShell() {
     ) =>
       writeDashboardConfig((current) => {
         const currentSettings = current.widgets.find((w) => w.id === widgetId)?.settings ?? {};
-        const patch = buildPatch(currentSettings);
+        // Hand the builder a shallow clone, never the live cache object —
+        // a widget holding onto `currentSettings` past this call must not
+        // be able to mutate react-query's cache data out from under it.
+        let rawPatch: Record<string, unknown> | null;
+        try {
+          rawPatch = buildPatch({ ...currentSettings });
+        } catch (err) {
+          console.warn("widget settings builder threw", err);
+          return null;
+        }
+        // CONTRACT.md §2/§4: "host.settings.patch(), which the host
+        // validates and persists" — sanitizeSettingsPatch is that
+        // validation. A widget is untrusted input past this boundary: a
+        // builder that returns anything other than a plain patch object
+        // must not reach the merge/PUT path below.
+        const patch = sanitizeSettingsPatch(rawPatch);
         if (!patch) return null;
         // Merge is pure + spec'd in client/src/lib/widget-config.spec.ts;
         // null == this widget has no config entry, so nothing to write.
@@ -341,7 +367,11 @@ export default function AppShell() {
       if (hostsRef.current.has(id)) continue;
       const handle = createWidgetHost({
         widgetId: id,
-        getSettings: () => dashboardConfigRef.current.widgets.find((w) => w.id === id)?.settings ?? {},
+        // Shallow clone: dashboardConfigRef.current is the live react-query
+        // cache object — a widget holding onto the return value of
+        // host.settings.get() must not be able to mutate it out from under
+        // the cache.
+        getSettings: () => ({ ...(dashboardConfigRef.current.widgets.find((w) => w.id === id)?.settings ?? {}) }),
         subscribeSettings: (cb) => {
           let listeners = settingsListenersRef.current.get(id);
           if (!listeners) {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { dashboardConfigSchema, type DashboardConfig } from "@shared/dashboard-config";
-import { applyWidgetSettingsPatch } from "./widget-config";
+import { applyWidgetSettingsPatch, sanitizeSettingsPatch } from "./widget-config";
 
 // Guards the one step in the shell's settings-write path that can silently
 // corrupt a user's data/config/dashboard.json: the whole document is PUT
@@ -58,5 +58,35 @@ describe("applyWidgetSettingsPatch", () => {
       disabledCalendars: ["b"],
     });
     expect(dashboardConfigSchema.safeParse(next).success).toBe(true);
+  });
+});
+
+// CONTRACT.md §2/§4: "host.settings.patch() ... the host validates and
+// persists" — this is that validation, guarding the boundary where a
+// widget's (untrusted) builder return value would otherwise reach the
+// merge/PUT path in app-shell.tsx's updateWidgetSettings.
+describe("sanitizeSettingsPatch", () => {
+  test("passes a plain patch object through unchanged", () => {
+    expect(sanitizeSettingsPatch({ a: 1 })).toEqual({ a: 1 });
+  });
+
+  test("null is the documented no-op and passes through silently", () => {
+    expect(sanitizeSettingsPatch(null)).toBeNull();
+  });
+
+  test("undefined is also treated as a no-op", () => {
+    expect(sanitizeSettingsPatch(undefined)).toBeNull();
+  });
+
+  test("a string return value is dropped, not merged", () => {
+    // @ts-expect-error — exercising a widget bug at runtime, not a
+    // type-correct caller
+    expect(sanitizeSettingsPatch("oops")).toBeNull();
+  });
+
+  test("an array return value is dropped, not merged", () => {
+    // @ts-expect-error — exercising a widget bug at runtime, not a
+    // type-correct caller
+    expect(sanitizeSettingsPatch(["oops"])).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { LEGACY_KEY_ALIASES, createWidgetHost } from "./widget-host-services";
 import { validateBuiltinManifest } from "@/widgets/registry";
 
@@ -15,8 +15,16 @@ describe("createWidgetHost — settings.patch", () => {
   // services.ts), which is otherwise unrelated to what this test checks
   // (settings.patch delegation). Node 18+ has a native global `fetch`, so
   // aliasing `window` to `globalThis` is enough to satisfy that one line
-  // without pulling in jsdom for the whole suite.
-  vi.stubGlobal("window", globalThis);
+  // without pulling in jsdom for the whole suite. Scoped to this describe's
+  // beforeEach/afterEach (rather than a describe-body-level call) so the
+  // stub can't leak into specs in other files sharing this test run.
+  beforeEach(() => {
+    vi.stubGlobal("window", globalThis);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
   function makeHost(patchSettings = vi.fn()) {
     const handle = createWidgetHost({
