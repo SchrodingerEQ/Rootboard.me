@@ -1,21 +1,42 @@
-import { CalendarDays, ClipboardCheck, UtensilsCrossed } from "lucide-react";
+import { CalendarDays, LayoutGrid, UtensilsCrossed, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import logoImage from "@assets/image_1753142842256.png";
-import type { Section } from "@/lib/app-types";
 
-interface NavRailProps {
-  active: Section;
-  onNavigate: (section: Section) => void;
-  choreBadgeCount?: number;
-  settingsButton?: React.ReactNode;
+export interface NavRailItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  /** Numeric badge shown iff truthy (0/null/undefined all hide it) —
+   *  mirrors the pre-widget `!!choreBadgeCount` check exactly. */
+  badgeCount?: number | null;
 }
 
-const NAV_ITEMS: { section: Section; label: string; icon: typeof CalendarDays }[] = [
-  { section: "calendar", label: "Calendar", icon: CalendarDays },
-  { section: "chores", label: "Chores", icon: ClipboardCheck },
-  { section: "dinner", label: "Dinner", icon: UtensilsCrossed },
-];
+/**
+ * Icon/label fallback for dashboard-config widget ids that don't (yet) have
+ * a BUILTIN_WIDGETS entry — i.e. calendar and dinner, still legacy-rendered
+ * by AppShell until Tasks 7-8 port them onto the widget contract. Once an
+ * id gets a real BUILTIN_WIDGETS manifest, that manifest's `name`/`navIcon`
+ * take over and this entry becomes dead for that id (left for whichever
+ * ids remain legacy).
+ */
+export const LEGACY_NAV_META: Record<string, { label: string; icon: LucideIcon }> = {
+  calendar: { label: "Calendar", icon: CalendarDays },
+  dinner: { label: "Dinner", icon: UtensilsCrossed },
+};
 
-export function NavRail({ active, onNavigate, choreBadgeCount, settingsButton }: NavRailProps) {
+/** Fallback for a BUILTIN_WIDGETS entry that doesn't declare a `navIcon`
+ *  (optional per registry.ts) — every first-party widget sets one today, so
+ *  this is only a safety net against a future built-in forgetting to. */
+export const DEFAULT_NAV_ICON: LucideIcon = LayoutGrid;
+
+interface NavRailProps {
+  items: NavRailItem[];
+  active: string;
+  onNavigate: (id: string) => void;
+  settingsButton?: ReactNode;
+}
+
+export function NavRail({ items, active, onNavigate, settingsButton }: NavRailProps) {
   return (
     <div
       className="flex flex-col items-center flex-shrink-0"
@@ -33,13 +54,13 @@ export function NavRail({ active, onNavigate, choreBadgeCount, settingsButton }:
         style={{ width: 76, height: "auto", marginBottom: 14 }}
       />
 
-      {NAV_ITEMS.map(({ section, label, icon: Icon }) => {
-        const isActive = active === section;
-        const showBadge = section === "chores" && !!choreBadgeCount;
+      {items.map(({ id, label, icon: Icon, badgeCount }) => {
+        const isActive = active === id;
+        const showBadge = !!badgeCount;
         return (
           <button
-            key={section}
-            onClick={() => onNavigate(section)}
+            key={id}
+            onClick={() => onNavigate(id)}
             className="touch-button relative flex flex-col items-center transition-colors"
             style={{
               width: 84,
@@ -55,7 +76,7 @@ export function NavRail({ active, onNavigate, choreBadgeCount, settingsButton }:
             onMouseLeave={(e) => {
               if (!isActive) e.currentTarget.style.background = "transparent";
             }}
-            data-testid={`nav-rail-${section}`}
+            data-testid={`nav-rail-${id}`}
           >
             {showBadge && (
               <span
@@ -71,9 +92,9 @@ export function NavRail({ active, onNavigate, choreBadgeCount, settingsButton }:
                   fontSize: 12,
                   fontWeight: 800,
                 }}
-                data-testid="chore-badge"
+                data-testid={id === "chores" ? "chore-badge" : `${id}-badge`}
               >
-                {choreBadgeCount}
+                {badgeCount}
               </span>
             )}
             <Icon size={26} strokeWidth={2.2} />
