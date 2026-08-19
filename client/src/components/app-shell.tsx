@@ -271,7 +271,11 @@ export default function AppShell() {
       // async, so it has to come after that chain — but it still runs well
       // before the slow part (the network PUT below), which is the actual
       // window an in-flight poll could resolve in and revert this write.
-      await queryClient.cancelQueries({ queryKey: ["/api/config/dashboard"] });
+      // Pass revert: false to keep the optimistic data; the transient status:
+      // "error" a cancellation sets is cleared by the finally-block
+      // invalidate. Residual: the 60s poll can still START a new fetch during
+      // the PUT — accepted, the invalidate at the end makes it converge.
+      await queryClient.cancelQueries({ queryKey: ["/api/config/dashboard"] }, { revert: false });
 
       try {
         await apiRequest("PUT", "/api/config/dashboard", next);
