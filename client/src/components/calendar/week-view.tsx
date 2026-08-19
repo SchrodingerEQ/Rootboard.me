@@ -13,7 +13,6 @@ interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
-  enabledCalendars?: Set<string>;
   onEventClick?: (event: CalendarEvent) => void;
 }
 
@@ -25,7 +24,7 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
 
 const GRID_LINE = '#ededed';
 
-export function WeekView({ currentDate, events, isLoading, enabledCalendars, onEventClick }: WeekViewProps) {
+export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekViewProps) {
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const TIME_SLOT_HEIGHT = 65;
@@ -38,13 +37,10 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
 
   const eventsByDay = useMemo(() => {
     const eventsMap = new Map<string, CalendarEvent[]>();
-    const filteredEvents = enabledCalendars && enabledCalendars.size > 0
-      ? events.filter(event => enabledCalendars.has(event.calendarId))
-      : events;
 
     weekDays.forEach(date => {
       const dateKey = date.toDateString();
-      const dayEvents = filteredEvents.filter(event => {
+      const dayEvents = events.filter(event => {
         const eventStart = new Date(event.startTime);
         const eventEnd = new Date(event.endTime);
         return eventStart.toDateString() === dateKey || (eventStart <= date && eventEnd >= date);
@@ -52,7 +48,7 @@ export function WeekView({ currentDate, events, isLoading, enabledCalendars, onE
       eventsMap.set(dateKey, dayEvents);
     });
     return eventsMap;
-  }, [events, enabledCalendars, weekDays]);
+  }, [events, weekDays]);
 
   const getEventsForDay = (date: Date) => eventsByDay.get(date.toDateString()) || [];
   const getAllDayEventsForDay = (date: Date) => getEventsForDay(date).filter(e => e.isAllDay);

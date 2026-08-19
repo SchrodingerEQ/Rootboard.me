@@ -13,7 +13,6 @@ interface DayViewProps {
   events: CalendarEvent[];
   isLoading: boolean;
   onEventClick?: (event: CalendarEvent) => void;
-  enabledCalendars?: Set<string>;
   /** Full loaded window (month grid + lookahead), for mini-month dots + countdowns. */
   monthEvents?: CalendarEvent[];
   /** Calendar metadata for avatar names/colors. */
@@ -32,7 +31,7 @@ function durationLabel(start: Date, end: Date): string {
 // Agenda-style Day view: left rail (mini-month + coming-up countdowns) and a
 // main panel listing today's events as large tinted cards. Replaces the old
 // 24-hour timeline (see git history for the timeline version).
-export function DayView({ currentDate, events, isLoading, onEventClick, enabledCalendars, monthEvents, calendars }: DayViewProps) {
+export function DayView({ currentDate, events, isLoading, onEventClick, monthEvents, calendars }: DayViewProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const upNextRef = useRef<HTMLDivElement>(null);
 
@@ -55,19 +54,14 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
       return next;
     });
 
-  const filterEnabled = (list: CalendarEvent[]) =>
-    enabledCalendars && enabledCalendars.size > 0
-      ? list.filter(e => enabledCalendars.has(e.calendarId))
-      : list;
-
   // Today's agenda: events starting on the viewed day, or spanning it.
   const dayEvents = useMemo(() => {
-    return filterEnabled(events).filter(event => {
+    return events.filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
       return eventStart.toDateString() === currentDate.toDateString() || (eventStart <= currentDate && eventEnd >= currentDate);
     });
-  }, [events, currentDate, enabledCalendars]);
+  }, [events, currentDate]);
 
   const allDayEvents = useMemo(() => dayEvents.filter(e => e.isAllDay), [dayEvents]);
   const timedEvents = useMemo(
@@ -78,7 +72,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
     [dayEvents],
   );
 
-  const poolEvents = useMemo(() => filterEnabled(monthEvents ?? events), [monthEvents, events, enabledCalendars]);
+  const poolEvents = useMemo(() => monthEvents ?? events, [monthEvents, events]);
 
   // Mini-month dots: day-of-month → color of that day's first event.
   const eventDays = useMemo(() => {

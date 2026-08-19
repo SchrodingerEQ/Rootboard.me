@@ -393,7 +393,6 @@ export default function CalendarPage() {
                     currentDate={currentDate}
                     events={filteredEvents}
                     isLoading={isLoading}
-                    enabledCalendars={enabledCalendars}
                     onEventClick={handleEventClick}
                   />
                 </div>
@@ -406,7 +405,6 @@ export default function CalendarPage() {
                     events={filteredEvents}
                     isLoading={isLoading}
                     onEventClick={handleEventClick}
-                    enabledCalendars={enabledCalendars}
                     monthEvents={filteredEvents}
                     calendars={calendars}
                   />
