@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, type LucideIcon } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, Puzzle, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import {
   AlertDialog,
@@ -51,6 +51,52 @@ export interface WidgetPickerEntry {
   enabled: boolean;
 }
 
+/** One row of the layout picker's "Community Widgets" section (Phase 4) —
+ *  every widget discovered under `/widgets/`, whether or not it's currently
+ *  in `data/config/dashboard.json`. Sourced by the shell's
+ *  `communityWidgetPickerEntries` memo (app-shell.tsx), which merges
+ *  `GET /api/widgets` with the config and the dynamic-import load result
+ *  for each id. */
+export interface CommunityWidgetPickerEntry {
+  id: string;
+  label: string;
+  description?: string;
+  /** null when the manifest declares no `icon` — rendered as a generic
+   *  Puzzle glyph, never a lucide icon (community widgets don't get one). */
+  icon: { kind: "image"; src: string } | null;
+  /** True iff this id has a config entry with `enabled: true`. False for
+   *  both "disabled" and "not yet added to config" — `installed`
+   *  disambiguates those two. */
+  enabled: boolean;
+  /** True iff this id already has an entry in config.widgets (regardless
+   *  of enabled/disabled) — controls whether reorder arrows are shown at
+   *  all (nothing to reorder before it has a position). */
+  installed: boolean;
+  /** "loading": import in flight (or apiVersion check not yet run — same
+   *  visual treatment). "ready": loaded and mountable — the only status
+   *  the enable switch may be turned ON from. "newer-api"/"error": listed
+   *  per CONTRACT.md §6, never loadable; the switch can still be turned
+   *  OFF if it happens to be enabled (e.g. a working widget's folder was
+   *  edited to bump apiVersion after being enabled — the user must still
+   *  be able to disable it from here), just never back ON. */
+  status: "loading" | "ready" | "newer-api" | "error";
+  /** Present for "newer-api" ("built for a newer Rootboard") and "error"
+   *  (the load failure message) — absent for "loading"/"ready". */
+  statusMessage?: string;
+}
+
+/** One row of the layout picker's "Widget Folder Errors" section (Phase 4)
+ *  — a `/widgets/<folder>` directory that failed manifest validation
+ *  (server/services/widgetDiscovery.ts `invalid` entries). No controls:
+ *  there's nothing installable here until the folder itself is fixed. */
+export interface InvalidWidgetPickerEntry {
+  folder: string;
+  /** First validation error only (widgetDiscovery.ts collects all of
+   *  them; the picker row shows just enough to point at the problem —
+   *  the full list isn't worth the space on a 104px-rail kiosk popover). */
+  error: string;
+}
+
 interface SettingsMenuProps {
   /** Persisted calendar-widget setting `hiddenCalendars` (see
    *  client/src/widgets/calendar/shell-bridge.ts). A calendar is shown iff
@@ -81,6 +127,25 @@ interface SettingsMenuProps {
   /** Swaps this widget with its neighbor in the picker's displayed order
    *  (direction -1 = up/earlier, +1 = down/later). */
   onMoveWidget?: (id: string, direction: -1 | 1) => void;
+  /** Every widget discovered under `/widgets/` (Phase 4), in the shell's
+   *  display order (in-config ones first, in config order; then
+   *  not-yet-added ones). Absent/empty hides the "Community Widgets"
+   *  section entirely — a kiosk with no sideloaded widgets never shows an
+   *  empty section. */
+  communityWidgetPickerEntries?: CommunityWidgetPickerEntry[];
+  /** Enables/disables a community widget. For an id with no config entry
+   *  yet, enabling APPENDS `{id, enabled: true, settings: {}}` to
+   *  config.widgets (CONTRACT.md §5) rather than requiring a separate
+   *  "install" step. */
+  onToggleCommunityWidget?: (id: string, enabled: boolean) => void;
+  /** Reorders a community widget among the OTHER community widgets that
+   *  already have a config position — mirrors onMoveWidget's swap-actual-
+   *  array-positions semantics, scoped to the community pool instead of
+   *  the builtin pool (app-shell.tsx moveCommunityWidget). */
+  onMoveCommunityWidget?: (id: string, direction: -1 | 1) => void;
+  /** `/widgets/<folder>` directories that failed manifest validation
+   *  (Phase 4). Absent/empty hides the section. */
+  invalidWidgetPickerEntries?: InvalidWidgetPickerEntry[];
 }
 
 export function SettingsMenu({
@@ -96,8 +161,15 @@ export function SettingsMenu({
   widgetPickerEntries = [],
   onToggleWidget,
   onMoveWidget,
+  communityWidgetPickerEntries = [],
+  onToggleCommunityWidget,
+  onMoveCommunityWidget,
+  invalidWidgetPickerEntries = [],
 }: SettingsMenuProps) {
-  const enabledWidgetCount = widgetPickerEntries.filter((e) => e.enabled).length;
+  const enabledWidgetCount =
+    widgetPickerEntries.filter((e) => e.enabled).length +
+    communityWidgetPickerEntries.filter((e) => e.enabled).length;
+  const installedCommunityEntries = communityWidgetPickerEntries.filter((e) => e.installed);
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem('calendar-brightness');
@@ -405,6 +477,125 @@ export function SettingsMenu({
                       At least one widget must stay enabled.
                     </p>
                   )}
+                </div>
+
+                <Separator />
+              </>
+            )}
+
+            {/* Community Widgets — folder-drop picker (Phase 4): every
+                widget discovered under /widgets/, whether or not it's
+                already in config. Reorder is scoped to this pool only
+                (see onMoveCommunityWidget's doc comment above) — a
+                not-yet-installed entry has no position, so it gets no
+                arrows at all. */}
+            {communityWidgetPickerEntries.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Puzzle className="h-4 w-4" />
+                    <Label className="text-sm font-medium">Community Widgets</Label>
+                  </div>
+                  <div className="space-y-1.5">
+                    {communityWidgetPickerEntries.map((entry) => {
+                      const ready = entry.status === "ready";
+                      // Never allowed to flip ON while not ready; always
+                      // allowed to flip OFF (even mid-"loading", even
+                      // broken) so a misbehaving widget can't trap the
+                      // user out of disabling it.
+                      const switchDisabled = !ready && !entry.enabled;
+                      const installedIndex = installedCommunityEntries.findIndex((e) => e.id === entry.id);
+                      return (
+                        <div key={entry.id} className="space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            {entry.icon ? (
+                              <img
+                                src={entry.icon.src}
+                                alt=""
+                                className="h-4 w-4 flex-shrink-0"
+                                style={{ objectFit: "contain" }}
+                              />
+                            ) : (
+                              <Puzzle className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
+                            )}
+                            <span className="text-sm flex-1 truncate">{entry.label}</span>
+                            {entry.installed && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                                  onClick={() => onMoveCommunityWidget?.(entry.id, -1)}
+                                  disabled={installedIndex <= 0}
+                                  title="Move up"
+                                  data-testid={`community-widget-move-up-${entry.id}`}
+                                >
+                                  <ChevronUp className="h-5 w-5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                                  onClick={() => onMoveCommunityWidget?.(entry.id, 1)}
+                                  disabled={installedIndex === installedCommunityEntries.length - 1}
+                                  title="Move down"
+                                  data-testid={`community-widget-move-down-${entry.id}`}
+                                >
+                                  <ChevronDown className="h-5 w-5" />
+                                </button>
+                              </>
+                            )}
+                            <label
+                              className="touch-button flex items-center justify-center flex-shrink-0"
+                              title={
+                                entry.enabled && enabledWidgetCount <= 1
+                                  ? "At least one widget must stay enabled"
+                                  : switchDisabled
+                                    ? (entry.statusMessage ?? "Not loadable")
+                                    : undefined
+                              }
+                            >
+                              <Switch
+                                checked={entry.enabled}
+                                disabled={switchDisabled || (entry.enabled && enabledWidgetCount <= 1)}
+                                onCheckedChange={(checked) => onToggleCommunityWidget?.(entry.id, checked)}
+                                data-testid={`community-widget-toggle-${entry.id}`}
+                              />
+                            </label>
+                          </div>
+                          {ready && entry.description && (
+                            <p className="text-xs text-rb-faint leading-snug truncate pl-5">{entry.description}</p>
+                          )}
+                          {!ready && (
+                            <p className="text-xs text-rb-warn leading-snug pl-5">
+                              {entry.status === "loading" ? "Loading…" : entry.statusMessage}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Separator />
+              </>
+            )}
+
+            {/* Widget Folder Errors — folders under /widgets/ that failed
+                manifest validation (Phase 4). No controls: nothing to
+                install until the folder itself is fixed. */}
+            {invalidWidgetPickerEntries.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-rb-warn" />
+                    <Label className="text-sm font-medium">Widget Folder Errors</Label>
+                  </div>
+                  <div className="space-y-1">
+                    {invalidWidgetPickerEntries.map((entry) => (
+                      <p key={entry.folder} className="text-xs text-rb-warn-ink leading-snug">
+                        <span className="font-mono">{entry.folder}</span>: {entry.error}
+                      </p>
+                    ))}
+                  </div>
                 </div>
 
                 <Separator />

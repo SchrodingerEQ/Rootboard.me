@@ -1,11 +1,20 @@
-import { LayoutGrid, type LucideIcon } from "lucide-react";
+import { LayoutGrid, Puzzle, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import logoImage from "@assets/image_1753142842256.png";
+
+/** A nav-rail glyph is either a lucide component (built-ins) or a
+ *  same-origin image URL (community widgets, Phase 4 — CONTRACT.md §2's
+ *  icon field). Community icons render via `<img src>` ONLY, never inline
+ *  SVG/innerHTML: an `<img>` executes no scripts and loads no external
+ *  resources, which is how "sanitized before render" is satisfied in v1
+ *  without an actual sanitizer (see docs/plans/widget-system/
+ *  PHASE4-EXECUTION.md Global Constraints — "Icon safety"). */
+export type NavRailIconSpec = LucideIcon | { kind: "image"; src: string };
 
 export interface NavRailItem {
   id: string;
   label: string;
-  icon: LucideIcon;
+  icon: NavRailIconSpec;
   /** Numeric badge shown iff truthy (0/null/undefined all hide it) —
    *  mirrors the pre-widget `!!choreBadgeCount` check exactly. */
   badgeCount?: number | null;
@@ -20,6 +29,26 @@ export interface NavRailItem {
  *  (optional per registry.ts) — every first-party widget sets one today, so
  *  this is only a safety net against a future built-in forgetting to. */
 export const DEFAULT_NAV_ICON: LucideIcon = LayoutGrid;
+
+/** Fallback for a community widget whose manifest declares no `icon`
+ *  (Phase 4) — deliberately distinct from DEFAULT_NAV_ICON so a
+ *  sideloaded widget with no icon reads as "third-party", not "built-in
+ *  forgot its icon". */
+export const COMMUNITY_FALLBACK_ICON: LucideIcon = Puzzle;
+
+// Discriminate on `kind`, NOT `typeof icon === "function"` — lucide-react
+// icons are React.forwardRef components, which are OBJECTS at runtime
+// (`typeof Icon === "object"`, not "function"), so a typeof-based check
+// would misroute every builtin icon into the image branch (caught in
+// manual browser verification: builtin nav icons rendered as broken
+// `<img>`s with no `src`).
+function NavGlyph({ icon }: { icon: NavRailIconSpec }) {
+  if (typeof icon === "object" && icon !== null && "kind" in icon && icon.kind === "image") {
+    return <img src={icon.src} alt="" width={26} height={26} style={{ objectFit: "contain" }} />;
+  }
+  const Icon = icon as LucideIcon;
+  return <Icon size={26} strokeWidth={2.2} />;
+}
 
 interface NavRailProps {
   items: NavRailItem[];
@@ -46,7 +75,7 @@ export function NavRail({ items, active, onNavigate, settingsButton }: NavRailPr
         style={{ width: 76, height: "auto", marginBottom: 14 }}
       />
 
-      {items.map(({ id, label, icon: Icon, badgeCount }) => {
+      {items.map(({ id, label, icon, badgeCount }) => {
         const isActive = active === id;
         const showBadge = !!badgeCount;
         return (
@@ -89,7 +118,7 @@ export function NavRail({ items, active, onNavigate, settingsButton }: NavRailPr
                 {badgeCount}
               </span>
             )}
-            <Icon size={26} strokeWidth={2.2} />
+            <NavGlyph icon={icon} />
             <span style={{ fontSize: 13, fontWeight: isActive ? 800 : 700 }}>{label}</span>
           </button>
         );

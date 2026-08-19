@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import type { LucideIcon } from "lucide-react";
 import { SettingsMenu } from "@/components/calendar/settings-menu";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { UpdateNotification } from "@/components/calendar/update-notification";
-import { NavRail, DEFAULT_NAV_ICON, type NavRailItem } from "@/components/nav-rail";
+import { NavRail, DEFAULT_NAV_ICON, COMMUNITY_FALLBACK_ICON, type NavRailItem } from "@/components/nav-rail";
 import { WidgetHostMount, type WidgetHostMountEntry } from "@/components/widget-host-mount";
 import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
@@ -14,6 +15,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { BUILTIN_WIDGETS } from "@/widgets/registry";
 import { createWidgetHost, type WidgetHostHandle } from "@/lib/widget-host-services";
 import { applyWidgetSettingsPatch, sanitizeSettingsPatch } from "@/lib/widget-config";
+import { useCommunityWidgetLoads, type WidgetDiscoveryResponse } from "@/lib/community-widgets";
+import type { WidgetManifest } from "@shared/widget-manifest";
 import {
   CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
   CALENDAR_WIDGET_ID,
@@ -27,6 +30,13 @@ import {
 import { defaultDashboardConfig, type DashboardConfig } from "@shared/dashboard-config";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
+
+// Stable empty-array identity for widgetsQuery.data?.widgets ?? — an inline
+// `?? []` would hand useCommunityWidgetLoads a fresh array (and therefore a
+// fresh effect-dependency identity) on every render while the query has no
+// data yet, same reasoning as `defaultConfig` below.
+const EMPTY_WIDGET_MANIFESTS: WidgetManifest[] = [];
+const EMPTY_INVALID_WIDGETS: WidgetDiscoveryResponse["invalid"] = [];
 
 interface AuthStatus {
   authenticated: boolean;
@@ -78,6 +88,61 @@ export default function AppShell() {
   // needs to be rebuilt after first render.
   const builtinById = useMemo(() => new Map(BUILTIN_WIDGETS.map((w) => [w.manifest.id, w])), []);
 
+  // Community widget discovery (Phase 4, CONTRACT.md §6): re-scans
+  // widgets/*/widget.json server-side on every request — same
+  // sideload-then-wait pattern as configQuery above (a dropped-in folder
+  // over SD card/SSH surfaces here within 60s without a restart, or
+  // immediately once the layout picker's own trigger causes a refetch).
+  const widgetsQuery = useQuery<WidgetDiscoveryResponse>({
+    queryKey: ["/api/widgets"],
+    refetchInterval: 60_000,
+  });
+  const discoveredManifests = widgetsQuery.data?.widgets ?? EMPTY_WIDGET_MANIFESTS;
+  const invalidWidgetFolders = widgetsQuery.data?.invalid ?? EMPTY_INVALID_WIDGETS;
+  const discoveredById = useMemo(
+    () => new Map(discoveredManifests.map((m) => [m.id, m])),
+    [discoveredManifests],
+  );
+
+  // Kicks off (and caches) a dynamic import() per discovered manifest,
+  // gated by apiVersion before any import fires — see
+  // client/src/lib/community-widgets.ts. Only settles into `communityById`
+  // below once status is "loaded"; "newer-api"/"error" never become
+  // renderable (CONTRACT.md §6 — listed, not loadable).
+  const communityLoads = useCommunityWidgetLoads(discoveredManifests);
+  const communityById = useMemo(() => {
+    const map = new Map<string, { manifest: WidgetManifest; widget: WidgetHostMountEntry["widget"] }>();
+    for (const manifest of discoveredManifests) {
+      const load = communityLoads.get(manifest.id);
+      if (load?.status === "loaded") {
+        map.set(manifest.id, { manifest, widget: load.widget });
+      }
+    }
+    return map;
+  }, [discoveredManifests, communityLoads]);
+
+  // Ids that are enabled in config, resolve to a discovered community
+  // manifest, but haven't settled into communityById yet (still importing,
+  // or the apiVersion/module-shape check hasn't run — practically
+  // instantaneous, but loadCommunityWidget is still async). Used ONLY by
+  // the section-fallback effect below, to hold the current section instead
+  // of bouncing away from it while a widget that's about to become
+  // renderable is still loading — "newer-api"/"error" are terminal (already
+  // in communityLoads with a settled non-loaded status) and are correctly
+  // excluded here, so a truly unloadable widget still falls back normally.
+  const pendingCommunityIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const w of dashboardConfig.widgets) {
+      if (!w.enabled) continue;
+      if (builtinById.has(w.id)) continue;
+      if (communityById.has(w.id)) continue;
+      if (!discoveredById.has(w.id)) continue; // not discovered at all — nothing pending
+      if (communityLoads.has(w.id)) continue; // settled to newer-api/error — terminal
+      ids.add(w.id);
+    }
+    return ids;
+  }, [dashboardConfig, builtinById, communityById, discoveredById, communityLoads]);
+
   // Config entries that can actually RENDER a pane: enabled AND ported to
   // the widget contract (BUILTIN_WIDGETS). As of Task 8 that is every
   // first-party section — the LEGACY_NAV_META fallback for not-yet-ported
@@ -93,11 +158,28 @@ export default function AppShell() {
     for (const w of dashboardConfig.widgets) {
       if (!w.enabled) continue;
       const builtin = builtinById.get(w.id);
-      if (!builtin) continue;
-      entries.push({ id: w.id, label: builtin.manifest.name, icon: builtin.navIcon ?? DEFAULT_NAV_ICON });
+      if (builtin) {
+        entries.push({ id: w.id, label: builtin.manifest.name, icon: builtin.navIcon ?? DEFAULT_NAV_ICON });
+        continue;
+      }
+      // Phase 4: a successfully-loaded community widget joins the SAME
+      // renderable set as builtins — nav order still comes purely from
+      // config array order, source (builtin vs community) is invisible
+      // past this point. A community id that's enabled but not yet loaded
+      // (or discovered-but-broken) is correctly excluded here — it simply
+      // isn't renderable yet/ever.
+      const community = communityById.get(w.id);
+      if (community) {
+        const iconSrc = community.manifest.icon ? `/widgets/${w.id}/${community.manifest.icon}` : undefined;
+        entries.push({
+          id: w.id,
+          label: community.manifest.name,
+          icon: iconSrc ? { kind: "image" as const, src: iconSrc } : COMMUNITY_FALLBACK_ICON,
+        });
+      }
     }
     return entries;
-  }, [dashboardConfig, builtinById]);
+  }, [dashboardConfig, builtinById, communityById]);
 
   const renderableIds = useMemo(() => renderableEntries.map((e) => e.id), [renderableEntries]);
 
@@ -109,7 +191,7 @@ export default function AppShell() {
   // nothing to show a name/icon for (folder-drop widgets, and therefore
   // "uninstalled but configured" entries, arrive in Phase 4).
   const widgetPickerEntries = useMemo(() => {
-    const entries: Array<{ id: string; label: string; icon: NavRailItem["icon"]; enabled: boolean }> = [];
+    const entries: Array<{ id: string; label: string; icon: LucideIcon; enabled: boolean }> = [];
     for (const w of dashboardConfig.widgets) {
       const builtin = builtinById.get(w.id);
       if (!builtin) continue;
@@ -122,6 +204,50 @@ export default function AppShell() {
     }
     return entries;
   }, [dashboardConfig, builtinById]);
+
+  // Layout picker source list (Phase 4): every widget discovered under
+  // /widgets/, whether or not it has a config entry yet — in-config ones
+  // first (config order, matching widgetPickerEntries' convention above),
+  // then not-yet-added ones. See CommunityWidgetPickerEntry's doc comment
+  // (settings-menu.tsx) for the status/enabled/installed split.
+  const communityWidgetPickerEntries = useMemo(() => {
+    const configIndex = new Map(dashboardConfig.widgets.map((w) => [w.id, w]));
+    const toEntry = (manifest: WidgetManifest, enabled: boolean, installed: boolean) => {
+      const load = communityLoads.get(manifest.id);
+      const status: "loading" | "ready" | "newer-api" | "error" =
+        load === undefined ? "loading" : load.status === "loaded" ? "ready" : load.status;
+      const statusMessage =
+        status === "newer-api" ? "built for a newer Rootboard" : load?.status === "error" ? load.message : undefined;
+      return {
+        id: manifest.id,
+        label: manifest.name,
+        description: manifest.description,
+        icon: manifest.icon ? { kind: "image" as const, src: `/widgets/${manifest.id}/${manifest.icon}` } : null,
+        enabled,
+        installed,
+        status,
+        statusMessage,
+      };
+    };
+
+    const entries: ReturnType<typeof toEntry>[] = [];
+    for (const w of dashboardConfig.widgets) {
+      if (builtinById.has(w.id)) continue;
+      const manifest = discoveredById.get(w.id);
+      if (!manifest) continue; // enabled-but-uninstalled unknown id (CONTRACT §5) — nothing to show a name/icon for
+      entries.push(toEntry(manifest, w.enabled, true));
+    }
+    for (const manifest of discoveredManifests) {
+      if (configIndex.has(manifest.id)) continue;
+      entries.push(toEntry(manifest, false, false));
+    }
+    return entries;
+  }, [dashboardConfig, builtinById, discoveredById, discoveredManifests, communityLoads]);
+
+  const invalidWidgetPickerEntries = useMemo(
+    () => invalidWidgetFolders.map((e) => ({ folder: e.folder, error: e.errors[0] ?? "Invalid widget.json" })),
+    [invalidWidgetFolders],
+  );
 
   // Fall back to defaultWidget if the localStorage-remembered (or default
   // "calendar") section can't actually render — mirrors CONTRACT.md §5:
@@ -136,8 +262,36 @@ export default function AppShell() {
   // renderableIds is never empty (calendar/chores/dinner) and a garbage
   // localStorage value gets corrected immediately rather than left
   // unvalidated for the whole session.
+  //
+  // Phase 4 addition #1: also hold `section` (skip the fallback) when it
+  // names a community widget that's enabled+discovered but still
+  // mid-import (`pendingCommunityIds`) — without this, a widget that was
+  // the active section on last visit would flash to `defaultWidget` for
+  // the ~one tick its dynamic import takes, then flash back once
+  // loadCommunityWidget resolves. A widget that never resolves to "loaded"
+  // (newer-api/error) is NOT in pendingCommunityIds, so it still falls
+  // back normally instead of holding forever on a pane that will never
+  // render.
+  //
+  // Phase 4 addition #2: on a hard page reload, THIS effect's first pass
+  // runs before either configQuery or widgetsQuery has ever resolved —
+  // dashboardConfig is still the calendar/chores/dinner-only PLACEHOLDER
+  // (defaultConfig), which has no entry for a sideloaded id at all, so
+  // pendingCommunityIds (which loops dashboardConfig.widgets) can't
+  // recognize a stored community-widget section as "pending" either; the
+  // fallback would fire immediately and PERMANENTLY overwrite localStorage
+  // with defaultWidget before the real data even arrives (caught in Task 4
+  // manual verification — a stored community-widget section silently
+  // reverted to "calendar" on every hard reload, every time, regardless of
+  // how fast the widget itself loaded afterward). Holding until both
+  // queries have delivered at least one real response closes that race.
+  // The pre-existing "correct a garbage localStorage value immediately"
+  // behavior (see comment above) still applies once both have loaded —
+  // it's delayed by one local round-trip, not removed.
   useEffect(() => {
     if (renderableIds.includes(section)) return;
+    if (!configQuery.data || !widgetsQuery.data) return;
+    if (pendingCommunityIds.has(section)) return;
     // Schema only guarantees SOME widget is enabled, not that defaultWidget
     // itself is renderable — fall back to the first renderable id in that
     // (config-authoring-error) case, then to "calendar" as a last resort,
@@ -147,12 +301,13 @@ export default function AppShell() {
       ? dashboardConfig.defaultWidget
       : renderableIds[0] ?? "calendar";
     if (fallback !== section) setSection(fallback);
-  }, [renderableIds, dashboardConfig, section]);
+  }, [renderableIds, pendingCommunityIds, dashboardConfig, section, configQuery.data, widgetsQuery.data]);
 
-  // `renderableIds` IS the set of widget hosts to run: since Task 8 every
-  // renderable section is a built-in widget, so "can render a nav pane" and
-  // "needs a WidgetHost" are the same question. (Before Task 8 these were
-  // two lists because calendar could render without being a widget.)
+  // `renderableIds` is the set of widget hosts to run — builtin AND
+  // successfully-loaded community ids alike (Phase 4: "can render a nav
+  // pane" and "needs a WidgetHost" are still the same question; source is
+  // invisible past renderableEntries). Name kept from Task 8 for history —
+  // callers below don't care that it's no longer builtin-only.
   const enabledBuiltinIds = renderableIds;
 
   const [isPowerSaving, setIsPowerSaving] = useState(false);
@@ -472,6 +627,60 @@ export default function AppShell() {
     [updateWidgetLayout],
   );
 
+  // --- Community widget picker writes (Phase 4) ---------------------------
+  // Mirrors moveWidget/toggleWidgetEnabled above exactly, scoped to the
+  // community pool (`discoveredById.has(w.id) && !builtinById.has(w.id)`)
+  // instead of the builtin pool — see onMoveCommunityWidget's doc comment
+  // in settings-menu.tsx for why reorder is scoped per-pool rather than
+  // across one combined displayed list.
+  const moveCommunityWidget = useCallback(
+    (id: string, direction: -1 | 1) => {
+      void updateWidgetLayout((widgets) => {
+        const displayedIds = widgets
+          .filter((w) => discoveredById.has(w.id) && !builtinById.has(w.id))
+          .map((w) => w.id);
+        const pos = displayedIds.indexOf(id);
+        if (pos === -1) return null;
+        const targetPos = pos + direction;
+        if (targetPos < 0 || targetPos >= displayedIds.length) return null;
+        const otherId = displayedIds[targetPos];
+        const idxA = widgets.findIndex((w) => w.id === id);
+        const idxB = widgets.findIndex((w) => w.id === otherId);
+        const next = [...widgets];
+        [next[idxA], next[idxB]] = [next[idxB], next[idxA]];
+        return next;
+      });
+    },
+    [updateWidgetLayout, discoveredById, builtinById],
+  );
+
+  // Same last-enabled-widget guard as toggleWidgetEnabled, plus one thing
+  // that has no builtin equivalent: an id with NO config entry yet (a
+  // freshly discovered folder the user has never enabled before) is
+  // APPENDED to config.widgets — CONTRACT.md §5, "Enabling a
+  // discovered-but-not-in-config widget appends {id, enabled: true,
+  // settings: {}}". Its position becomes "last", which is why
+  // communityWidgetPickerEntries lists not-yet-added widgets after the
+  // in-config ones (append order == display order for a brand new entry).
+  const toggleCommunityWidgetEnabled = useCallback(
+    (id: string, enabled: boolean) => {
+      void updateWidgetLayout((widgets) => {
+        const idx = widgets.findIndex((w) => w.id === id);
+        if (idx === -1) {
+          if (!enabled) return null; // nothing to disable — no-op
+          return [...widgets, { id, enabled: true, settings: {} }];
+        }
+        if (!enabled) {
+          const target = widgets[idx];
+          const enabledCount = widgets.filter((w) => w.enabled).length;
+          if (target.enabled && enabledCount <= 1) return null;
+        }
+        return widgets.map((w) => (w.id === id ? { ...w, enabled } : w));
+      });
+    },
+    [updateWidgetLayout],
+  );
+
   // --- Calendar visibility settings (ratified delta 2) ---------------------
   // Per-calendar visibility used to be two ephemeral Sets right here, reset
   // on every browser restart, plus a `seenCalendarIds` ref to stop refetches
@@ -578,13 +787,24 @@ export default function AppShell() {
     const entries: WidgetHostMountEntry[] = [];
     for (const id of enabledBuiltinIds) {
       const handle = hostsRef.current.get(id);
+      if (!handle) continue;
       const builtin = builtinById.get(id);
-      if (!handle || !builtin) continue;
-      entries.push({ manifest: builtin.manifest, widget: builtin.widget, host: handle.host });
+      if (builtin) {
+        entries.push({ manifest: builtin.manifest, widget: builtin.widget, host: handle.host });
+        continue;
+      }
+      // Phase 4: a loaded community widget gets a host exactly like a
+      // builtin — createWidgetHost above is already source-agnostic (keys
+      // off `id` only), so the only new thing here is resolving
+      // manifest+widget from communityById instead of builtinById.
+      const community = communityById.get(id);
+      if (community) {
+        entries.push({ manifest: community.manifest, widget: community.widget, host: handle.host });
+      }
     }
     return entries;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabledBuiltinIds, builtinById, hostsVersion]);
+  }, [enabledBuiltinIds, builtinById, communityById, hostsVersion]);
 
   // Nav-rail items, in config order — built from renderableEntries above
   // (every id uses its BUILTIN_WIDGETS manifest name + registry navIcon; an
@@ -620,6 +840,10 @@ export default function AppShell() {
             widgetPickerEntries={widgetPickerEntries}
             onToggleWidget={toggleWidgetEnabled}
             onMoveWidget={moveWidget}
+            communityWidgetPickerEntries={communityWidgetPickerEntries}
+            onToggleCommunityWidget={toggleCommunityWidgetEnabled}
+            onMoveCommunityWidget={moveCommunityWidget}
+            invalidWidgetPickerEntries={invalidWidgetPickerEntries}
           />
         ) : undefined}
       />
