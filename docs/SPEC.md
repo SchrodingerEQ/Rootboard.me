@@ -247,14 +247,18 @@ from Open-Meteo and cached server-side.
   `QueryClientProvider client={queryClient}`) around the pre-widget
   page/hook, reached only through `mount(container, host)` like any
   community widget would be — no privileged internal access.
-- **Keep-alive consequence, accepted:** a mount-time effect now fires
-  once per app boot instead of once per section visit — e.g. the
-  Week view's auto-scroll-to-7AM (3.2) only happens the first time it
-  mounts, not every time the user navigates back to it. Similarly, the
-  Day view's 30 s clock (past-event dimming + "Up next" badge, 3.2)
-  keeps ticking while the calendar widget is hidden (`display: none`),
-  not just while visible — wasted but negligible work, not a
-  correctness issue.
+- **Keep-alive consequence, accepted:** mount-time effects in a
+  widget's top-level tree fire once per app boot instead of once per
+  *section* visit. Note the scope: this covers section switches only —
+  the calendar's own Month/Week/Day sub-views are still conditionally
+  mounted inside the widget, so e.g. the Week view's
+  auto-scroll-to-7AM (3.2) still re-fires on every Day→Week toggle;
+  what no longer remounts is the widget as a whole when leaving and
+  returning to the Calendar section while the view stays on Week.
+  Similarly, the Day view's 30 s clock (past-event dimming + "Up next"
+  badge, 3.2) keeps ticking while the calendar widget is hidden
+  (`display: none`), not just while visible — wasted but negligible
+  work, not a correctness issue.
 
 ### 3.2 Calendar views
 
