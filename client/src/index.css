@@ -46,11 +46,14 @@
   --p-orange: #ea8c00;
   --p-red: #e11d48;
 
-  /* Phase 2 additions — roles extracted from hardcoded literals */
-  --rb-nav-active-bg: #fdeae8;
-  --rb-nav-inactive-ink: #5b626d;
+  /* Phase 2 additions — roles extracted from hardcoded literals
+     (Task 6b: full set land per docs/plans/widget-system/phase2-color-inventory.md §12,
+     ratified 2026-08-19) */
+  /* ===== Phase 2 — pre-decided (ratified) ===== */
+  --rb-nav-active-bg: var(--rb-accent-wash);      /* #fdeae8 */
+  --rb-nav-inactive-ink: var(--rb-ink-secondary); /* #5b626d */
   --rb-badge: #ea8c00;
-  --rb-badge-ink: #ffffff;
+  --rb-badge-ink: var(--rb-on-color-ink);         /* #ffffff */
   --rb-shadow-soft: rgba(0, 0, 0, 0.05);
   --rb-scrollbar-thumb: #d9d5cc;
   --rb-scrollbar-thumb-hover: #c4bfb2;
@@ -61,6 +64,73 @@
   --rb-confetti-3: #16a34a;
   --rb-confetti-4: #2563eb;
   --rb-confetti-5: #9333ea;
+
+  /* ===== Ink ===== */
+  --rb-ink-secondary: #5b626d;   /* control + label ink (Q2) */
+  --rb-ink-soft: #3a4049;        /* softer than --rb-ink: names, chips, status */
+  --rb-ink-disabled: #b8bcc4;    /* past / out-of-month / disabled (Q9) */
+  --rb-on-color-ink: #ffffff;    /* text + icons on any colored fill (Q5) */
+
+  /* ===== Surfaces + borders ===== */
+  --rb-surface-sunken: #fbfaf7;  /* text inputs, list-row wash (Q7) */
+  --rb-cell-weekend-bg: #fbfaf7; /* month-view weekend cell (Q7) */
+  --rb-cell-inactive-bg: #f0eee9;/* out-of-month + past day cells (Q6) */
+  --rb-field-border: #e7e4dd;    /* = --rb-chip-hover value, input-border role */
+  --rb-border-strong: #d9d5cc;   /* = scrollbar-thumb value, border role (Q8) */
+  --rb-accent-wash: #fdeae8;     /* accent tint fill (Q3) */
+
+  /* ===== Buttons ===== */
+  --rb-btn-dark-bg: #2b3038;       /* = --rb-ink value, surface role (Q4) */
+  --rb-btn-dark-hover-bg: #3a4049; /* = --rb-ink-soft value, surface role */
+
+  /* ===== Status: danger ===== */
+  --rb-danger: #e11d48;
+  --rb-danger-hover: #c9163d;
+  --rb-danger-ink: #be123c;
+  --rb-danger-wash: #fce4ea;
+  --rb-danger-wash-hover: #f9d2dd;
+  --rb-danger-border: var(--rb-danger-wash-hover);
+
+  /* ===== Status: success ===== */
+  --rb-success: #16a34a;
+  --rb-success-hover: #15803d;
+  --rb-success-ink: var(--rb-success-hover);
+  --rb-success-wash: #e3f5ea;
+
+  /* ===== Status: info ===== */
+  --rb-info: #2563eb;
+  --rb-info-hover: #1e40af;
+  --rb-info-ink: var(--rb-info-hover);
+  --rb-info-wash: #eef4ff;
+  --rb-info-wash-hover: #e1ebff;
+  --rb-info-border: #cbdcff;     /* NEW VALUE — see Q14 */
+
+  /* ===== Status: warning ===== */
+  --rb-warn: #ea8c00;            /* = --rb-badge value, status role (Q16) */
+  --rb-warn-ink: #b45309;
+  --rb-warn-wash: #fdf0db;
+  --rb-warn-border: #f4dcae;     /* NEW VALUE — see Q14 */
+
+  /* ===== Shadows + on-tint overlays ===== */
+  --rb-shadow-card: rgba(0, 0, 0, 0.06);
+  --rb-shadow-accent: rgba(242, 101, 90, 0.35);
+  --rb-shadow-panel: rgba(0, 0, 0, 0.28);
+  --rb-on-tint-border: rgba(255, 255, 255, 0.9);
+  --rb-on-tint-ring: rgba(255, 255, 255, 0.7);
+  --rb-on-tint-fill: rgba(255, 255, 255, 0.65);
+  --rb-on-tint-chip: rgba(255, 255, 255, 0.6);
+
+  /* ===== On-screen keyboard ===== */
+  --rb-key-panel-bg: #e8e6e1;
+  --rb-key-panel-border: #c9c4b8;
+  --rb-key-border: #d5d0c6;
+  --rb-key-ctrl-bg: #d9d5cc;       /* = scrollbar-thumb value (Q8) */
+  --rb-key-ctrl-active-bg: #cbc6bb;
+  --rb-key-active-bg: var(--rb-btn-dark-bg);
+
+  /* ===== Screensaver ===== */
+  --rb-screensaver-logo-glow: rgba(70, 130, 180, 0.3);
+  --rb-power-saving-bg: #000000;   /* (Q15) */
 }
 
 .dark {
