@@ -45,9 +45,9 @@ export interface WidgetHostHandle {
  * Pure factory + thin glue — no widget-specific logic lives here.
  */
 export function createWidgetHost(opts: CreateWidgetHostOptions): WidgetHostHandle {
-  const storageKey =
-    LEGACY_KEY_ALIASES[opts.widgetId as keyof typeof LEGACY_KEY_ALIASES] ??
-    `widget:${opts.widgetId}`;
+  const storageKey = Object.hasOwn(LEGACY_KEY_ALIASES, opts.widgetId)
+    ? LEGACY_KEY_ALIASES[opts.widgetId as keyof typeof LEGACY_KEY_ALIASES]
+    : `widget:${opts.widgetId}`;
   const storageClient = new AppStateClient(storageKey);
 
   const host: WidgetHost = {

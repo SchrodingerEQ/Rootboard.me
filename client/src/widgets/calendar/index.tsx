@@ -13,7 +13,7 @@ import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
 import { EventFormDialog } from "@/components/calendar/event-form-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { useCalendar } from "@/hooks/use-calendar";
-import { validateBuiltinManifest } from "@/widgets/registry";
+import { validateBuiltinManifest } from "@/widgets/validate-manifest";
 import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/types";
 import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/lib/app-types";

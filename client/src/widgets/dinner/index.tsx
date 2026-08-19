@@ -3,7 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import DinnerPage from "@/pages/dinner";
 import { useDinnerWithHost } from "@/hooks/use-dinner";
-import { validateBuiltinManifest } from "@/widgets/registry";
+import { validateBuiltinManifest } from "@/widgets/validate-manifest";
 import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/types";
 import rawManifest from "./manifest.json";
 

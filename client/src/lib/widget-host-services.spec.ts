@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { LEGACY_KEY_ALIASES, createWidgetHost } from "./widget-host-services";
-import { validateBuiltinManifest } from "@/widgets/registry";
+import { validateBuiltinManifest } from "@/widgets/validate-manifest";
 
 describe("LEGACY_KEY_ALIASES", () => {
   test("maps chores and dinner to their unprefixed legacy app_state keys", () => {
@@ -54,6 +54,34 @@ describe("createWidgetHost — settings.patch", () => {
     // widget's settings entry.
     expect(patchSettings.mock.calls[0]).toHaveLength(1);
     expect(handle.host.widgetId).toBe("chores");
+  });
+
+  // widgetIdSchema's regex (^[a-z0-9][a-z0-9-]{1,40}$) happily accepts ids
+  // like "constructor" and "toString" — both are valid lowercase widget
+  // ids AND own/inherited members of the LEGACY_KEY_ALIASES object's
+  // prototype chain. A plain `LEGACY_KEY_ALIASES[id]` lookup would resolve
+  // those to Object.prototype functions instead of falling through to the
+  // `widget:<id>` namespace, corrupting the storage key. Object.hasOwn
+  // guards against exactly that — proven end-to-end here by observing the
+  // actual URL AppStateClient.load() fetches, not just the guard's own
+  // Object.hasOwn check.
+  test.each([
+    ["constructor", "widget:constructor"],
+    ["toString", "widget:toString"],
+  ])('id "%s" resolves the storage key to "%s", not an Object.prototype member', async (widgetId, expectedKey) => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    vi.stubGlobal("fetch", fetchMock);
+    const handle = createWidgetHost({
+      widgetId,
+      getSettings: () => ({}),
+      subscribeSettings: () => () => {},
+      patchSettings: () => {},
+      setBadge: () => {},
+      sleep: () => {},
+    });
+    void handle.host.storage.get();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/state/${expectedKey}`, expect.anything());
+    handle.dispose();
   });
 });
 

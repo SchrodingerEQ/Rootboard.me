@@ -114,6 +114,7 @@ interface WidgetInstance {
 - `onVisibilityChange(visible)` fires when the widget's section is
   shown/hidden and when the screensaver dims/wakes (dim ⇒ `false`).
   Optional; widgets that keep private timers should pause on `false`.
+  Callbacks may repeat the current value; implement handlers idempotently.
 
 ## 4. Host services — `WidgetHost`
 
@@ -161,7 +162,7 @@ interface WidgetHost {
    *  getToken resolves a computed value for canvas/JS use. */
   theme: {
     getToken(name: string): string;   // e.g. getToken("--rb-accent")
-    subscribe(cb: () => void): () => void;  // fires on theme switch
+    subscribe(cb: () => void): () => void;  // fires on theme switch (hosts without a theme engine may never fire it)
   };
 
   /** Plain fetch — full network access per the v1 trust model. Also the
