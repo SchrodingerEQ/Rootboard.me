@@ -270,10 +270,43 @@ export default function AppShell() {
   // domain. The optimistic setQueryData is what makes a chip tap feel
   // instant AND is what pushes the new values into host.settings
   // subscribers immediately (the notify effect above watches this query).
+  //
+  // `buildPatch` receives the target widget's CURRENT settings — read from
+  // the query cache at write time, not from a closure captured when the
+  // caller was created — and returns the patch to merge, or null for
+  // "nothing to write". Two callbacks matter here:
+  //  1. Data safety: if the config query has no data (still pending, or
+  //     failed — the query never retries), `cached` is undefined and there
+  //     is no real on-disk config to merge onto. Writing anyway would PUT
+  //     `defaultDashboardConfig()` + patch, silently destroying the user's
+  //     actual widget order/settings. So this bails and drops the change
+  //     rather than ever writing a config not derived from loaded data,
+  //     nudging a refetch so a later attempt can succeed.
+  //  2. Race safety: because `buildPatch` is called with a fresh cache read
+  //     on every invocation, two same-tick calls each see the other's
+  //     already-applied optimistic write (the first call's synchronous
+  //     `setQueryData` below runs before the second call's `getQueryData`,
+  //     since both stay synchronous up to their first `await`). That lets
+  //     callers derive deltas (add/remove one id) instead of shipping a
+  //     whole array built from a stale render's state — see
+  //     shell-bridge.ts's CalendarSettingsPatchDetail doc for the concrete
+  //     failure mode this avoids.
   const updateWidgetSettings = useCallback(
-    async (widgetId: string, patch: Record<string, unknown>) => {
+    async (
+      widgetId: string,
+      buildPatch: (currentSettings: Record<string, unknown>) => Record<string, unknown> | null,
+    ) => {
       const cached = queryClient.getQueryData<DashboardConfigResponse>(["/api/config/dashboard"]);
-      const current = cached?.config ?? dashboardConfigRef.current;
+      if (!cached?.config) {
+        console.warn("[app-shell] config not loaded; settings change dropped");
+        void queryClient.invalidateQueries({ queryKey: ["/api/config/dashboard"] });
+        return;
+      }
+      const current = cached.config;
+      const currentSettings = current.widgets.find((w) => w.id === widgetId)?.settings ?? {};
+      const patch = buildPatch(currentSettings);
+      if (!patch) return;
+
       // Merge is pure + spec'd in client/src/lib/widget-config.spec.ts;
       // null == this widget has no config entry, so nothing to write.
       const next = applyWidgetSettingsPatch(current, widgetId, patch);
@@ -281,7 +314,7 @@ export default function AppShell() {
 
       queryClient.setQueryData<DashboardConfigResponse>(["/api/config/dashboard"], {
         config: next,
-        source: cached?.source ?? "default",
+        source: cached.source,
       });
 
       try {
@@ -317,50 +350,79 @@ export default function AppShell() {
     () => dashboardConfig.widgets.find((w) => w.id === CALENDAR_WIDGET_ID)?.settings ?? {},
     [dashboardConfig],
   );
+  // `disabledCalendars` has no shell-side reader any more: both handlers
+  // below now read hidden/disabled straight from the cache snapshot
+  // `updateWidgetSettings` takes at write time (see its doc comment), rather
+  // than from a memo of this render's config. Only `hiddenCalendars` still
+  // has a reader — the Settings popover's switch state.
   const hiddenCalendars = useMemo(
     () => toCalendarIdSet(calendarSettings[HIDDEN_CALENDARS_KEY]),
-    [calendarSettings],
-  );
-  const disabledCalendars = useMemo(
-    () => toCalendarIdSet(calendarSettings[DISABLED_CALENDARS_KEY]),
     [calendarSettings],
   );
 
   // Settings popover switch: hides/shows a calendar in the chip row AND its
   // events. Switching one back ON also clears any chip-level disable —
-  // matching the pre-widget handler, which wrote both Sets.
+  // matching the pre-widget handler, which wrote both Sets. Reads
+  // hidden/disabled from `currentSettings` (the cache snapshot
+  // `updateWidgetSettings` takes at write time), NOT from this component's
+  // own `hiddenCalendars`/`disabledCalendars` memo, so this can't race a
+  // concurrent toggle of a different calendar (see updateWidgetSettings doc).
   const handleCalendarVisibilityToggle = useCallback(
     (calendarId: string, visible: boolean) => {
-      const patch: Record<string, unknown> = {
-        [HIDDEN_CALENDARS_KEY]: withCalendarId(hiddenCalendars, calendarId, !visible),
-      };
-      if (visible && disabledCalendars.has(calendarId)) {
-        patch[DISABLED_CALENDARS_KEY] = withCalendarId(disabledCalendars, calendarId, false);
-      }
-      void updateWidgetSettings(CALENDAR_WIDGET_ID, patch);
+      void updateWidgetSettings(CALENDAR_WIDGET_ID, (currentSettings) => {
+        const hidden = toCalendarIdSet(currentSettings[HIDDEN_CALENDARS_KEY]);
+        const disabled = toCalendarIdSet(currentSettings[DISABLED_CALENDARS_KEY]);
+        const patch: Record<string, unknown> = {
+          [HIDDEN_CALENDARS_KEY]: withCalendarId(hidden, calendarId, !visible),
+        };
+        if (visible && disabled.has(calendarId)) {
+          patch[DISABLED_CALENDARS_KEY] = withCalendarId(disabled, calendarId, false);
+        }
+        return patch;
+      });
     },
-    [hiddenCalendars, disabledCalendars, updateWidgetSettings],
+    [updateWidgetSettings],
   );
 
   // Unsubscribe purge: drop the id from BOTH lists so a later re-subscribe
-  // comes back visible-by-default instead of inheriting a stale toggle.
+  // comes back visible-by-default instead of inheriting a stale toggle. Same
+  // cache-snapshot-at-write-time read as above. Skips the write entirely
+  // when the id is in neither list — no-op PUTs are pointless and mask real
+  // failures with a spurious network round-trip.
   const handleCalendarRemoved = useCallback(
     (calendarId: string) => {
-      void updateWidgetSettings(CALENDAR_WIDGET_ID, {
-        [HIDDEN_CALENDARS_KEY]: withCalendarId(hiddenCalendars, calendarId, false),
-        [DISABLED_CALENDARS_KEY]: withCalendarId(disabledCalendars, calendarId, false),
+      void updateWidgetSettings(CALENDAR_WIDGET_ID, (currentSettings) => {
+        const hidden = toCalendarIdSet(currentSettings[HIDDEN_CALENDARS_KEY]);
+        const disabled = toCalendarIdSet(currentSettings[DISABLED_CALENDARS_KEY]);
+        if (!hidden.has(calendarId) && !disabled.has(calendarId)) return null;
+        const patch: Record<string, unknown> = {};
+        if (hidden.has(calendarId)) {
+          patch[HIDDEN_CALENDARS_KEY] = withCalendarId(hidden, calendarId, false);
+        }
+        if (disabled.has(calendarId)) {
+          patch[DISABLED_CALENDARS_KEY] = withCalendarId(disabled, calendarId, false);
+        }
+        return patch;
       });
     },
-    [hiddenCalendars, disabledCalendars, updateWidgetSettings],
+    [updateWidgetSettings],
   );
 
   // Calendar chip taps arrive as a window event (the widget has no props and
-  // no settings-write capability) — see shell-bridge.ts.
+  // no settings-write capability) — see shell-bridge.ts. The event carries a
+  // delta (`{ key, calendarId, present }`), not a pre-built array, so this
+  // reads the CURRENT list for that key from the cache snapshot
+  // `updateWidgetSettings` takes at write time rather than trusting whatever
+  // array the widget had in view when it dispatched.
   useEffect(() => {
     const handleSettingsPatch = (event: Event) => {
       const detail = (event as CustomEvent<CalendarSettingsPatchDetail>).detail;
-      if (!detail?.patch) return;
-      void updateWidgetSettings(CALENDAR_WIDGET_ID, detail.patch);
+      if (!detail?.key || !detail.calendarId) return;
+      const { key, calendarId, present } = detail;
+      void updateWidgetSettings(CALENDAR_WIDGET_ID, (currentSettings) => {
+        const ids = toCalendarIdSet(currentSettings[key]);
+        return { [key]: withCalendarId(ids, calendarId, present) };
+      });
     };
     window.addEventListener(CALENDAR_SETTINGS_PATCH_EVENT, handleSettingsPatch);
     return () => window.removeEventListener(CALENDAR_SETTINGS_PATCH_EVENT, handleSettingsPatch);

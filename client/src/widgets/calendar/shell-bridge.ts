@@ -84,14 +84,31 @@ export const CALENDAR_SUBSCRIBE_SUCCESS_EVENT = "rootboard:calendar-subscribe-su
 
 /**
  * Widget -> shell. `host.settings` is read-only, so the widget's header chip
- * row asks the shell to persist a settings patch. The shell owns the single
+ * row asks the shell to persist a settings change. The shell owns the single
  * read-merge-PUT-invalidate implementation for dashboard config, so every
  * writer (Settings switches, chips, unsubscribe) goes through one code path
  * and one race domain.
+ *
+ * The detail is a DELTA — one id's membership in one list — not a whole
+ * pre-computed array. Two rapid toggles of DIFFERENT calendars on the same
+ * key can otherwise land in the same ~1-2 frame propagation window: if each
+ * event carried a full array built from a React state snapshot, the second
+ * write's array would be built from state that doesn't yet include the
+ * first write's change, and would silently clobber it. Shipping just
+ * `{ key, calendarId, present }` lets the shell's handler read the list it
+ * is about to patch from the query cache AT WRITE TIME (the same snapshot
+ * `updateWidgetSettings` uses for the read-merge-PUT) and derive the new
+ * array from THAT — so two toggles fired in the same tick each see the
+ * other's effect instead of racing.
  */
 export const CALENDAR_SETTINGS_PATCH_EVENT = "rootboard:calendar-settings-patch";
 export interface CalendarSettingsPatchDetail {
-  patch: Record<string, unknown>;
+  /** Which persisted list this toggle targets. */
+  key: typeof HIDDEN_CALENDARS_KEY | typeof DISABLED_CALENDARS_KEY;
+  /** The calendar id being added to or removed from that list. */
+  calendarId: string;
+  /** true = add id to the list, false = remove it. */
+  present: boolean;
 }
 
 /**

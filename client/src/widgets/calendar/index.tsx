@@ -25,7 +25,6 @@ import {
   POWER_SAVING_CHANGE_EVENT,
   deriveCalendarVisibility,
   toCalendarIdSet,
-  withCalendarId,
   type CalendarSettingsPatchDetail,
   type PowerSavingChangeDetail,
 } from "./shell-bridge";
@@ -190,19 +189,21 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
     [subscribedIds, hiddenCalendars, disabledCalendars],
   );
 
-  // Chip tap -> ask the shell to persist `disabledCalendars` (host.settings
-  // is read-only by contract; see shell-bridge.ts).
-  const handleCalendarEventToggle = useCallback(
-    (calendarId: string, enabled: boolean) => {
-      const detail: CalendarSettingsPatchDetail = {
-        patch: {
-          [DISABLED_CALENDARS_KEY]: withCalendarId(disabledCalendars, calendarId, !enabled),
-        },
-      };
-      window.dispatchEvent(new CustomEvent(CALENDAR_SETTINGS_PATCH_EVENT, { detail }));
-    },
-    [disabledCalendars],
-  );
+  // Chip tap -> ask the shell to persist a `disabledCalendars` delta
+  // (host.settings is read-only by contract; see shell-bridge.ts). This
+  // dispatches just the id + intent, NOT a pre-built array from this
+  // component's own `disabledCalendars` snapshot — the shell derives the new
+  // array from its own current cache read at write time, so two chip taps
+  // for different calendars in the same tick don't race (see shell-bridge.ts
+  // for the full rationale).
+  const handleCalendarEventToggle = useCallback((calendarId: string, enabled: boolean) => {
+    const detail: CalendarSettingsPatchDetail = {
+      key: DISABLED_CALENDARS_KEY,
+      calendarId,
+      present: !enabled,
+    };
+    window.dispatchEvent(new CustomEvent(CALENDAR_SETTINGS_PATCH_EVENT, { detail }));
+  }, []);
 
   // --- Everything below is the old CalendarSection, unchanged -------------
 
