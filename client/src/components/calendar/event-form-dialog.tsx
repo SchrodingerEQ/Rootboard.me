@@ -428,7 +428,7 @@ export function EventFormDialog({ open, onOpenChange, event, defaultStart }: Eve
               disabled={isPending}
               // --rb tokens, not the removed --google-* vars (an undefined var
               // left this button with no background: white text on white).
-              className="touch-button h-11 px-6 rounded-full bg-[var(--rb-accent)] hover:bg-[var(--rb-accent-hover)] text-white text-base font-bold shadow-[0_2px_6px_rgba(242,101,90,.35)]"
+              className="touch-button h-11 px-6 rounded-full bg-[var(--rb-accent)] hover:bg-[var(--rb-accent-hover)] text-rb-on-color-ink text-base font-bold shadow-[0_2px_6px_var(--rb-shadow-accent)]"
               data-testid="button-save-event"
             >
               {isPending ? 'Saving…' : isEdit ? 'Save' : 'Create'}
