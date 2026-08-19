@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle, Plus } 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { WeatherIcon } from "./weather-icon";
 import { useWeather } from "@/hooks/use-weather";
-import type { CalendarView } from "@/pages/calendar";
+import type { CalendarView } from "@/lib/app-types";
 
 interface CalendarHeaderProps {
   currentView: CalendarView;

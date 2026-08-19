@@ -11,7 +11,7 @@ import { EventFormDialog } from "@/components/calendar/event-form-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { UpdateNotification } from "@/components/calendar/update-notification";
-import { NavRail, type Section } from "@/components/nav-rail";
+import { NavRail } from "@/components/nav-rail";
 import ChoresPage from "@/pages/chores";
 import DinnerPage from "@/pages/dinner";
 import { useCalendar } from "@/hooks/use-calendar";
@@ -22,8 +22,7 @@ import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarEvent } from "@shared/schema";
-
-export type CalendarView = "day" | "week" | "month";
+import type { CalendarView, Section } from "@/lib/app-types";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
 

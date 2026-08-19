@@ -1,7 +1,6 @@
 import { CalendarDays, ClipboardCheck, UtensilsCrossed } from "lucide-react";
 import logoImage from "@assets/image_1753142842256.png";
-
-export type Section = "calendar" | "chores" | "dinner";
+import type { Section } from "@/lib/app-types";
 
 interface NavRailProps {
   active: Section;
