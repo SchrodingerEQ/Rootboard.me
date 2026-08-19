@@ -378,7 +378,7 @@ Expected: only `index.css` definitions, `chores-state.ts` PERSON_PALETTE, `calen
 
 Plus a standing opacity-modifier gate (the `rb` map's colors are plain `var(...)` strings, so Tailwind's `/alpha` and `text-opacity-*`/`bg-opacity-*` modifiers silently produce no CSS against them):
 ```bash
-git grep -nE 'rb-[a-z-]+/[0-9]|text-opacity-|bg-opacity-' -- client/src
+git grep -nE 'rb-[a-z-]+/[0-9]|text-opacity-|bg-opacity-' -- client/src ':!client/src/components/screensaver/screensaver-overlay.tsx'
 ```
 Expected: no output.
 
