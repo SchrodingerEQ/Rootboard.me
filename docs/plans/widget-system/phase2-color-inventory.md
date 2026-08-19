@@ -549,7 +549,8 @@ These are **not** assigned variables. The area gates must allowlist them.
 | `components/calendar/settings-menu.tsx:186-188` | Duplicate calendar-color fallback list. Exempt from the color sweep; flagged for its own fix — see **Q12**. |
 | `pages/setup.tsx` | Fully exempt (excluded from all three greps by the brief). |
 | `components/ui/**` | shadcn library components — excluded by the brief. Report, don't touch. |
-| `*.test.ts` / `*.test.tsx` | Tests assert on literal values by design. |
+| `*.test.ts` / `*.test.tsx` / `*.spec.ts` | Tests assert on literal values by design (incl. `confetti-colors.spec.ts`, added by Task 9). |
+| `components/screensaver/screensaver-overlay.tsx` | Dead code, never mounted (`power-saving-overlay.tsx` is live). Left untouched per Task 11 — the TASKS.md dead-code question (keep vs. delete) is still open, so it wasn't swept. Still carries `text-white` Tailwind classes; allowlisted by eye. |
 
 ---
 
@@ -568,3 +569,13 @@ These are **not** assigned variables. The area gates must allowlist them.
 5. Every alias in §12 (`var(--rb-…)` on the right-hand side) means today's
    pixels are unchanged; splitting an alias into a distinct value is a
    *theme* decision, not a sweep decision.
+
+---
+
+## 15. Sweep completed
+
+Phase 2 color sweep closed out 2026-08-19 (Task 12). Full-repo hex,
+rgb(a), and Tailwind palette-class gates reconcile against the §13
+exception list with no unallowlisted hits; `npm run check`, `npm test`,
+and `npm run build` are green. The approved-drift record in §2 is
+documented in `docs/SPEC.md` §3.9.

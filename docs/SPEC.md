@@ -346,6 +346,57 @@ failure during polling is *assumed to be the restart* and reloads after
 - Offline (navigator.onLine) pauses queries; sync and auto-refresh
   short-circuit when offline or dimmed.
 
+### 3.9 Color tokens
+
+All client styling colors come from CSS variables (the `--rb-*` palette
+plus shadcn tokens) defined in `client/src/index.css`. Tailwind exposes
+a subset of them as `rb-*` utility classes via the `rb` map in
+`tailwind.config.ts` (38 keys); tokens not in that map are consumed via
+arbitrary-value classes (`[var(--rb-…)]`) or inline `style` props.
+
+Hardcoded color literals are allowed only at these documented exception
+sites:
+
+- `lib/chores-state.ts` `PERSON_PALETTE` — user-assigned person colors;
+  identity data, not styling, and pinned by tests.
+- `lib/calendar-meta.ts` `FALLBACK_COLORS` and the `EVENT_FALLBACK_COLOR`
+  definition — deterministic per-calendar/per-event fallback colors that
+  must match server logic; `EVENT_FALLBACK_COLOR` is the single
+  definition site every event-color fallback now points at.
+- `lib/color-utils.ts` — the `rgb()`/`rgba()` string builders and the
+  `hexToRgb` parse-failure fallback.
+- `components/chores/confetti-burst.tsx` `CONFETTI_COLORS` — the pinned
+  default; at runtime, callers read `--rb-confetti-1` through `-5` and
+  fall back to this constant only if a variable is missing.
+- `components/calendar/settings-menu.tsx`'s duplicate calendar-color
+  fallback block — a known bug (tracked in TASKS.md), not a styling
+  exception; it duplicates `lib/calendar-meta.ts` and should eventually
+  call `getCalendarColor()` instead.
+- `pages/setup.tsx` — exempt install-guide page.
+- `components/ui/**` — vendored shadcn components.
+- `*.test.ts` / `*.spec.ts` — literal values asserted by tests.
+- `components/screensaver/screensaver-overlay.tsx` — dead code (3.6),
+  never mounted.
+
+**Approved rendering drift (founder-ratified 2026-08-19, full rationale
+in `docs/plans/widget-system/phase2-color-inventory.md` §2):** the
+token sweep is otherwise pixel-identical, except for a small set of
+deliberate, accepted deviations —
+
+- Tailwind palette classes (`text-gray-500` etc.) were harmonized onto
+  house `rb` tokens instead of aliasing their exact values; the drift is
+  confined to secondary dialog chrome (settings popover, update/auth/
+  event dialogs, the 404 page).
+- Four micro-collapses: `#cfd2d8` → `--rb-ink-disabled`, `#8b919b` →
+  `--rb-muted`, two distinct success greens unified onto one
+  `--rb-success`/`--rb-success-hover` pair, and one hover-darkening step
+  (`hover:text-amber-900`) dropped in favor of the shared warn ink.
+- One fallback unification: the `'#4285f4'` calendar-color fallback in
+  `event-details-dialog.tsx` now uses `EVENT_FALLBACK_COLOR` (`#2563eb`)
+  like every other event-color fallback site.
+
+Anything not on these two lists renders exactly as before the sweep.
+
 ## 4. Update system
 
 ### 4.1 Cadence
