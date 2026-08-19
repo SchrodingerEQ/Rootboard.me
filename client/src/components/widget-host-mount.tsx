@@ -3,15 +3,31 @@ import { RefreshScheduler } from "@/lib/refresh-scheduler";
 import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/types";
 import type { WidgetManifest } from "@shared/widget-manifest";
 
+/**
+ * The CALLER owns each entry's host lifecycle, not WidgetHostMount:
+ *  - Create `host` (createWidgetHost, client/src/lib/widget-host-services.ts)
+ *    when the widget is enabled, before the entry is ever passed in here.
+ *  - When you remove an entry from `entries` (widget disabled, folder
+ *    removed), call that host's `flush()` then `dispose()` yourself —
+ *    WidgetHostMount only ever calls `instance.unmount()`, never anything
+ *    on the host.
+ *  - Hosts are NOT single-use-guarded here: WidgetHostMount does not track
+ *    which hosts have been disposed, so never pass in a host you've already
+ *    disposed — reusing/re-adding an entry with a disposed host will mount
+ *    a widget against dead storage (get() -> null forever, set() a silent
+ *    no-op) with no error raised anywhere.
+ *
+ * This split exists because WidgetHostMount can legitimately remount (e.g.
+ * React StrictMode double-invoke, or a parent re-rendering it) while the
+ * hosts passed via props keep stable identity across that remount — if this
+ * component disposed hosts on its own unmount, a remount would silently and
+ * irreversibly kill every widget's storage. See docs/decisions/ for the
+ * fuller writeup if one exists, or CONTRACT.md §3.
+ */
 export interface WidgetHostMountEntry {
   manifest: WidgetManifest;
   widget: RootboardWidget;
   host: WidgetHost;
-  /** Flushes pending storage writes and disposes the host's AppStateClient.
-   *  See createWidgetHost's WidgetHostHandle.dispose in
-   *  client/src/lib/widget-host-services.ts — it already sequences
-   *  flush() before dispose() internally. */
-  hostDispose: () => void;
 }
 
 interface WidgetHostMountProps {
@@ -25,7 +41,6 @@ interface WidgetHostMountProps {
 
 interface MountedEntry {
   instance: WidgetInstance;
-  hostDispose: () => void;
   scheduler: RefreshScheduler;
 }
 
@@ -54,7 +69,15 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
   // mountedRef), and tear down any entry that has disappeared from the
   // list since the last render (widget disabled, or its folder removed —
   // CONTRACT.md §3: "unmount() is called only when a widget is disabled in
-  // settings, its folder is removed, or the app shuts down").
+  // settings, its folder is removed, or the app shuts down"). Symmetric
+  // with the component-unmount cleanup below: this effect only ever calls
+  // `instance.unmount()`, never anything on the entry's host — host
+  // creation/flush/dispose is the caller's job (see WidgetHostMountEntry).
+  //
+  // `entries` should be a referentially-stable array from the caller
+  // (e.g. memoized) — a fresh array identity every render is harmless
+  // (mountedRef guards against re-mounting) but makes this effect and the
+  // one below it re-run needlessly on every render.
   useEffect(() => {
     const currentIds = new Set(entries.map((e) => e.manifest.id));
 
@@ -73,13 +96,12 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
       scheduler.setOnline(navigator.onLine);
       scheduler.setVisible(entry.manifest.id === activeIdRef.current);
 
-      mountedRef.current.set(entry.manifest.id, { instance, hostDispose: entry.hostDispose, scheduler });
+      mountedRef.current.set(entry.manifest.id, { instance, scheduler });
     }
 
     Array.from(mountedRef.current.entries()).forEach(([id, mounted]) => {
       if (currentIds.has(id)) return;
       mounted.instance.unmount();
-      mounted.hostDispose();
       mountedRef.current.delete(id);
     });
   }, [entries]);
@@ -148,16 +170,19 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
     return () => clearInterval(interval);
   }, []);
 
-  // Component unmount (app shutdown / navigating away entirely): tear down
-  // whatever is still mounted. Entry-level removal is already handled in
-  // the mount/unmount effect above; this only covers the full-teardown
-  // case that effect's cleanup (which only fires on a later re-run, not on
-  // final unmount with an empty next entries array necessarily) might miss.
+  // Component unmount (app shutdown / navigating away entirely, OR a
+  // React remount such as StrictMode's dev-mode double-invoke): tear down
+  // whatever is still mounted, but do NOT touch the hosts — they arrive
+  // via props with stable identity and are owned by the caller (see
+  // WidgetHostMountEntry). Clearing mountedRef (rather than leaving stale
+  // entries in it) is what makes a subsequent remount of this component
+  // safe: the entries effect above will see nothing mounted and cleanly
+  // re-mount every still-present entry against its still-live host,
+  // instead of either double-mounting or silently no-op'ing.
   useEffect(() => {
     return () => {
       Array.from(mountedRef.current.values()).forEach((mounted) => {
         mounted.instance.unmount();
-        mounted.hostDispose();
       });
       mountedRef.current.clear();
     };

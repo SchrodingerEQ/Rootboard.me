@@ -115,6 +115,19 @@ describe("RefreshScheduler", () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
+  test("no catch-up when becoming awake but not overdue", () => {
+    const clock = makeClock(0);
+    const onRefresh = vi.fn();
+    const scheduler = new RefreshScheduler({ intervalSeconds: 30, onRefresh, now: clock.now });
+    scheduler.setVisible(true);
+    scheduler.setOnline(true);
+    scheduler.setAwake(false);
+
+    clock.advance(5_000); // not overdue yet
+    scheduler.setAwake(true);
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
   test("noteRefreshed() resets the clock so tick() does not immediately re-fire", () => {
     const clock = makeClock(0);
     const onRefresh = vi.fn();
