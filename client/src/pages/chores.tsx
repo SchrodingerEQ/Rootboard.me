@@ -54,11 +54,11 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
   return (
     <div className="h-full flex flex-col" style={{ background: "var(--rb-canvas)" }}>
       <header
-        className="bg-white px-7 py-3 flex items-center justify-between"
-        style={{ boxShadow: "0 1px 0 rgba(0,0,0,.05)" }}
+        className="bg-rb-surface px-7 py-3 flex items-center justify-between"
+        style={{ boxShadow: "0 1px 0 var(--rb-shadow-soft)" }}
       >
         <div className="flex items-baseline gap-3">
-          <h1 className="text-[30px] font-extrabold tracking-tight text-[#2b3038] leading-none">Chores</h1>
+          <h1 className="text-[30px] font-extrabold tracking-tight text-rb-ink leading-none">Chores</h1>
           <span style={{ fontSize: 20, fontWeight: 500, color: "var(--rb-muted)" }}>{dateLabel}</span>
         </div>
 
@@ -68,8 +68,8 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
             style={{ background: "var(--rb-chip)", padding: "9px 18px", borderRadius: 999 }}
             data-testid="chip-progress"
           >
-            <span className="rounded-full" style={{ width: 10, height: 10, background: "#16a34a" }} />
-            <span style={{ fontSize: 17, fontWeight: 700, color: "#3a4049" }}>
+            <span className="rounded-full" style={{ width: 10, height: 10, background: "var(--rb-success)" }} />
+            <span style={{ fontSize: 17, fontWeight: 700, color: "var(--rb-ink-soft)" }}>
               {doneTodayTotal} of {totalChoreCount} done today
             </span>
           </div>
@@ -77,7 +77,7 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-[#5b626d] text-base font-bold"
+            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-rb-ink-secondary text-base font-bold"
             onClick={() => setIsSetup(true)}
             data-testid="button-edit-people"
           >
@@ -88,8 +88,8 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button h-[46px] px-5 rounded-full bg-white hover:bg-[#fce4ea] text-base font-extrabold"
-            style={{ boxShadow: "inset 0 0 0 2px #fce4ea", color: "#e11d48" }}
+            className="touch-button h-[46px] px-5 rounded-full bg-rb-surface hover:bg-rb-danger-wash text-base font-extrabold"
+            style={{ boxShadow: "inset 0 0 0 2px var(--rb-danger-wash)", color: "var(--rb-danger)" }}
             onClick={() => setResetOpen(true)}
             data-testid="button-reset-chores"
           >
@@ -100,7 +100,7 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-[#5b626d] text-base font-bold"
+            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-rb-ink-secondary text-base font-bold"
             onClick={onSleep}
             data-testid="button-sleep"
           >

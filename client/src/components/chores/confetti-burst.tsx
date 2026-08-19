@@ -20,7 +20,9 @@ export const CONFETTI_FADE_MS = 1800;
 
 /** ~14 particles (7–13px, circles + squares) fanning upward/outward
  *  45–120px with 270° of rotational spread either direction. */
-export function generateConfettiParticles(): ConfettiParticle[] {
+export function generateConfettiParticles(
+  colors: readonly string[] = CONFETTI_COLORS
+): ConfettiParticle[] {
   const particles: ConfettiParticle[] = [];
   for (let i = 0; i < CONFETTI_PARTICLE_COUNT; i++) {
     const angle = Math.PI * (0.9 + Math.random() * 1.2) + Math.PI; // mostly upward fan
@@ -29,7 +31,7 @@ export function generateConfettiParticles(): ConfettiParticle[] {
       dx: Math.round(Math.cos(angle) * dist),
       dy: Math.round(Math.sin(angle) * dist * -1) - 20,
       rot: Math.round(Math.random() * 540 - 270),
-      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      color: colors[i % colors.length],
       size: 7 + Math.round(Math.random() * 6),
       radius: Math.random() > 0.5 ? "50%" : "3px",
     });

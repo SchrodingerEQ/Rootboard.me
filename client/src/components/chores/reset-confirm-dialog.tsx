@@ -39,10 +39,10 @@ export function ResetConfirmDialog({ open, onOpenChange, people, onConfirm }: Re
         data-testid="dialog-reset-chores"
       >
         <AlertDialogHeader>
-          <AlertDialogTitle style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "#2b3038" }}>
+          <AlertDialogTitle style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "var(--rb-ink)" }}>
             Reset whose chores?
           </AlertDialogTitle>
-          <AlertDialogDescription style={{ fontSize: 18, fontWeight: 500, color: "#5b626d" }}>
+          <AlertDialogDescription style={{ fontSize: 18, fontWeight: 500, color: "var(--rb-ink-secondary)" }}>
             Pick a person — every chore on their list will be removed. Today's completed counts are kept.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -74,7 +74,7 @@ export function ResetConfirmDialog({ open, onOpenChange, people, onConfirm }: Re
                   data-testid={`row-reset-person-${p.id}`}
                 >
                   <span
-                    className="flex items-center justify-center rounded-full text-white flex-shrink-0"
+                    className="flex items-center justify-center rounded-full text-rb-on-color-ink flex-shrink-0"
                     style={{ width: 40, height: 40, background: pal.color, fontSize: 16, fontWeight: 800 }}
                   >
                     {initials}
@@ -99,7 +99,7 @@ export function ResetConfirmDialog({ open, onOpenChange, people, onConfirm }: Re
             type="button"
             onClick={() => onOpenChange(false)}
             className="touch-button flex-1"
-            style={{ height: 58, border: "none", background: "var(--rb-chip)", color: "#5b626d", fontSize: 19, fontWeight: 800, borderRadius: 999 }}
+            style={{ height: 58, border: "none", background: "var(--rb-chip)", color: "var(--rb-ink-secondary)", fontSize: 19, fontWeight: 800, borderRadius: 999 }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-chip-hover)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-chip)")}
             data-testid="button-cancel-reset"
@@ -114,15 +114,15 @@ export function ResetConfirmDialog({ open, onOpenChange, people, onConfirm }: Re
             style={{
               height: 58,
               border: "none",
-              background: selected ? "#e11d48" : "var(--rb-chip)",
-              color: selected ? "#fff" : "#b8bcc4",
+              background: selected ? "var(--rb-danger)" : "var(--rb-chip)",
+              color: selected ? "var(--rb-on-color-ink)" : "var(--rb-ink-disabled)",
               fontSize: 19,
               fontWeight: 800,
               borderRadius: 999,
               cursor: selected ? "pointer" : "default",
             }}
-            onMouseEnter={(e) => { if (selected) e.currentTarget.style.background = "#c9163d"; }}
-            onMouseLeave={(e) => { if (selected) e.currentTarget.style.background = "#e11d48"; }}
+            onMouseEnter={(e) => { if (selected) e.currentTarget.style.background = "var(--rb-danger-hover)"; }}
+            onMouseLeave={(e) => { if (selected) e.currentTarget.style.background = "var(--rb-danger)"; }}
             data-testid="button-confirm-reset"
           >
             {selected ? `Remove ${selected.name}'s chores` : "Remove chores"}
