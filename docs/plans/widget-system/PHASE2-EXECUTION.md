@@ -161,13 +161,13 @@ Expected: `calendar-header.tsx` (CalendarView), `nav-rail.tsx` (Section declarat
 - [ ] **Step 1: Run the three inventory greps** (repo root):
 
 ```bash
-git grep -nE '#[0-9a-fA-F]{3,8}\b' client/src -- ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
+git grep -nE '#[0-9a-fA-F]{3,8}\b' -- client/src ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
 ```
 ```bash
-git grep -nE 'rgba?\(' client/src -- ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
+git grep -nE 'rgba?\(' -- client/src ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
 ```
 ```bash
-git grep -nE '(text|bg|border|ring|divide|fill|stroke|from|via|to)-(white|black|(gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3})' client/src -- ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
+git grep -nE '(text|bg|border|ring|divide|fill|stroke|from|via|to)-(white|black|(gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3})' -- client/src ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
 ```
 
 Expected magnitudes (audit 2026-08-19): ~220 hex / 29 files, ~21 rgb(a) / 16 files, ~144 palette classes / 24 files.
@@ -365,7 +365,7 @@ function runtimeConfettiColors(): readonly string[] {
 - [ ] **Step 1: Full gates:**
 
 ```bash
-git grep -nE '#[0-9a-fA-F]{3,8}\b' client/src -- ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
+git grep -nE '#[0-9a-fA-F]{3,8}\b' -- client/src ':!client/src/components/ui' ':!client/src/pages/setup.tsx'
 ```
 Expected: only `index.css` definitions, `chores-state.ts` PERSON_PALETTE, `calendar-meta.ts` FALLBACK_COLORS + `EVENT_FALLBACK_COLOR`, `confetti-burst.tsx` CONFETTI_COLORS, and `.test/.spec` assertions. Same for the rgb(a) and palette-class greps.
 
