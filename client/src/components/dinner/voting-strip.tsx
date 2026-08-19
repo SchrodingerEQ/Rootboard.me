@@ -26,7 +26,7 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
           Vote on upcoming dinners
         </span>
         {cooldownActive && (
-          <span style={{ fontSize: 15, fontWeight: 700, color: "#b45309" }} data-testid="text-cooldown">
+          <span style={{ fontSize: 15, fontWeight: 700, color: "var(--rb-warn-ink)" }} data-testid="text-cooldown">
             You can vote again in {cooldownSeconds}s
           </span>
         )}
@@ -40,10 +40,10 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
               key={c.id}
               className="flex-1 min-w-0 flex flex-col"
               style={{
-                background: "#ffffff",
+                background: "var(--rb-surface)",
                 borderRadius: 16,
-                border: `3px solid ${isLeading ? "#f2655a" : "transparent"}`,
-                boxShadow: "0 1px 2px rgba(0,0,0,.05)",
+                border: `3px solid ${isLeading ? "var(--rb-accent)" : "transparent"}`,
+                boxShadow: "0 1px 2px var(--rb-shadow-soft)",
                 padding: "14px 14px 12px",
                 gap: 10,
               }}
@@ -52,11 +52,11 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
               <div className="flex items-center justify-between" style={{ gap: 8 }}>
                 <span
                   className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-                  style={{ fontSize: 18, fontWeight: 800, color: "#2b3038" }}
+                  style={{ fontSize: 18, fontWeight: 800, color: "var(--rb-ink)" }}
                 >
                   {c.title}
                 </span>
-                {isLeading && <Crown size={20} fill="#f2655a" color="#f2655a" strokeWidth={1.6} style={{ flexShrink: 0 }} />}
+                {isLeading && <Crown size={20} fill="var(--rb-accent)" color="var(--rb-accent)" strokeWidth={1.6} style={{ flexShrink: 0 }} />}
               </div>
               <span style={{ fontSize: 15, fontWeight: 700, color: "var(--rb-muted)" }}>
                 {c.votes === 1 ? "1 vote" : `${c.votes} votes`}
@@ -70,8 +70,8 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
                   height: 46,
                   border: "none",
                   borderRadius: 999,
-                  background: cooldownActive ? "#f1efea" : "#2b3038",
-                  color: cooldownActive ? "#b8bcc4" : "#ffffff",
+                  background: cooldownActive ? "var(--rb-chip)" : "var(--rb-btn-dark-bg)",
+                  color: cooldownActive ? "var(--rb-ink-disabled)" : "var(--rb-on-color-ink)",
                   fontSize: 16,
                   fontWeight: 800,
                   cursor: cooldownActive ? "default" : "pointer",
@@ -95,7 +95,7 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
             className="flex-1 min-w-0 flex flex-col items-center justify-center touch-button"
             style={{
               background: "transparent",
-              border: "3px dashed #d9d5cc",
+              border: "3px dashed var(--rb-border-strong)",
               borderRadius: 16,
               color: "var(--rb-muted)",
               gap: 8,
@@ -103,7 +103,7 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--rb-chip)";
-              e.currentTarget.style.color = "#5b626d";
+              e.currentTarget.style.color = "var(--rb-ink-secondary)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "transparent";
@@ -123,9 +123,9 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
           type="button"
           onClick={onResetAsk}
           className="flex-shrink-0 flex flex-col items-center justify-center touch-button"
-          style={{ width: 120, background: "#ffffff", border: "3px solid #fce4ea", borderRadius: 16, color: "#e11d48", gap: 8 }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "#fce4ea")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "#ffffff")}
+          style={{ width: 120, background: "var(--rb-surface)", border: "3px solid var(--rb-danger-wash)", borderRadius: 16, color: "var(--rb-danger)", gap: 8 }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-danger-wash)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-surface)")}
           data-testid="button-reset-votes"
         >
           <RotateCcw size={24} strokeWidth={2.2} />

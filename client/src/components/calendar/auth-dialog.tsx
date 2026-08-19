@@ -29,7 +29,7 @@ export function AuthDialog({ open, onOpenChange, error }: AuthDialogProps) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-500" />
+            <AlertCircle className="h-5 w-5 text-rb-danger" />
             Google Calendar Not Connected
           </DialogTitle>
           <DialogDescription>
@@ -39,20 +39,20 @@ export function AuthDialog({ open, onOpenChange, error }: AuthDialogProps) {
 
         <div className="space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md" data-testid="auth-error-detail">
-              <p className="text-sm text-red-700 font-mono break-all">{error}</p>
+            <div className="p-3 bg-rb-danger-wash border border-rb-danger-border rounded-md" data-testid="auth-error-detail">
+              <p className="text-sm text-rb-danger-ink font-mono break-all">{error}</p>
             </div>
           )}
 
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+          <div className="p-3 bg-rb-info-wash border border-rb-info-border rounded-md text-sm text-rb-info-ink">
             <p className="font-medium mb-2">To connect your calendar:</p>
             <ol className="list-decimal list-inside space-y-1 text-xs">
-              <li>Create a service account at <code className="bg-blue-100 px-1 rounded">console.cloud.google.com</code></li>
+              <li>Create a service account at <code className="bg-rb-info-wash-hover px-1 rounded">console.cloud.google.com</code></li>
               <li>Enable the Google Calendar API for your project</li>
               <li>Download the service account JSON key file</li>
               <li>Copy the key file to the app directory on the Pi</li>
-              <li>Set <code className="bg-blue-100 px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE=./service-account.json</code> in <code className="bg-blue-100 px-1 rounded">.env</code></li>
-              <li>Share each Google Calendar with the service account's email address (the <code className="bg-blue-100 px-1 rounded">client_email</code> field in the JSON key file)</li>
+              <li>Set <code className="bg-rb-info-wash-hover px-1 rounded">GOOGLE_SERVICE_ACCOUNT_KEY_FILE=./service-account.json</code> in <code className="bg-rb-info-wash-hover px-1 rounded">.env</code></li>
+              <li>Share each Google Calendar with the service account's email address (the <code className="bg-rb-info-wash-hover px-1 rounded">client_email</code> field in the JSON key file)</li>
               <li>Restart the app</li>
             </ol>
           </div>
@@ -73,9 +73,9 @@ export function AuthDialog({ open, onOpenChange, error }: AuthDialogProps) {
             )}
           </Button>
 
-          <div className="text-center pt-2 border-t border-gray-100">
+          <div className="text-center pt-2 border-t border-rb-grid-line">
             <Link href="/setup">
-              <a className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline" data-testid="link-setup-guide">
+              <a className="inline-flex items-center gap-1 text-sm text-rb-info hover:text-rb-info-hover hover:underline" data-testid="link-setup-guide">
                 <BookOpen className="h-3 w-3" />
                 View Setup Guide
               </a>

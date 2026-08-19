@@ -1,7 +1,6 @@
 import { CalendarDays, ClipboardCheck, UtensilsCrossed } from "lucide-react";
 import logoImage from "@assets/image_1753142842256.png";
-
-export type Section = "calendar" | "chores" | "dinner";
+import type { Section } from "@/lib/app-types";
 
 interface NavRailProps {
   active: Section;
@@ -23,7 +22,7 @@ export function NavRail({ active, onNavigate, choreBadgeCount, settingsButton }:
       style={{
         width: 104,
         background: "var(--rb-surface)",
-        boxShadow: "1px 0 0 rgba(0,0,0,.05)",
+        boxShadow: "1px 0 0 var(--rb-shadow-soft)",
         padding: "18px 0 20px",
         gap: 8,
       }}
@@ -47,8 +46,8 @@ export function NavRail({ active, onNavigate, choreBadgeCount, settingsButton }:
               padding: "10px 0",
               borderRadius: 16,
               gap: 4,
-              background: isActive ? "#fdeae8" : "transparent",
-              color: isActive ? "var(--rb-accent)" : "#5b626d",
+              background: isActive ? "var(--rb-nav-active-bg)" : "transparent",
+              color: isActive ? "var(--rb-accent)" : "var(--rb-nav-inactive-ink)",
             }}
             onMouseEnter={(e) => {
               if (!isActive) e.currentTarget.style.background = "var(--rb-chip)";
@@ -60,14 +59,15 @@ export function NavRail({ active, onNavigate, choreBadgeCount, settingsButton }:
           >
             {showBadge && (
               <span
-                className="absolute flex items-center justify-center rounded-full text-white"
+                className="absolute flex items-center justify-center rounded-full"
                 style={{
                   top: 6,
                   right: 12,
                   minWidth: 20,
                   height: 20,
                   padding: "0 5px",
-                  background: "#ea8c00",
+                  background: "var(--rb-badge)",
+                  color: "var(--rb-badge-ink)",
                   fontSize: 12,
                   fontWeight: 800,
                 }}

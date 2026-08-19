@@ -1,6 +1,6 @@
 # Rootboard Widget System — Combined Refactor & Build Plan
 
-**Status:** Phase 1 complete (spec + this plan); Phases 2–5 not started.
+**Status:** Phases 1-2 complete; Phases 3-5 not started.
 **Decided:** 2026-08-19 (contract-shape choices founder-ratified this date)
 **Parent decision:** [0006 — Community-buildable widget system](../../decisions/0006-community-widget-system.md)
 **Contract spec:** [CONTRACT.md](CONTRACT.md)
@@ -72,7 +72,7 @@ Manifest schema, lifecycle, host services, config format, discovery,
 trust model: see [CONTRACT.md](CONTRACT.md). The coupling audit that
 sized the API surface is digested in "Repo facts" below.
 
-### Phase 2 — Combined refactor: color sweep + decoupling
+### Phase 2 — Combined refactor: color sweep + decoupling ✅
 
 → Execution plan: [PHASE2-EXECUTION.md](PHASE2-EXECUTION.md)
 

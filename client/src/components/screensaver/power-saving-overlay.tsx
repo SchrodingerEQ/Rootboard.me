@@ -30,7 +30,7 @@ export function PowerSavingOverlay({ isActive, onWake }: PowerSavingOverlayProps
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+      className="fixed inset-0 z-[100] bg-rb-power-saving-bg flex items-center justify-center"
       style={{ filter: 'brightness(0.2)' }}
       data-testid="power-saving-overlay"
     >
@@ -40,7 +40,7 @@ export function PowerSavingOverlay({ isActive, onWake }: PowerSavingOverlayProps
           alt="ScreenSaver Logo"
           className="w-[768px] h-[768px] opacity-40 select-none pointer-events-none"
         />
-        <p className="text-white text-opacity-30 text-sm mt-8 font-light">
+        <p className="text-rb-on-color-ink opacity-30 text-sm mt-8 font-light">
           Press any key or touch to wake
         </p>
       </div>

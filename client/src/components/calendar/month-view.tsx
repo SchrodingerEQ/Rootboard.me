@@ -9,14 +9,13 @@ interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   isLoading: boolean;
-  enabledCalendars?: Set<string>;
   onEventClick?: (event: CalendarEvent) => void;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_VISIBLE = 4;
 
-export function MonthView({ currentDate, events, isLoading, enabledCalendars, onEventClick }: MonthViewProps) {
+export function MonthView({ currentDate, events, isLoading, onEventClick }: MonthViewProps) {
   const monthDays = useMemo(() => getMonthCalendar(currentDate), [currentDate]);
 
   // Limit the grid to 5 rows: drop trailing week(s) that fall entirely in the
@@ -47,10 +46,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
     const dayEnds = monthDays.map(d => { const x = new Date(d); x.setHours(23, 59, 59, 999); return x.getTime(); });
     dayKeys.forEach(k => eventsMap.set(k, []));
 
-    const usingFilter = enabledCalendars && enabledCalendars.size > 0;
-
     for (const event of events) {
-      if (usingFilter && !enabledCalendars!.has(event.calendarId)) continue;
       const startMs = new Date(event.startTime).getTime();
       const endMs = new Date(event.endTime).getTime();
 
@@ -74,7 +70,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
     });
 
     return eventsMap;
-  }, [events, enabledCalendars, monthDays]);
+  }, [events, monthDays]);
 
   const getEventsForDate = (date: Date) => eventsByDate.get(date.toDateString()) || [];
 
@@ -128,8 +124,8 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
             const isTodayDate = isToday(date);
             const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
-            const cellBg = !isCurrentMonth ? '#f0eee9' : isWeekend ? '#fbfaf7' : '#ffffff';
-            const numColor = isTodayDate ? 'var(--rb-accent)' : isCurrentMonth ? '#2b3038' : '#b8bcc4';
+            const cellBg = !isCurrentMonth ? 'var(--rb-cell-inactive-bg)' : isWeekend ? 'var(--rb-cell-weekend-bg)' : 'var(--rb-surface)';
+            const numColor = isTodayDate ? 'var(--rb-accent)' : isCurrentMonth ? 'var(--rb-ink)' : 'var(--rb-ink-disabled)';
 
             return (
               <div
@@ -138,7 +134,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                 style={{
                   background: cellBg,
                   border: isTodayDate ? '3px solid var(--rb-accent)' : '3px solid transparent',
-                  boxShadow: isCurrentMonth ? '0 1px 2px rgba(0,0,0,.05)' : 'none',
+                  boxShadow: isCurrentMonth ? '0 1px 2px var(--rb-shadow-soft)' : 'none',
                 }}
                 data-testid={isTodayDate ? 'today-cell' : undefined}
               >
@@ -163,7 +159,7 @@ export function MonthView({ currentDate, events, isLoading, enabledCalendars, on
                   {dayEvents.length > MAX_VISIBLE && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleShowMoreEvents(date); }}
-                      className="text-left px-2 text-sm font-bold text-[var(--rb-muted)] hover:text-[#5b626d] transition-colors"
+                      className="text-left px-2 text-sm font-bold text-[var(--rb-muted)] hover:text-rb-ink-secondary transition-colors"
                       aria-label={`Show all ${dayEvents.length} events for ${date.toLocaleDateString()}`}
                     >
                       + {dayEvents.length - MAX_VISIBLE} more

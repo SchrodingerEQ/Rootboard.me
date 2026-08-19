@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useMemo } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { getCalendarDateRange } from "@/lib/date-range";
 import type { CalendarEvent } from "@shared/schema";
-import type { CalendarView } from "@/pages/calendar";
+import type { CalendarView } from "@/lib/app-types";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { useScreensaverState } from "./useScreensaverState";
 

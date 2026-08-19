@@ -24,10 +24,10 @@ export function ResetVotesDialog({ open, onOpenChange, onConfirm }: ResetVotesDi
         data-testid="dialog-reset-votes"
       >
         <AlertDialogHeader>
-          <AlertDialogTitle style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "#2b3038" }}>
+          <AlertDialogTitle style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "var(--rb-ink)" }}>
             Reset the vote?
           </AlertDialogTitle>
-          <AlertDialogDescription style={{ fontSize: 18, fontWeight: 500, color: "#5b626d" }}>
+          <AlertDialogDescription style={{ fontSize: 18, fontWeight: 500, color: "var(--rb-ink-secondary)" }}>
             All meal options and their votes are cleared from the board so new options can be added. Your saved meal list is not affected.
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -36,7 +36,7 @@ export function ResetVotesDialog({ open, onOpenChange, onConfirm }: ResetVotesDi
             type="button"
             onClick={() => onOpenChange(false)}
             className="touch-button flex-1"
-            style={{ height: 58, border: "none", background: "var(--rb-chip)", color: "#5b626d", fontSize: 19, fontWeight: 800, borderRadius: 999 }}
+            style={{ height: 58, border: "none", background: "var(--rb-chip)", color: "var(--rb-ink-secondary)", fontSize: 19, fontWeight: 800, borderRadius: 999 }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-chip-hover)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-chip)")}
             data-testid="button-cancel-reset-votes"
@@ -47,9 +47,9 @@ export function ResetVotesDialog({ open, onOpenChange, onConfirm }: ResetVotesDi
             type="button"
             onClick={onConfirm}
             className="touch-button flex-1"
-            style={{ height: 58, border: "none", background: "#e11d48", color: "#fff", fontSize: 19, fontWeight: 800, borderRadius: 999 }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#c9163d")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "#e11d48")}
+            style={{ height: 58, border: "none", background: "var(--rb-danger)", color: "var(--rb-on-color-ink)", fontSize: 19, fontWeight: 800, borderRadius: 999 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-danger-hover)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-danger)")}
             data-testid="button-confirm-reset-votes"
           >
             Reset votes

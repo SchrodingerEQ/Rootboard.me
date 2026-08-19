@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, RefreshCw, Key, Moon, AlertTriangle, Plus } 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { WeatherIcon } from "./weather-icon";
 import { useWeather } from "@/hooks/use-weather";
-import type { CalendarView } from "@/pages/calendar";
+import type { CalendarView } from "@/lib/app-types";
 
 interface CalendarHeaderProps {
   currentView: CalendarView;
@@ -43,7 +43,7 @@ function IconButton({ children, onClick, title, disabled }: { children: React.Re
       onClick={onClick}
       title={title}
       disabled={disabled}
-      className="touch-button flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-[#5b626d] hover:bg-[var(--rb-chip-hover)] transition-colors disabled:opacity-50"
+      className="touch-button flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-rb-ink-secondary hover:bg-[var(--rb-chip-hover)] transition-colors disabled:opacity-50"
       style={{ width: 46, height: 46 }}
     >
       {children}
@@ -95,8 +95,8 @@ export function CalendarHeader({
       // button that made the label dark-on-dark, i.e. invisible.
       className={`touch-button px-5 rounded-full text-base font-bold transition-colors h-[38px] ${
         currentView === view
-          ? 'bg-[#2b3038] text-white hover:bg-[#2b3038] hover:text-white'
-          : 'text-[#5b626d] hover:bg-white hover:text-[#5b626d]'
+          ? 'bg-[var(--rb-btn-dark-bg)] text-rb-on-color-ink hover:bg-[var(--rb-btn-dark-bg)] hover:text-rb-on-color-ink'
+          : 'text-rb-ink-secondary hover:bg-rb-surface hover:text-rb-ink-secondary'
       }`}
       onClick={() => onViewChange(view)}
     >
@@ -105,7 +105,7 @@ export function CalendarHeader({
   );
 
   return (
-    <header className="bg-white px-7 py-3 flex items-center justify-between">
+    <header className="bg-rb-surface px-7 py-3 flex items-center justify-between">
       {/* Left: nav + title + today */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1">
@@ -113,13 +113,13 @@ export function CalendarHeader({
           <IconButton onClick={() => onNavigate(1)} title="Next"><ChevronRight size={24} /></IconButton>
         </div>
         <div className="flex items-baseline gap-2.5">
-          <h1 className="text-[30px] font-extrabold tracking-tight text-[#2b3038] leading-none">{title.main}</h1>
+          <h1 className="text-[30px] font-extrabold tracking-tight text-rb-ink leading-none">{title.main}</h1>
           <span className="text-[30px] font-normal text-[var(--rb-muted)] leading-none">{title.sub}</span>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="touch-button px-5 h-10 rounded-full bg-[#eef4ff] text-[#2563eb] hover:bg-[#e1ebff] font-bold text-base"
+          className="touch-button px-5 h-10 rounded-full bg-rb-info-wash text-rb-info hover:bg-rb-info-wash-hover font-bold text-base"
           onClick={onToday}
         >
           Today
@@ -130,8 +130,8 @@ export function CalendarHeader({
             className="flex items-center gap-2 h-10 px-4 rounded-full bg-[var(--rb-chip)]"
             data-testid="weather-chip"
           >
-            <WeatherIcon icon={weather.current.icon} size={18} className="text-[#5b626d]" />
-            <span className="text-base font-extrabold text-[#2b3038]">{weather.current.temp}°</span>
+            <WeatherIcon icon={weather.current.icon} size={18} className="text-rb-ink-secondary" />
+            <span className="text-base font-extrabold text-rb-ink">{weather.current.temp}°</span>
             <span className="text-sm font-bold text-[var(--rb-muted)]">
               {weather.current.label}
               {weather.location ? ` · ${weather.location}` : ""}
@@ -151,7 +151,7 @@ export function CalendarHeader({
         {onNewEvent && (
           <Button
             size="sm"
-            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-accent)] hover:bg-[var(--rb-accent-hover)] text-white text-base font-bold shadow-[0_2px_6px_rgba(242,101,90,.35)]"
+            className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-accent)] hover:bg-[var(--rb-accent-hover)] text-rb-on-color-ink text-base font-bold shadow-[0_2px_6px_var(--rb-shadow-accent)]"
             onClick={onNewEvent}
             data-testid="button-new-event"
           >
@@ -163,7 +163,7 @@ export function CalendarHeader({
         {needsAuth && (
           <Button
             size="sm"
-            className="touch-button h-[46px] px-4 rounded-full bg-[#16a34a] hover:bg-[#15803d] text-white text-base font-bold"
+            className="touch-button h-[46px] px-4 rounded-full bg-rb-success hover:bg-rb-success-hover text-rb-on-color-ink text-base font-bold"
             onClick={onAuth}
           >
             <Key className="mr-1.5" size={18} />
@@ -175,11 +175,11 @@ export function CalendarHeader({
           <TooltipProvider delayDuration={150}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8b919b] px-2" data-testid="sync-status-indicator">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-rb-muted px-2" data-testid="sync-status-indicator">
                   {lastSyncError ? (
-                    <AlertTriangle size={16} className="text-red-600" data-testid="sync-error-icon" />
+                    <AlertTriangle size={16} className="text-rb-danger" data-testid="sync-error-icon" />
                   ) : (
-                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" data-testid="sync-ok-dot" />
+                    <span className="inline-block h-2 w-2 rounded-full bg-rb-success" data-testid="sync-ok-dot" />
                   )}
                   <span>{lastSyncAt ? `Updated ${formatRelative(lastSyncAt)}` : "Not yet synced"}</span>
                 </div>
@@ -187,7 +187,7 @@ export function CalendarHeader({
               <TooltipContent>
                 {lastSyncError ? (
                   <div className="max-w-xs">
-                    <div className="font-medium text-red-600">Last sync failed</div>
+                    <div className="font-medium text-rb-danger">Last sync failed</div>
                     <div className="text-xs mt-1 break-words">{lastSyncError}</div>
                   </div>
                 ) : (
@@ -204,7 +204,7 @@ export function CalendarHeader({
         <Button
           variant="ghost"
           size="sm"
-          className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-[#5b626d] text-base font-bold"
+          className="touch-button h-[46px] px-5 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] text-rb-ink-secondary text-base font-bold"
           onClick={onSleep}
           data-testid="button-sleep"
         >

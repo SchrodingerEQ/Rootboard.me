@@ -20,6 +20,12 @@ const FALLBACK_COLORS = [
   '#795548', '#607d8b', '#e91e63', '#4caf50', '#ff5722', '#3f51b5', '#009688',
 ];
 
+// Single fallback color for an *event* (not a calendar) with no color of its
+// own. Distinct from FALLBACK_COLORS above, which cycles per-calendar
+// identity colors. One definition site so every "no color" event matches;
+// a theme may override this later.
+export const EVENT_FALLBACK_COLOR = "#2563eb";
+
 export function getCalendarColor(calendar: Pick<CalendarInfo, 'id' | 'backgroundColor'>): string {
   if (calendar.backgroundColor) return calendar.backgroundColor;
 

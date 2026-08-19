@@ -53,7 +53,7 @@ export function MealPickerDialog({
         data-testid="dialog-meal-picker"
       >
         <DialogHeader>
-          <DialogTitle style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "#2b3038" }}>
+          <DialogTitle style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 800, letterSpacing: "-.4px", color: "var(--rb-ink)" }}>
             {title}
           </DialogTitle>
         </DialogHeader>
@@ -68,7 +68,7 @@ export function MealPickerDialog({
               type="button"
               onClick={() => confirm(m)}
               className="touch-button"
-              style={{ height: 48, padding: "0 20px", border: "none", background: "var(--rb-chip)", color: "#3a4049", fontSize: 17, fontWeight: 700, borderRadius: 999 }}
+              style={{ height: 48, padding: "0 20px", border: "none", background: "var(--rb-chip)", color: "var(--rb-ink-soft)", fontSize: 17, fontWeight: 700, borderRadius: 999 }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-chip-hover)")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-chip)")}
               data-testid={`chip-pick-meal-${m}`}
@@ -90,14 +90,14 @@ export function MealPickerDialog({
             autoFocus
             placeholder="Type a meal…"
             className="flex-1 min-w-0 outline-none"
-            style={{ height: 56, border: "2px solid #e7e4dd", borderRadius: 14, padding: "0 18px", fontSize: 19, fontWeight: 600, color: "#2b3038", background: "#fbfaf7" }}
+            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: 14, padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
             data-testid="input-meal-draft"
           />
           <button
             type="button"
             onClick={() => confirm(draft)}
-            className="touch-button flex-shrink-0 text-white"
-            style={{ height: 56, padding: "0 26px", border: "none", background: "var(--rb-accent)", fontSize: 18, fontWeight: 800, borderRadius: 14, boxShadow: "0 2px 6px rgba(242,101,90,.35)" }}
+            className="touch-button flex-shrink-0 text-rb-on-color-ink"
+            style={{ height: 56, padding: "0 26px", border: "none", background: "var(--rb-accent)", fontSize: 18, fontWeight: 800, borderRadius: 14, boxShadow: "0 2px 6px var(--rb-shadow-accent)" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-accent-hover)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-accent)")}
             data-testid="button-confirm-meal-draft"
@@ -114,9 +114,9 @@ export function MealPickerDialog({
               onOpenChange(false);
             }}
             className="touch-button"
-            style={{ marginTop: 20, height: 46, padding: "0 20px", border: "none", background: "#fce4ea", color: "#e11d48", fontSize: 16, fontWeight: 800, borderRadius: 999 }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "#f9d2dd")}
-            onMouseLeave={(e) => (e.currentTarget.style.background = "#fce4ea")}
+            style={{ marginTop: 20, height: 46, padding: "0 20px", border: "none", background: "var(--rb-danger-wash)", color: "var(--rb-danger)", fontSize: 16, fontWeight: 800, borderRadius: 999 }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-danger-wash-hover)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-danger-wash)")}
             data-testid="button-remove-dinner"
           >
             Remove this dinner

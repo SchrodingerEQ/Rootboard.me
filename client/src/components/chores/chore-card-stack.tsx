@@ -1,7 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { CARD_GAP_PX, CARD_HEIGHT_PX, REORDER_EASING, REORDER_MS, type Chore } from "@/lib/chores-state";
-import { ConfettiBurst, CONFETTI_FADE_MS, generateConfettiParticles, type ConfettiParticle } from "./confetti-burst";
+import { ConfettiBurst, CONFETTI_COLORS, CONFETTI_FADE_MS, generateConfettiParticles, type ConfettiParticle } from "./confetti-burst";
+
+/** Confetti colors come from the theme via CSS variables, falling back to
+ *  the pinned defaults if any variable is missing (an undefined CSS var
+ *  once made the OSK transparent — never trust vars blindly on the kiosk). */
+function runtimeConfettiColors(): readonly string[] {
+  const style = getComputedStyle(document.documentElement);
+  const colors = [1, 2, 3, 4, 5].map((i) =>
+    style.getPropertyValue(`--rb-confetti-${i}`).trim()
+  );
+  return colors.every(Boolean) ? colors : CONFETTI_COLORS;
+}
 
 interface Burst {
   id: string;
@@ -50,7 +61,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
   const handleToggle = (chore: Chore) => {
     if (!chore.done) {
       const burstId = `${chore.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      setBursts((prev) => [...prev, { id: burstId, choreId: chore.id, particles: generateConfettiParticles(), fired: false }]);
+      setBursts((prev) => [...prev, { id: burstId, choreId: chore.id, particles: generateConfettiParticles(runtimeConfettiColors()), fired: false }]);
       const fireTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
         setBursts((prev) => prev.map((b) => (b.id === burstId ? { ...b, fired: true } : b)));
         untrackTimer(fireTimer);
@@ -73,7 +84,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
         return (
           <div
             key={chore.id}
-            className="absolute left-0 right-0 flex items-center gap-4 bg-white shadow-sm"
+            className="absolute left-0 right-0 flex items-center gap-4 bg-rb-surface shadow-sm"
             style={{
               top,
               height: CARD_HEIGHT_PX,
@@ -93,7 +104,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
                 width: 54,
                 height: 54,
                 border: `3px solid ${color}`,
-                background: chore.done ? color : "#ffffff",
+                background: chore.done ? color : "var(--rb-surface)",
                 transition: "background .2s ease",
               }}
               data-testid={`chore-toggle-${chore.id}`}
@@ -101,7 +112,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
               <Check
                 size={28}
                 strokeWidth={3}
-                color="#ffffff"
+                color="var(--rb-on-color-ink)"
                 style={{ opacity: chore.done ? 1 : 0, transition: "opacity .2s ease" }}
               />
               {choreBursts.map((b) => (
@@ -113,7 +124,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
               style={{
                 fontSize: 21,
                 fontWeight: 700,
-                color: chore.done ? "#9aa0aa" : "#2b3038",
+                color: chore.done ? "var(--rb-muted)" : "var(--rb-ink)",
                 textDecoration: chore.done ? "line-through" : "none",
               }}
             >

@@ -5,7 +5,7 @@ import { MiniMonth } from "./mini-month";
 import { ComingUp, type CountdownItem } from "./coming-up";
 import { isToday, formatTime } from "@/lib/date-utils";
 import { eventTint, eventTextColor } from "@/lib/color-utils";
-import { getCalendarColor, getInitials, type CalendarInfo } from "@/lib/calendar-meta";
+import { getCalendarColor, getInitials, EVENT_FALLBACK_COLOR, type CalendarInfo } from "@/lib/calendar-meta";
 import type { CalendarEvent } from "@shared/schema";
 
 interface DayViewProps {
@@ -13,7 +13,6 @@ interface DayViewProps {
   events: CalendarEvent[];
   isLoading: boolean;
   onEventClick?: (event: CalendarEvent) => void;
-  enabledCalendars?: Set<string>;
   /** Full loaded window (month grid + lookahead), for mini-month dots + countdowns. */
   monthEvents?: CalendarEvent[];
   /** Calendar metadata for avatar names/colors. */
@@ -32,7 +31,7 @@ function durationLabel(start: Date, end: Date): string {
 // Agenda-style Day view: left rail (mini-month + coming-up countdowns) and a
 // main panel listing today's events as large tinted cards. Replaces the old
 // 24-hour timeline (see git history for the timeline version).
-export function DayView({ currentDate, events, isLoading, onEventClick, enabledCalendars, monthEvents, calendars }: DayViewProps) {
+export function DayView({ currentDate, events, isLoading, onEventClick, monthEvents, calendars }: DayViewProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const upNextRef = useRef<HTMLDivElement>(null);
 
@@ -55,19 +54,14 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
       return next;
     });
 
-  const filterEnabled = (list: CalendarEvent[]) =>
-    enabledCalendars && enabledCalendars.size > 0
-      ? list.filter(e => enabledCalendars.has(e.calendarId))
-      : list;
-
   // Today's agenda: events starting on the viewed day, or spanning it.
   const dayEvents = useMemo(() => {
-    return filterEnabled(events).filter(event => {
+    return events.filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
       return eventStart.toDateString() === currentDate.toDateString() || (eventStart <= currentDate && eventEnd >= currentDate);
     });
-  }, [events, currentDate, enabledCalendars]);
+  }, [events, currentDate]);
 
   const allDayEvents = useMemo(() => dayEvents.filter(e => e.isAllDay), [dayEvents]);
   const timedEvents = useMemo(
@@ -78,7 +72,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
     [dayEvents],
   );
 
-  const poolEvents = useMemo(() => filterEnabled(monthEvents ?? events), [monthEvents, events, enabledCalendars]);
+  const poolEvents = useMemo(() => monthEvents ?? events, [monthEvents, events]);
 
   // Mini-month dots: day-of-month → color of that day's first event.
   const eventDays = useMemo(() => {
@@ -87,7 +81,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
       const start = new Date(event.startTime);
       if (start.getMonth() === railMonth.getMonth() && start.getFullYear() === railMonth.getFullYear()) {
         const day = start.getDate();
-        if (!map.has(day)) map.set(day, event.color || '#2563eb');
+        if (!map.has(day)) map.set(day, event.color || EVENT_FALLBACK_COLOR);
       }
     }
     return map;
@@ -114,7 +108,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
           days,
           title: e.title,
           whenLabel: e.isAllDay ? dateLabel : `${dateLabel} · ${formatTime(start)}`,
-          color: e.color || '#2563eb',
+          color: e.color || EVENT_FALLBACK_COLOR,
         };
       });
   }, [poolEvents, now]);
@@ -143,15 +137,15 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
     return (
       <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)]" style={{ padding: '22px 28px' }}>
         <aside className="flex flex-col gap-[18px] flex-shrink-0" style={{ width: 380 }}>
-          <div className="bg-white rounded-[18px] p-4"><Skeleton className="h-6 w-32 mb-3 rounded-md" /><Skeleton className="h-48 w-full rounded-xl" /></div>
-          <div className="bg-white rounded-[18px] p-4">
+          <div className="bg-rb-surface rounded-[18px] p-4"><Skeleton className="h-6 w-32 mb-3 rounded-md" /><Skeleton className="h-48 w-full rounded-xl" /></div>
+          <div className="bg-rb-surface rounded-[18px] p-4">
             <Skeleton className="h-4 w-24 mb-3 rounded-md" />
             {Array.from({ length: 2 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 mb-3"><Skeleton className="h-[54px] w-[54px] rounded-[14px]" /><Skeleton className="h-5 flex-1 rounded-md" /></div>
             ))}
           </div>
         </aside>
-        <section className="flex-1 bg-white rounded-[18px] p-6">
+        <section className="flex-1 bg-rb-surface rounded-[18px] p-6">
           <Skeleton className="h-8 w-64 mb-6 rounded-md" />
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex gap-4 mb-4"><Skeleton className="h-6 w-[96px] rounded-md" /><Skeleton className="h-[72px] flex-1 rounded-[14px]" /></div>
@@ -170,10 +164,10 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
       </aside>
 
       {/* Agenda panel */}
-      <section className="flex-1 bg-[var(--rb-surface)] rounded-[18px] flex flex-col min-w-0" style={{ boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
+      <section className="flex-1 bg-[var(--rb-surface)] rounded-[18px] flex flex-col min-w-0" style={{ boxShadow: '0 1px 3px var(--rb-shadow-card)' }}>
         <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 flex-shrink-0">
           <div>
-            <h2 className="text-[26px] leading-tight text-[#2b3038]" style={{ fontWeight: 900 }}>Today's Schedule</h2>
+            <h2 className="text-[26px] leading-tight text-rb-ink" style={{ fontWeight: 900 }}>Today's Schedule</h2>
             <div className="text-base font-semibold text-[var(--rb-muted)] mt-0.5">
               {timedEvents.length} {timedEvents.length === 1 ? 'event' : 'events'}
               {isToday(currentDate) ? ` · ${stillToCome} still to come` : ''}
@@ -182,7 +176,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
           {allDayEvents.length > 0 && (
             <div className="flex flex-wrap justify-end gap-1.5 max-w-[45%]">
               {allDayEvents.map(event => {
-                const color = event.color || '#2563eb';
+                const color = event.color || EVENT_FALLBACK_COLOR;
                 return (
                   <button
                     key={event.id}
@@ -212,7 +206,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
               {timedEvents.map(event => {
                 const start = new Date(event.startTime);
                 const end = new Date(event.endTime);
-                const color = event.color || '#2563eb';
+                const color = event.color || EVENT_FALLBACK_COLOR;
                 const cal = calendarFor(event);
                 const avatarColor = cal ? getCalendarColor(cal) : color;
                 const avatarInitials = getInitials(cal?.summary || event.calendarName || '?');
@@ -228,7 +222,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
                     data-testid={isUpNext ? 'agenda-up-next' : 'agenda-row'}
                   >
                     <div className="flex flex-col items-end justify-center flex-shrink-0 text-right" style={{ width: 96 }}>
-                      <span className="text-[19px] leading-tight text-[#2b3038]" style={{ fontWeight: 800 }}>{formatTime(start)}</span>
+                      <span className="text-[19px] leading-tight text-rb-ink" style={{ fontWeight: 800 }}>{formatTime(start)}</span>
                       <span className="text-sm font-semibold text-[var(--rb-faint)]">{formatTime(end)}</span>
                     </div>
 
@@ -243,9 +237,9 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-[19px] leading-tight text-[#2b3038] truncate" style={{ fontWeight: 800 }}>{event.title}</span>
+                          <span className="text-[19px] leading-tight text-rb-ink truncate" style={{ fontWeight: 800 }}>{event.title}</span>
                           {isUpNext && (
-                            <span className="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-extrabold text-white" style={{ background: 'var(--rb-accent)' }}>
+                            <span className="flex-shrink-0 px-2.5 py-0.5 rounded-full text-xs font-extrabold text-rb-on-color-ink" style={{ background: 'var(--rb-accent)' }}>
                               Up next
                             </span>
                           )}
@@ -260,7 +254,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, enabledC
                       <div className="flex items-center gap-3 flex-shrink-0">
                         <span className="text-sm font-bold" style={{ color: eventTextColor(color) }}>{durationLabel(start, end)}</span>
                         <span
-                          className="rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+                          className="rounded-full flex items-center justify-center text-sm font-extrabold text-rb-on-color-ink"
                           style={{ width: 38, height: 38, background: avatarColor }}
                         >
                           {avatarInitials}

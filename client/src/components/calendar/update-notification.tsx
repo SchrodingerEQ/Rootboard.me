@@ -55,22 +55,22 @@ export function UpdateNotification({
           <DialogTitle className="flex items-center gap-2">
             {isInProgress ? (
               <>
-                <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                <Loader2 className="h-5 w-5 text-rb-info animate-spin" />
                 Updating...
               </>
             ) : isComplete ? (
               <>
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-rb-success" />
                 Update Complete
               </>
             ) : isError ? (
               <>
-                <AlertCircle className="h-5 w-5 text-red-600" />
+                <AlertCircle className="h-5 w-5 text-rb-danger" />
                 Update Failed
               </>
             ) : (
               <>
-                <Download className="h-5 w-5 text-blue-600" />
+                <Download className="h-5 w-5 text-rb-info" />
                 Update Available
               </>
             )}
@@ -81,18 +81,18 @@ export function UpdateNotification({
                 <div className="space-y-3">
                   <p className="text-sm">{updateStatus.message}</p>
                   <Progress value={updateStatus.progress} className="h-2" />
-                  <p className="text-xs text-gray-500 text-center">{updateStatus.progress}%</p>
+                  <p className="text-xs text-rb-muted text-center">{updateStatus.progress}%</p>
                 </div>
               ) : isComplete ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-green-700">{updateStatus.message}</p>
-                  <p className="text-xs text-gray-500">The page will reload automatically...</p>
+                  <p className="text-sm text-rb-success-ink">{updateStatus.message}</p>
+                  <p className="text-xs text-rb-muted">The page will reload automatically...</p>
                 </div>
               ) : isError ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-red-700">{updateStatus.message}</p>
+                  <p className="text-sm text-rb-danger-ink">{updateStatus.message}</p>
                   {updateStatus.error && (
-                    <div className="bg-red-50 rounded p-2 text-xs text-red-600 font-mono">
+                    <div className="bg-rb-danger-wash rounded p-2 text-xs text-rb-danger font-mono">
                       {updateStatus.error}
                     </div>
                   )}
@@ -105,26 +105,26 @@ export function UpdateNotification({
                   <p>
                     A new version of the calendar app is available!
                   </p>
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-1">
+                  <div className="bg-rb-canvas rounded-lg p-3 space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Current version:</span>
+                      <span className="text-rb-ink-secondary">Current version:</span>
                       <span className="font-mono">{APP_VERSION}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Latest version:</span>
-                      <span className="font-mono text-green-600 font-medium">{latestVersion}</span>
+                      <span className="text-rb-ink-secondary">Latest version:</span>
+                      <span className="font-mono text-rb-success font-medium">{latestVersion}</span>
                     </div>
                     {releaseName && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Release:</span>
+                        <span className="text-rb-ink-secondary">Release:</span>
                         <span className="font-medium">{releaseName}</span>
                       </div>
                     )}
                   </div>
                   {releaseNotes && (
                     <div className="space-y-1">
-                      <p className="text-xs font-medium text-gray-500 uppercase">What's New</p>
-                      <div className="bg-blue-50 rounded-lg p-3 text-sm text-gray-700 max-h-32 overflow-y-auto whitespace-pre-wrap">
+                      <p className="text-xs font-medium text-rb-muted uppercase">What's New</p>
+                      <div className="bg-rb-info-wash rounded-lg p-3 text-sm text-rb-ink-secondary max-h-32 overflow-y-auto whitespace-pre-wrap">
                         {releaseNotes}
                       </div>
                     </div>
@@ -164,7 +164,7 @@ export function UpdateNotification({
                   Details
                 </Button>
               )}
-              <Button onClick={onUpdate} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={onUpdate} className="bg-rb-info hover:bg-rb-info-hover">
                 <Download className="h-4 w-4 mr-2" />
                 Update Now
               </Button>

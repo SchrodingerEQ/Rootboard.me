@@ -207,7 +207,7 @@ export function OnScreenKeyboard() {
       // SOLID color on purpose (the old hsl(var(--google-light-gray),...) was
       // an undefined variable — invalid CSS, so the whole panel was
       // transparent and the app showed through between the keys).
-      className="fixed bottom-4 left-1/2 z-[60] w-[min(64rem,calc(100vw-24px))] -translate-x-1/2 select-none rounded-2xl border-2 border-[#c9c4b8] bg-[#e8e6e1] p-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.28)]"
+      className="fixed bottom-4 left-1/2 z-[60] w-[min(64rem,calc(100vw-24px))] -translate-x-1/2 select-none rounded-2xl border-2 border-[var(--rb-key-panel-border)] bg-[var(--rb-key-panel-bg)] p-1.5 shadow-[0_8px_28px_var(--rb-shadow-panel)]"
       // pointerEvents auto is LOAD-BEARING: modal Radix dialogs set
       // `pointer-events: none` on document.body, and this keyboard is portaled
       // into body — without the explicit re-enable, every tap falls through
@@ -240,10 +240,10 @@ export function OnScreenKeyboard() {
                       "pointer-events-none flex h-14 w-full items-center justify-center rounded-lg border font-medium shadow-sm transition-colors " +
                       (layer === "emoji" && key.type === "char" ? "text-2xl " : "text-lg ") +
                       (active
-                        ? "border-[#2b3038] bg-[#2b3038] text-white"
+                        ? "border-[var(--rb-key-active-bg)] bg-[var(--rb-key-active-bg)] text-rb-on-color-ink"
                         : key.type === "ctrl"
-                          ? "border-[#d5d0c6] bg-[#d9d5cc] text-gray-800 group-active:bg-[#cbc6bb]"
-                          : "border-[#d5d0c6] bg-white text-gray-900 group-active:bg-gray-100")
+                          ? "border-[var(--rb-key-border)] bg-[var(--rb-key-ctrl-bg)] text-rb-ink-soft group-active:bg-[var(--rb-key-ctrl-active-bg)]"
+                          : "border-[var(--rb-key-border)] bg-rb-surface text-rb-ink group-active:bg-rb-chip")
                     }
                   >
                     {labelFor(key)}
