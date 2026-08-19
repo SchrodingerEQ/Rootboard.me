@@ -377,7 +377,7 @@ git grep -nE '#[0-9a-fA-F]{3,8}\b' -- client/src ':!client/src/components/ui' ':
 Expected: only `index.css` definitions, `chores-state.ts` PERSON_PALETTE, `calendar-meta.ts` FALLBACK_COLORS + `EVENT_FALLBACK_COLOR`, `confetti-burst.tsx` CONFETTI_COLORS, and `.test/.spec` assertions. Same for the rgb(a) and palette-class greps.
 
 - [x] **Step 2:** `npm run check && npm test && npm run build` — all green.
-- [ ] **Step 3: Side-by-side visual pass** on the dev machine at kiosk resolution: month/week/day, chores (badge, confetti, resets), dinner (voting, planner, dialogs), settings popover, update dialog, OSK, screensaver dim, scrollbars. **The definition of done is identical rendering.**
+- [x] **Step 3: Side-by-side visual pass** on the dev machine at kiosk resolution: month/week/day, chores (badge, confetti, resets), dinner (voting, planner, dialogs), settings popover, update dialog, OSK, screensaver dim, scrollbars. **The definition of done is identical rendering.**
 - [x] **Step 4: Docs:** update `WIDGET-SYSTEM-PLAN.md` status line (Phase 2 ✅); update `docs/SPEC.md` where behavior notes changed (Task 4's filter note; the variable-ization is invisible so §3 otherwise stands) **and add a short SPEC section documenting the color-token approach: styling colors come from the `--rb-*` variables / Tailwind `rb` map, plus the approved-drift record (Q1 harmonization + Q9/Q10/Q13/Q17 collapses, per the founder rulings in `phase2-color-inventory.md`)**; add the final exception list to `phase2-color-inventory.md`.
 - [ ] **Step 5: Security review** per CLAUDE.md (public repo), then commit docs — `docs: phase 2 complete; update SPEC filter note` — and push the phase's commits.
 
