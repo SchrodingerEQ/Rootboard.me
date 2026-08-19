@@ -22,19 +22,3 @@ export function eventTextColor(hex: string, factor = 0.55): string {
   const { r, g, b } = hexToRgb(hex);
   return `rgb(${Math.round(r * factor)}, ${Math.round(g * factor)}, ${Math.round(b * factor)})`;
 }
-
-// Shared Rootboard UI tokens so components don't re-type the literals.
-export const RB = {
-  canvas: "#f7f6f3",
-  surface: "#ffffff",
-  ink: "#2b3038",
-  muted: "#9aa0aa",
-  faint: "#b0b5be",
-  chip: "#f1efea",
-  chipHover: "#e7e4dd",
-  accent: "#f2655a",
-  accentHover: "#e8554a",
-  todayWash: "#fff1ea",
-  todayColumnWash: "#fff8f2",
-  gridLine: "#ededed",
-} as const;
