@@ -12,7 +12,14 @@
 
 ## Global Constraints
 
-- **Pixel-identical rendering.** The only permitted behavior change is the documented all-calendars-off edge case in Task 4 — everything else must render exactly as before.
+- **Pixel-identical rendering**, with the founder-approved exceptions
+  (ratified 2026-08-19 at the Task 5 gate): the all-calendars-off edge
+  case in Task 4, the Q1 harmonization drift (Tailwind palette classes
+  land on house `rb` tokens — small shifts confined to dialog chrome),
+  and the Q9/Q10/Q13/Q17 micro-collapses. Everything else renders
+  exactly as before. The approved drift set must be documented in
+  `docs/SPEC.md` as part of Task 12 (which colors are acceptable under
+  the token approach).
 - **No `server/` changes. No feature work. No unrelated renames/reformatting.**
 - Scope: hex/rgb(a) literals AND Tailwind palette classes (`text-gray-500` etc.) in kiosk-facing files. **`client/src/pages/setup.tsx` is fully exempt** (both kinds), as is `client/src/components/ui/**`.
 - **Allowed literal exceptions** (the final grep gate's allowlist — each is data, not styling, or a pinned testable default):
@@ -371,7 +378,7 @@ Expected: only `index.css` definitions, `chores-state.ts` PERSON_PALETTE, `calen
 
 - [ ] **Step 2:** `npm run check && npm test && npm run build` — all green.
 - [ ] **Step 3: Side-by-side visual pass** on the dev machine at kiosk resolution: month/week/day, chores (badge, confetti, resets), dinner (voting, planner, dialogs), settings popover, update dialog, OSK, screensaver dim, scrollbars. **The definition of done is identical rendering.**
-- [ ] **Step 4: Docs:** update `WIDGET-SYSTEM-PLAN.md` status line (Phase 2 ✅); update `docs/SPEC.md` where behavior notes changed (Task 4's filter note; the variable-ization is invisible so §3 otherwise stands); add the final exception list to `phase2-color-inventory.md`.
+- [ ] **Step 4: Docs:** update `WIDGET-SYSTEM-PLAN.md` status line (Phase 2 ✅); update `docs/SPEC.md` where behavior notes changed (Task 4's filter note; the variable-ization is invisible so §3 otherwise stands) **and add a short SPEC section documenting the color-token approach: styling colors come from the `--rb-*` variables / Tailwind `rb` map, plus the approved-drift record (Q1 harmonization + Q9/Q10/Q13/Q17 collapses, per the founder rulings in `phase2-color-inventory.md`)**; add the final exception list to `phase2-color-inventory.md`.
 - [ ] **Step 5: Security review** per CLAUDE.md (public repo), then commit docs — `docs: phase 2 complete; update SPEC filter note` — and push the phase's commits.
 
 ---

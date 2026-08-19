@@ -16,6 +16,7 @@
 - [ ] Write contribution guide + trust-model note (no sandbox in v1: widgets run with full access, install ones you trust) (added 2026-08-15)
 - [ ] Create awesome-rootboard list, seeded with first-party entries (added 2026-08-15)
 - [ ] Build one reference community widget in a separate repo, public API only (candidate: stock ticker or grocery list) (added 2026-08-15)
+- [ ] Fix duplicate calendar-color fallback: settings-menu.tsx:186-188 copy-pastes a hash with a different palette than lib/calendar-meta.ts getCalendarColor(), so uncolored calendars render different colors in Settings vs. views — replace local list+hash with getCalendarColor() (found in phase-2 inventory, Q12) (added 2026-08-19)
 
 ## Deferred (recorded, not scheduled)
 

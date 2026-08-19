@@ -42,6 +42,14 @@ part of Task 7's gate (the gate grep will not flag it — check it by eye).
 Every genuinely ambiguous role is here. Each `?` row in the tables below
 points back to one of these. Recommendation given for each.
 
+> **Rulings (founder-ratified 2026-08-19):** all recommendations below
+> are APPROVED as written — Q1 harmonize (governs every Tailwind
+> palette-class row; drift confined to dialog chrome is accepted);
+> Q9/Q10/Q13/Q17 micro-collapses accepted; Q2–Q8, Q11, Q14–Q16 as
+> recommended; Q12 tracked as its own TASKS.md item, excepted from the
+> sweep. Rider: the accepted drift/token approach must be documented in
+> `docs/SPEC.md` (Task 12). Area tasks execute this table as-is.
+
 | # | Question | Recommendation |
 |---|---|---|
 | **Q1** | **Value drift on Tailwind palette classes.** Mapping `text-gray-500` (#6b7280) → `text-rb-muted` (#9aa0aa) is *not* pixel-identical, and the same is true for every red/blue/green/amber class. Phase 0 called the sweep a "pure refactor, pixel-identical"; the Task 5 brief explicitly prescribes these mappings. Which wins? | **Harmonize** (accept the small shifts). The drift is confined to secondary dialog chrome — settings popover, update notification, auth dialog, event-details dialog, 404 page — none of which is in the primary kiosk view. Preserving Tailwind's exact grays would bake 9 arbitrary greys into the theme system and defeat the point. **Scope: this question applies to EVERY Tailwind palette-class → rb-variable mapping in this document (all ~144 class occurrences across Areas B–H), not only rows previously marked — approve Q1 once and it governs them all.** |
