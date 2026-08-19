@@ -17,16 +17,16 @@ export function MiniMonth({ date, eventDays, onPrev, onNext }: MiniMonthProps) {
   const days = useMemo(() => getMonthCalendar(date), [date]);
 
   return (
-    <div className="bg-[var(--rb-surface)] rounded-[18px] p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
+    <div className="bg-[var(--rb-surface)] rounded-[18px] p-4" style={{ boxShadow: '0 1px 3px var(--rb-shadow-card)' }}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-lg font-extrabold text-[#2b3038]">
+        <span className="text-lg font-extrabold text-rb-ink">
           {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={onPrev}
             aria-label="Previous month"
-            className="flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-[#5b626d] hover:bg-[var(--rb-chip-hover)] transition-colors"
+            className="flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-rb-ink-secondary hover:bg-[var(--rb-chip-hover)] transition-colors"
             style={{ width: 28, height: 28 }}
           >
             <ChevronLeft size={16} />
@@ -34,7 +34,7 @@ export function MiniMonth({ date, eventDays, onPrev, onNext }: MiniMonthProps) {
           <button
             onClick={onNext}
             aria-label="Next month"
-            className="flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-[#5b626d] hover:bg-[var(--rb-chip-hover)] transition-colors"
+            className="flex items-center justify-center rounded-full bg-[var(--rb-chip)] text-rb-ink-secondary hover:bg-[var(--rb-chip-hover)] transition-colors"
             style={{ width: 28, height: 28 }}
           >
             <ChevronRight size={16} />
@@ -60,7 +60,7 @@ export function MiniMonth({ date, eventDays, onPrev, onNext }: MiniMonthProps) {
                 style={{
                   width: 34, height: 34,
                   background: today ? 'var(--rb-accent)' : 'transparent',
-                  color: today ? '#fff' : inMonth ? '#2b3038' : '#cfd2d8',
+                  color: today ? 'var(--rb-on-color-ink)' : inMonth ? 'var(--rb-ink)' : 'var(--rb-ink-disabled)',
                   fontWeight: today ? 800 : 700,
                 }}
               >

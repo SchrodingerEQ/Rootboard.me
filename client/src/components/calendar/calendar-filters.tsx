@@ -54,14 +54,14 @@ export function CalendarFilters({ onCalendarToggle, enabledCalendars, visibleCal
             title={`${isEnabled ? 'Hide' : 'Show'} ${calendar.summary} calendar`}
           >
             <span
-              className="rounded-full flex items-center justify-center text-xs font-extrabold text-white"
+              className="rounded-full flex items-center justify-center text-xs font-extrabold text-rb-on-color-ink"
               style={{ width: 30, height: 30, background: color }}
             >
               {initials}
             </span>
-            <span className="text-base font-bold text-[#3a4049]">{calendar.summary}</span>
+            <span className="text-base font-bold text-rb-ink-soft">{calendar.summary}</span>
             {!isEnabled && (
-              <span className="text-xs font-bold text-[#b0b5be]">(hidden)</span>
+              <span className="text-xs font-bold text-rb-faint">(hidden)</span>
             )}
           </button>
         );

@@ -1,6 +1,7 @@
 import type { CalendarEvent } from "@shared/schema";
 import { formatTime } from "@/lib/date-utils";
 import { eventTint, eventTextColor } from "@/lib/color-utils";
+import { EVENT_FALLBACK_COLOR } from "@/lib/calendar-meta";
 
 interface EventItemProps {
   event: CalendarEvent;
@@ -32,7 +33,7 @@ export function EventItem({
 }: EventItemProps) {
   // Warm family-display treatment: soft tint background + colored accent + dark readable text,
   // derived from whatever hex the calendar/event carries.
-  const color = event.color || "#2563eb";
+  const color = event.color || EVENT_FALLBACK_COLOR;
   const tint = eventTint(color);
   const ink = eventTextColor(color);
   const startTime = new Date(event.startTime);

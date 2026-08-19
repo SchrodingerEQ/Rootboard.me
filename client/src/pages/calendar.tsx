@@ -345,7 +345,7 @@ export default function CalendarPage() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {section === 'calendar' && (
           <>
-            <div className="bg-white border-b border-border shadow-sm">
+            <div className="bg-rb-surface border-b border-border shadow-sm">
               {/* Main header row */}
               <CalendarHeader
                 currentView={currentView}
@@ -365,7 +365,7 @@ export default function CalendarPage() {
 
               {/* Second row with Calendar Filters */}
               {authStatus?.authenticated && (
-                <div className="flex items-center px-3 py-0.5 border-t border-gray-100">
+                <div className="flex items-center px-3 py-0.5 border-t border-rb-grid-line">
                   <CalendarFilters
                     onCalendarToggle={handleCalendarEventToggle}
                     enabledCalendars={enabledCalendars}

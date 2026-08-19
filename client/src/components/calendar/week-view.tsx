@@ -22,8 +22,6 @@ const timeSlots = Array.from({ length: 24 }, (_, i) => {
   return `${hour} ${ampm}`;
 });
 
-const GRID_LINE = '#ededed';
-
 export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekViewProps) {
   const weekDays = useMemo(() => getWeekDays(currentDate), [currentDate]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -63,7 +61,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
   };
 
   const gridLineBg = (h: number) => ({
-    backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${h - 1}px, ${GRID_LINE} ${h - 1}px, ${GRID_LINE} ${h}px)`,
+    backgroundImage: `repeating-linear-gradient(to bottom, transparent 0px, transparent ${h - 1}px, var(--rb-grid-line) ${h - 1}px, var(--rb-grid-line) ${h}px)`,
     backgroundSize: `100% ${h}px`,
   });
 
@@ -91,7 +89,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
           style={{
             width: 38, height: 38,
             background: todayDate ? 'var(--rb-accent)' : 'transparent',
-            color: todayDate ? '#fff' : '#2b3038',
+            color: todayDate ? 'var(--rb-on-color-ink)' : 'var(--rb-ink)',
           }}
         >
           {date.getDate()}
@@ -108,7 +106,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
   if (isLoading) {
     return (
       <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-canvas)]">
-        <div className="flex bg-white flex-shrink-0 z-10 border-b border-[var(--border)]">
+        <div className="flex bg-rb-surface flex-shrink-0 z-10 border-b border-[var(--border)]">
           <div className="w-16 flex-shrink-0 h-16" />
           {Array.from({ length: 7 }).map((_, i) => (
             <div key={i} className="flex-1 text-center py-4"><Skeleton className="h-5 w-12 mx-auto rounded-md" /></div>
@@ -122,7 +120,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
           </div>
           <div className="flex-1 flex">
             {Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="flex-1 bg-white" style={{ minWidth: 0, marginLeft: 1 }}>
+              <div key={i} className="flex-1 bg-rb-surface" style={{ minWidth: 0, marginLeft: 1 }}>
                 {timeSlots.map((_, j) => (
                   <div key={j} className="time-slot">{j % 4 === 0 && <Skeleton className="h-8 w-3/4 m-1 rounded-lg" />}</div>
                 ))}
@@ -139,14 +137,14 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
   return (
     <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-canvas)]">
       {/* Fixed Week Header */}
-      <div className="flex bg-white flex-shrink-0 z-10 border-b border-[var(--border)]">
+      <div className="flex bg-rb-surface flex-shrink-0 z-10 border-b border-[var(--border)]">
         <div className="w-16 flex-shrink-0" />
         {weekDays.map((date, i) => <DayHeader key={i} date={date} />)}
       </div>
 
       {/* All-Day Events */}
       {hasAllDay && (
-        <div className="flex bg-white flex-shrink-0 border-b border-[var(--border)]">
+        <div className="flex bg-rb-surface flex-shrink-0 border-b border-[var(--border)]">
           <div className="w-16 flex-shrink-0 flex items-center justify-end pr-2">
             <span className="text-[11px] font-bold uppercase tracking-wide text-[var(--rb-faint)]">All&nbsp;day</span>
           </div>
@@ -178,7 +176,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
                 <div
                   key={dayIndex}
                   className="flex-1 relative"
-                  style={{ minWidth: 0, marginLeft: 1, background: todayDate ? 'var(--rb-today-col-wash)' : '#ffffff' }}
+                  style={{ minWidth: 0, marginLeft: 1, background: todayDate ? 'var(--rb-today-col-wash)' : 'var(--rb-surface)' }}
                 >
                   <div className="absolute inset-0" style={gridLineBg(TIME_SLOT_HEIGHT)} />
                   {timedEvents.map(event => {
