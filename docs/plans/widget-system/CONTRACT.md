@@ -1,6 +1,6 @@
 # Rootboard Widget Contract — apiVersion 1
 
-**Status:** DRAFT — spec design complete, not yet implemented.
+**Status:** apiVersion 1 implemented for built-ins; folder-drop discovery/loading pending Phase 4.
 **Parent decision:** [0006 — Community-buildable widget system](../../decisions/0006-community-widget-system.md)
 **Shape decisions:** [0007 — Widget contract shape](../../decisions/0007-widget-contract-shape.md)
 **Plan:** [WIDGET-SYSTEM-PLAN.md](WIDGET-SYSTEM-PLAN.md)

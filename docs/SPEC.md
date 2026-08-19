@@ -67,6 +67,8 @@ retention sweep, which runs inside each sync.
 | GET | `/api/update/backups` | List backups | none |
 | GET | `/api/state/:key` | Read app-state blob | key whitelist |
 | PUT | `/api/state/:key` | Write app-state blob | key whitelist + 64,000-char cap |
+| GET | `/api/config/dashboard` | Re-reads config from disk every call; `{config, source}` | none |
+| PUT | `/api/config/dashboard` | Zod-validate + atomic write of the whole config | none |
 
 - **Localhost guard:** `isLocalRequest` compares `req.ip`/socket address to
   `127.0.0.1`, `::1`, `::ffff:127.0.0.1`, `localhost`; violations get 403.
@@ -77,8 +79,12 @@ retention sweep, which runs inside each sync.
 - **Validation:** Zod. Event writes coerce `startTime`/`endTime` to Date,
   require non-empty trimmed title, and refine `endTime > startTime`;
   creates also require `calendarId`. App-state keys whitelisted to
-  `{chores, dinner}`; unknown key → 400; serialized value > 64,000 chars →
-  413-style rejection.
+  `{chores, dinner}` (built-in legacy aliases) **∪** `widget:<id>`
+  (pattern `^widget:[a-z0-9][a-z0-9-]{1,40}$`, i.e. id length 2–41 —
+  the widget host's per-widget storage namespace, §3.1); unknown key →
+  400; serialized value > 64,000 chars → 413-style rejection. Dashboard
+  config PUT validates the whole document against the same schema used
+  to read it; an invalid body → 400 with flattened Zod errors.
 - **Apply/rollback respond `{status:"in-progress"}` immediately**; progress
   is observable only by polling `GET /api/update/status`.
 
@@ -155,26 +161,100 @@ from Open-Meteo and cached server-side.
 
 ## 3. Client
 
-### 3.1 Structure
+### 3.1 AppShell and widget host
 
 - Entry `client/src/main.tsx` → `App.tsx`: QueryClientProvider →
   TooltipProvider → Toaster + Router + a single globally-mounted
   `<OnScreenKeyboard/>`.
-- Router (`wouter`) has only three routes: `/` (CalendarPage), `/setup`
-  (static install guide), catch-all NotFound. **Chores and Dinner are not
-  routes** — CalendarPage holds a `section` state
-  (`calendar | chores | dinner`), persisted in localStorage
-  `rootboard-section`, and renders those pages inline.
-- Layout: fixed 104px left NavRail (logo, three section buttons, live
-  chore-count badge, Settings at bottom — Settings only when
-  authenticated) + flex content column.
+- Router (`wouter`) has only three routes: `/` (`pages/calendar.tsx`,
+  now a thin wrapper that renders `AppShell`), `/setup` (static install
+  guide), catch-all NotFound.
+- Layout: fixed 104px left NavRail (logo, one button per enabled
+  widget with its manifest name/icon, live per-widget badges, Settings
+  at bottom — Settings only when authenticated) + flex content column.
 - TanStack Query defaults are fully manual: `staleTime: Infinity`,
   `retry: false`, no refetch-on-focus/interval; all cadence is explicit
-  timers. All requests send `credentials: "include"`.
-- **Hoisting invariant:** `useChores()` and `useDinner()` are called at
-  CalendarPage level (not inside the section pages) so section switching
-  never unmounts them — keeps the rail badge live and preserves the dinner
-  debounce-persist timer and in-memory vote cooldown.
+  timers. All requests send `credentials: "include"`. Multiple React
+  roots (shell + one per widget) share the single module-singleton
+  `queryClient` — cache and invalidations are shared across all of
+  them, by design.
+- **AppShell** (`components/app-shell.tsx`) owns everything that is not
+  widget content: the nav rail, screensaver/brightness/power-saving,
+  the update check/apply/rollback flow, and the Settings popover
+  (brightness, OSK mode, per-calendar visibility switches, add-calendar,
+  service-account display, update controls, and the layout picker —
+  enable/disable + reorder installed widgets). The single OSK stays
+  global (mounted in `App.tsx`, not per-widget). Nav `section` is now a
+  config-driven `string` (any enabled **and** installed widget id), not
+  a fixed 3-way union — still persisted in localStorage
+  `rootboard-section`; a previously-stored `calendar`/`chores`/`dinner`
+  round-trips unchanged. If the stored/default section can't actually
+  render (disabled, or enabled-but-not-installed), the shell falls back
+  to `dashboard.json`'s `defaultWidget`, then the first renderable id.
+- **Dashboard config** (`data/config/dashboard.json`, read/written via
+  `GET`/`PUT /api/config/dashboard`) is the source of truth for nav
+  order, enabled state, and per-widget settings. The shell polls it
+  every 60 s (react-query `refetchInterval`) so a hand-edit over SSH is
+  picked up without a restart; react-query's structural sharing means
+  an unchanged file produces the same object identity, so polling can't
+  cause a spurious re-render. `defaultDashboardConfig()` (calendar,
+  chores, dinner — all enabled, `defaultWidget: "calendar"`) is both
+  the client's placeholder while the query is pending and the server's
+  fallback for a missing/corrupt file (2.2).
+- **Widget host / keep-alive** (`components/widget-host-mount.tsx`):
+  every enabled+installed widget is mounted exactly once and stays
+  mounted across nav — switching sections toggles `display: none` on
+  its container rather than unmounting it. This **replaces** the old
+  hoisting invariant (`useChores()`/`useDinner()` called at
+  CalendarPage level so section switching never unmounted them, keeping
+  the badge/debounce/cooldown alive): keep-alive gives every widget
+  that same guarantee uniformly, not just the two that used to be
+  hoisted by hand. A widget's `unmount()` is called only when it leaves
+  the enabled set (disabled in settings, or its folder removed — Phase
+  4) or the app shuts down — never on a mere section switch.
+- **Host services** (`WidgetHost`, `client/src/widgets/types.ts`, per
+  CONTRACT.md §4): `storage.get()/set()` — backed by `AppStateClient`
+  (`lib/app-state-client.ts`), the same hardened debounce/retry
+  semantics `use-app-state.ts` used to provide (600 ms debounced PUT,
+  15 s load/PUT retry, never-persist-before-successful-load). Built-in
+  widgets keep their pre-widget `app_state` keys via a legacy-alias map
+  (`chores`→`chores`, `dinner`→`dinner`); anything else uses
+  `widget:<id>` (server whitelist pattern, §5). `settings.get()` /
+  `subscribe(cb)` read this widget's settings blob from the dashboard
+  config; `settings.patch(build)` is the only way a widget may write
+  its **own** settings — `build` receives the CURRENT settings (read
+  fresh at write time, not a value the widget captured earlier),
+  returns a patch or `null`, and the shell sanitizes the result before
+  merging/persisting (the widget id is bound at host-creation time, so
+  a widget cannot address another widget's settings entry).
+  `theme.getToken(name)` reads a computed `--rb-*` custom property;
+  `theme.subscribe` is a stub (no-op unsubscribe) until the theme
+  engine exists. `fetch` is `window.fetch.bind(window)` — full network
+  access, same-origin `/api/*` included. `ui.setBadge(count)` sets the
+  nav-rail badge; `ui.sleep()` triggers the shell's power-saving
+  overlay (the overlay itself stays shell-owned).
+- **Refresh scheduler** (`lib/refresh-scheduler.ts`): the host owns one
+  shared 30 s interval that ticks every mounted widget's own
+  `RefreshScheduler`. A widget's `instance.refresh()` fires when
+  `visible && online && awake` **and** its manifest's
+  `refresh.intervalSeconds` has elapsed since the last refresh;
+  becoming visible or waking while overdue fires immediately as a
+  catch-up (coming back online does not trigger a catch-up on its own).
+  A widget with no `refresh` block in its manifest never fires.
+- Three first-party widgets ship under `client/src/widgets/`:
+  `calendar/`, `chores/`, `dinner/` — each a `manifest.json` +
+  `index.tsx` that mounts its own `createRoot` React tree (wrapped in
+  `QueryClientProvider client={queryClient}`) around the pre-widget
+  page/hook, reached only through `mount(container, host)` like any
+  community widget would be — no privileged internal access.
+- **Keep-alive consequence, accepted:** a mount-time effect now fires
+  once per app boot instead of once per section visit — e.g. the
+  Week view's auto-scroll-to-7AM (3.2) only happens the first time it
+  mounts, not every time the user navigates back to it. Similarly, the
+  Day view's 30 s clock (past-event dimming + "Up next" badge, 3.2)
+  keeps ticking while the calendar widget is hidden (`display: none`),
+  not just while visible — wasted but negligible work, not a
+  correctness issue.
 
 ### 3.2 Calendar views
 
@@ -186,21 +266,38 @@ from Open-Meteo and cached server-side.
   screensaver is not active. Sync (`POST /api/calendar/sync`) always
   covers **−3 months to +12 months** regardless of view. One-shot
   auto-sync on first auth when the DB is empty (ref-guarded);
-  auto-refresh every 10 min; sync-status polled every 30 s.
+  sync-status polled every 30 s.
+- **Auto-refresh is host-driven, not an internal timer.** The manifest
+  declares `refresh.intervalSeconds: 600`; the widget host's
+  `RefreshScheduler` (3.1) calls `refresh()` → the same `autoRefresh()`
+  used before, only while the calendar widget is visible, online, and
+  awake, plus one catch-up fire when it becomes visible with an
+  overdue interval — so there's no background sync while another
+  section is showing, but the view is never stale on return.
+  `useCalendar`'s own internal 10-minute throttle inside `autoRefresh()`
+  is unchanged and still acts as a second guard.
 - Keyboard nav: `←/→` navigate, `t` today, `1/2/3` = day/week/month
-  (ignored while an input is focused).
-- **Calendar toggling:** two Sets — `enabledCalendars` (event visibility)
-  and `visibleCalendarsInHeader`. New calendar ids auto-enable exactly
-  once (a `seenCalendarIds` ref prevents refetches from re-enabling a
-  calendar the user turned off). Header chips toggle visibility only;
-  Settings toggles both. Empty `enabledCalendars` = no events shown,
-  consistently across all three views. Single filtering path: `calendar.tsx`
-  computes `filteredEvents` once and passes it to Month/Week/Day alike;
-  all three views consume the pre-filtered stream with no internal
-  re-filtering (unified 2026-08-19 — Week/Day no longer receive
-  `enabledCalendars` props). (Previously MonthView filtered raw `events`
-  itself and bypassed its filter entirely on an empty set, showing all
-  events while Week/Day showed none — that divergence is gone.)
+  (ignored while an input is focused, **and while the calendar widget
+  is not the visible section** — keep-alive keeps it mounted behind
+  other sections, so it must not eat arrow keys/shortcuts meant for
+  whatever's actually on screen).
+- **Calendar visibility is persisted widget settings, not ephemeral
+  state.** The calendar widget's `dashboard.json` settings blob holds
+  two id lists: `hiddenCalendars` (Settings popover's per-calendar
+  switch — hidden from the header chip row AND its events) and
+  `disabledCalendars` (header chip tap — chip stays visible/dimmed,
+  only its events are filtered). Both derive from the subscribed-
+  calendars query: `visible-in-header = subscribed − hidden`,
+  `events-on = subscribed − hidden − disabled`. Absent/empty lists
+  mean nothing hidden or disabled, i.e. **new calendars are visible by
+  default** — this retired the old `seenCalendarIds`
+  auto-enable-once-ref dance, since a hidden-list model has no "have I
+  seen this id before" question to answer, so a refetch can never
+  resurrect a calendar the user deliberately turned off. Empty
+  `events-on` = no events shown, consistently across all three views
+  (unchanged). Single filtering path: the widget computes
+  `filteredEvents` once and passes it to Month/Week/Day alike; none of
+  the three re-filters internally.
 - **Month:** 7-col grid, 5 rows unless the month genuinely spills into a
   6th week; max 4 event chips per cell, overflow opens a day dialog;
   events bucketed all-day-first, then start time, then calendarId.
@@ -248,7 +345,12 @@ from Open-Meteo and cached server-side.
 
 ### 3.4 Dinner
 
-State is a whole-JSON blob at `/api/state/dinner`:
+Runs as the `dinner` widget (3.1); data semantics below are unchanged
+from before the widget migration. Storage rides `host.storage` →
+`AppStateClient` (same hardened debounce/retry semantics as the old
+`use-app-state.ts`, same `dinner` app-state key via the legacy alias
+map — existing kiosk data round-trips bit-for-bit). State is a
+whole-JSON blob:
 `{savedMeals: string[], candidates: {id,title,votes}[], dinners:
 Record<dateKey,meal>}`.
 
@@ -270,8 +372,13 @@ Record<dateKey,meal>}`.
 
 ### 3.5 Chores
 
-State blob at `/api/state/chores`: `{people: [{id, name, colorIdx,
-doneToday, chores: [{id,title,done}]}], tallyDate}`.
+Runs as the `chores` widget (3.1); data semantics below are unchanged
+from before the widget migration. Storage rides `host.storage` →
+`AppStateClient` (same `chores` app-state key via the legacy alias
+map); the nav-rail badge is fed via `host.ui.setBadge(openChoreCount)`
+instead of the old hoisted-hook prop. State blob:
+`{people: [{id, name, colorIdx, doneToday, chores: [{id,title,done}]}],
+tallyDate}`.
 
 - Fixed 8-color palette; new person gets `colorIdx = count % 8`.
   `normalizeChoresState` **clamps out-of-range/non-integer colorIdx to
@@ -337,12 +444,13 @@ failure during polling is *assumed to be the restart* and reloads after
 - **Native pickers are unusable on the kiosk** (Firefox time segments
   only accept physical-keyboard digits), so the event form uses touch
   hour/minute Selects instead of `datetime-local`.
-- Persistence hardening (`use-app-state.ts`): never overwrites real data
-  after a failed initial GET (retries GET every 15 s until it succeeds);
-  failed PUTs retry every 15 s from the latest state; writes debounce
-  600 ms; the first post-load persist is skipped. Midnight/weekly
-  transforms are re-applied on 60 s polls because the kiosk crosses those
-  boundaries while mounted.
+- Persistence hardening (`lib/app-state-client.ts`'s `AppStateClient`,
+  backing every widget's `host.storage`, 3.1): never overwrites real
+  data after a failed initial GET (retries GET every 15 s until it
+  succeeds); failed PUTs retry every 15 s from the latest state; writes
+  debounce 600 ms; the first post-load persist is skipped. Midnight/
+  weekly transforms are re-applied on 60 s polls because the kiosk
+  crosses those boundaries while mounted.
 - Offline (navigator.onLine) pauses queries; sync and auto-refresh
   short-circuit when offline or dimmed.
 
@@ -460,8 +568,16 @@ identifies the restored version, then `npm install` + `npm run build`
   day − 1 ms); never parsed as UTC.
 - Events ended > 3 months ago are pruned at each sync.
 - `lastSyncAt` = last *successful* sync only.
-- App-state: keys ∈ `{chores, dinner}`, serialized ≤ 64,000 chars,
-  written atomically as whole-blob upserts; server treats them as opaque.
+- App-state: keys ∈ `{chores, dinner} ∪ widget:[a-z0-9-]{2,41}` (built-in
+  legacy aliases plus the widget-host storage pattern, 3.1), serialized
+  ≤ 64,000 chars, written atomically as whole-blob upserts; server
+  treats them as opaque.
+- `data/config/dashboard.json`: nav order/enabled-state/per-widget
+  settings source of truth. Zod-validated on both read and write;
+  writes are atomic (`.tmp` + rename); a missing, unparseable, or
+  schema-invalid file degrades to `defaultDashboardConfig()` on read
+  rather than ever failing to boot. Gitignored — never tracked, and on
+  both updater preserve lists.
 - `APP_VERSION` (`shared/version.ts`) is the single version source; update
   eligibility is `latest > current` numerically per dotted segment.
 
@@ -480,8 +596,11 @@ identifies the restored version, then `npm install` + `npm run build`
   only.
 - `better-sqlite3` is a native module — always `npm install` on the target
   device, never copy `node_modules` across architectures.
-- Chores/Dinner are not routes — section state inside CalendarPage; their
-  hooks are hoisted to CalendarPage and must stay there (3.1).
+- Chores/Dinner are not routes — section state lives in AppShell, not a
+  page. Their live-badge/debounce/cooldown guarantees no longer depend
+  on being specially hoisted: `WidgetHostMount`'s keep-alive (mount
+  once at boot, hide via `display: none`) covers every enabled widget
+  uniformly (3.1).
 - OSK touch detection must use `any-pointer: coarse` and the first-touch
   latch; `pointer: coarse` under-reports on the kiosk (3.3).
 - Firefox scrollbar CSS must stay inside the
@@ -490,3 +609,21 @@ identifies the restored version, then `npm install` + `npm run build`
   only by design (3.4, 3.5).
 - `screensaver-overlay.tsx` is dead code; the live overlay is
   `power-saving-overlay.tsx` (3.6).
+- `PUT /api/config/dashboard` from the client requires an
+  already-loaded config in the react-query cache — `app-shell.tsx`'s
+  `writeDashboardConfig` drops (and just invalidates/refetches) any
+  change attempted before the first successful `GET`, rather than ever
+  PUTting a `defaultDashboardConfig()`-derived document over a real
+  on-disk one (3.1).
+- Manual sleep (`host.ui.sleep()` / the Sleep buttons) does not
+  dispatch `screensaver-state-change` — only the auto-screensaver's
+  inactivity timeout does (3.6). `WidgetHostMount`'s `awakeRef`
+  therefore only tracks the latter; a widget mounted mid-session (the
+  layout picker enabling it) while the kiosk is manually asleep comes
+  up visible instead of hidden — a pre-existing asymmetry, not
+  introduced by keep-alive (3.1).
+- A widget host's React root unmounting synchronously during another
+  component's render can trigger React's dev-only "Attempted to
+  synchronously unmount a root while React was already rendering"
+  warning; cosmetic, reproduces on cold boot in dev, not yet
+  root-caused (tracked in TASKS.md).

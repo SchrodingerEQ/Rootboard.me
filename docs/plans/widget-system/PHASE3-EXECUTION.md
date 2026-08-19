@@ -1,5 +1,8 @@
 # Phase 3 Execution Plan — Widget Host, Config-as-Text, First-Party Migration
 
+**Status:** Tasks 1-10 implemented 2026-08-19; ship pending (final gates,
+security review, TASKS.md checkoff — controller work).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the widget host runtime and JSON dashboard config, then migrate chores → dinner → calendar onto the public contract from [CONTRACT.md](CONTRACT.md), ending with zero privileged internal widgets and the UI acting as an editor over `data/config/dashboard.json`.
