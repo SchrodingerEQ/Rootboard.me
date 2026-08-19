@@ -10,6 +10,13 @@
 > extraction and the Phase 0 color sweep as a **single refactoring phase**
 > with one combined plan doc under `docs/plans/` (tracked in `TASKS.md`),
 > rather than two passes over the same files.
+>
+> **Update 2026-08-19:** That combined plan now exists —
+> [`docs/plans/widget-system/WIDGET-SYSTEM-PLAN.md`](../widget-system/WIDGET-SYSTEM-PLAN.md)
+> (Phase 2 there = Phase 0 here, with an audit-corrected scope: 220 hex
+> across 29 files plus in-scope Tailwind palette classes, `setup.tsx`
+> exempt). Execute Phase 0 via that plan; this file's Phase 0 section and
+> hotspot counts (line "Repo facts") are superseded for scope purposes.
 
 ---
 
