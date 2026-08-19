@@ -18,14 +18,13 @@ import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/type
 import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/lib/app-types";
 import {
-  CALENDAR_SETTINGS_PATCH_EVENT,
   CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
   DISABLED_CALENDARS_KEY,
   HIDDEN_CALENDARS_KEY,
   POWER_SAVING_CHANGE_EVENT,
   deriveCalendarVisibility,
   toCalendarIdSet,
-  type CalendarSettingsPatchDetail,
+  withCalendarId,
   type PowerSavingChangeDetail,
 } from "./shell-bridge";
 import rawManifest from "./manifest.json";
@@ -189,21 +188,19 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
     [subscribedIds, hiddenCalendars, disabledCalendars],
   );
 
-  // Chip tap -> ask the shell to persist a `disabledCalendars` delta
-  // (host.settings is read-only by contract; see shell-bridge.ts). This
-  // dispatches just the id + intent, NOT a pre-built array from this
-  // component's own `disabledCalendars` snapshot — the shell derives the new
-  // array from its own current cache read at write time, so two chip taps
-  // for different calendars in the same tick don't race (see shell-bridge.ts
-  // for the full rationale).
+  // Chip tap -> patch `disabledCalendars` via host.settings.patch()
+  // (founder-ratified 2026-08-19; replaces the CALENDAR_SETTINGS_PATCH_EVENT
+  // window-event bridge). `build` receives the CURRENT settings, read fresh
+  // by the shell at write time — not this component's own `disabledCalendars`
+  // snapshot — so two chip taps for different calendars in the same tick
+  // don't race (same rationale the old event's doc comment carried; see
+  // shell-bridge.ts).
   const handleCalendarEventToggle = useCallback((calendarId: string, enabled: boolean) => {
-    const detail: CalendarSettingsPatchDetail = {
-      key: DISABLED_CALENDARS_KEY,
-      calendarId,
-      present: !enabled,
-    };
-    window.dispatchEvent(new CustomEvent(CALENDAR_SETTINGS_PATCH_EVENT, { detail }));
-  }, []);
+    host.settings.patch((current) => {
+      const disabled = toCalendarIdSet(current[DISABLED_CALENDARS_KEY]);
+      return { [DISABLED_CALENDARS_KEY]: withCalendarId(disabled, calendarId, !enabled) };
+    });
+  }, [host]);
 
   // --- Everything below is the old CalendarSection, unchanged -------------
 

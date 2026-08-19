@@ -102,7 +102,23 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
       });
       scheduler.setAwake(awakeRef.current);
       scheduler.setOnline(navigator.onLine);
-      scheduler.setVisible(entry.manifest.id === activeIdRef.current);
+      // A widget can now be mounted mid-session (the layout picker enabling
+      // it, Task 9) instead of only at startup — so "is this the active
+      // section" is no longer enough on its own: if the screensaver is
+      // currently dimmed, this entry must come up hidden even when it
+      // happens to be the active id (e.g. it becomes the fallback section
+      // right as it's enabled). `awake ⇒ false` mirrors the screensaver
+      // dim/wake handler below, which drives every OTHER mounted widget the
+      // same way. Explicitly calling onVisibilityChange(false) here (rather
+      // than relying on the widget's own default) is a deliberate belt: a
+      // future widget's internal default isn't contract, so a freshly
+      // mounted active-while-dimmed entry gets told "hidden" for real.
+      const isActiveNow = entry.manifest.id === activeIdRef.current;
+      const initiallyVisible = isActiveNow && awakeRef.current;
+      scheduler.setVisible(initiallyVisible);
+      if (isActiveNow) {
+        instance.onVisibilityChange?.(initiallyVisible);
+      }
 
       mountedRef.current.set(entry.manifest.id, { instance, scheduler });
     }
@@ -118,6 +134,15 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
   // active widget, show the newly active one. Runs after the mount effect
   // above (declaration order), so a widget that just got mounted this same
   // render is already in mountedRef by the time this fires.
+  //
+  // Depends on `entries`, not just `activeId` — a layout-picker enable/
+  // disable (Task 9) changes `entries` without necessarily changing
+  // `activeId`, and this effect re-runs either way. Gating the "show" call
+  // on `awakeRef.current` (rather than unconditionally firing `true`) stops
+  // that re-run from incorrectly un-hiding the active widget while the
+  // screensaver is dimmed — the screensaver dim/wake handler below is the
+  // one place that's supposed to flip visibility while dimmed, and it
+  // always drives every widget to `false`.
   useEffect(() => {
     const prevId = prevActiveIdRef.current;
     if (prevId !== null && prevId !== activeId) {
@@ -126,8 +151,9 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
       prev?.scheduler.setVisible(false);
     }
     const next = mountedRef.current.get(activeId);
-    next?.instance.onVisibilityChange?.(true);
-    next?.scheduler.setVisible(true);
+    const nextVisible = awakeRef.current;
+    next?.instance.onVisibilityChange?.(nextVisible);
+    next?.scheduler.setVisible(nextVisible);
     prevActiveIdRef.current = activeId;
   }, [activeId, entries]);
 

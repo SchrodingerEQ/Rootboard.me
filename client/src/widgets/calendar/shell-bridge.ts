@@ -35,16 +35,25 @@
  *    the values still round-trip through the same `PUT /api/config/dashboard`
  *    every other widget setting uses.
  *
- * 2. **Three page-global CustomEvents** used where props no longer exist.
- *    A widget's container is an opaque `HTMLElement` — the shell cannot pass
- *    React props into it, and `host.settings` is read-only by contract (there
- *    is no `settings.set()` in apiVersion 1). Window events are the same
- *    page-global channel the app already uses for `screensaver-state-change`
- *    / `screensaver-exit`, so this stays consistent with existing practice
- *    rather than inventing a private side-channel. These are FIRST-PARTY
- *    transitional plumbing, not contract surface — a real `host.settings.set()`
- *    (and a shell-owned power-saving signal) is the proper fix in a future
- *    contract revision.
+ * 2. **Two page-global CustomEvents** used where props no longer exist. A
+ *    widget's container is an opaque `HTMLElement` — the shell cannot pass
+ *    React props into it. Window events are the same page-global channel the
+ *    app already uses for `screensaver-state-change` / `screensaver-exit`,
+ *    so this stays consistent with existing practice rather than inventing a
+ *    private side-channel. These are shell -> widget signals (power-saving
+ *    state, a fresh subscribe to refresh from); they are FIRST-PARTY
+ *    transitional plumbing, not contract surface.
+ *
+ *    A third event used to live here, widget -> shell: the header chip row
+ *    asking the shell to persist a `disabledCalendars` delta. It is gone —
+ *    the chip handler now calls `host.settings.patch()` directly (founder-
+ *    ratified 2026-08-19, see `client/src/widgets/types.ts` and
+ *    CONTRACT.md §4). `patch()`'s functional-builder shape is the direct
+ *    replacement for the delta object this event used to carry: the shell
+ *    still reads the current settings from its query cache AT WRITE TIME
+ *    inside `patch()`'s handler, so the same race-free property (two
+ *    same-tick writes each see the other's already-applied change) holds
+ *    without a bespoke `{key, calendarId, present}` event payload.
  */
 
 /** Widget id, as it appears in dashboard config and the manifest. */
@@ -81,35 +90,6 @@ export interface PowerSavingChangeDetail {
  * that request sequence by hand.
  */
 export const CALENDAR_SUBSCRIBE_SUCCESS_EVENT = "rootboard:calendar-subscribe-success";
-
-/**
- * Widget -> shell. `host.settings` is read-only, so the widget's header chip
- * row asks the shell to persist a settings change. The shell owns the single
- * read-merge-PUT-invalidate implementation for dashboard config, so every
- * writer (Settings switches, chips, unsubscribe) goes through one code path
- * and one race domain.
- *
- * The detail is a DELTA — one id's membership in one list — not a whole
- * pre-computed array. Two rapid toggles of DIFFERENT calendars on the same
- * key can otherwise land in the same ~1-2 frame propagation window: if each
- * event carried a full array built from a React state snapshot, the second
- * write's array would be built from state that doesn't yet include the
- * first write's change, and would silently clobber it. Shipping just
- * `{ key, calendarId, present }` lets the shell's handler read the list it
- * is about to patch from the query cache AT WRITE TIME (the same snapshot
- * `updateWidgetSettings` uses for the read-merge-PUT) and derive the new
- * array from THAT — so two toggles fired in the same tick each see the
- * other's effect instead of racing.
- */
-export const CALENDAR_SETTINGS_PATCH_EVENT = "rootboard:calendar-settings-patch";
-export interface CalendarSettingsPatchDetail {
-  /** Which persisted list this toggle targets. */
-  key: typeof HIDDEN_CALENDARS_KEY | typeof DISABLED_CALENDARS_KEY;
-  /** The calendar id being added to or removed from that list. */
-  calendarId: string;
-  /** true = add id to the list, false = remove it. */
-  present: boolean;
-}
 
 /**
  * Coerce a raw settings value into a set of calendar ids. `settings` is

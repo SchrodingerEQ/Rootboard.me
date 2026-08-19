@@ -19,6 +19,13 @@ export interface CreateWidgetHostOptions {
   appVersion?: string;
   getSettings: () => Record<string, unknown>;
   subscribeSettings: (cb: (next: Record<string, unknown>) => void) => () => void;
+  /** Backs `host.settings.patch()`. The shell wires this straight to its
+   *  delta-safe read-merge-PUT-invalidate pipeline (updateWidgetSettings),
+   *  already bound to THIS widget's id at host-creation time — the widget
+   *  never supplies its own id, which is the trust fix that makes
+   *  `patch()` safe to expose (a widget cannot address another widget's
+   *  settings entry). */
+  patchSettings: (build: (current: Record<string, unknown>) => Record<string, unknown> | null) => void;
   setBadge: (count: number | null) => void;
   sleep: () => void;
 }
@@ -56,6 +63,7 @@ export function createWidgetHost(opts: CreateWidgetHostOptions): WidgetHostHandl
     settings: {
       get: opts.getSettings,
       subscribe: opts.subscribeSettings,
+      patch: opts.patchSettings,
     },
 
     theme: {

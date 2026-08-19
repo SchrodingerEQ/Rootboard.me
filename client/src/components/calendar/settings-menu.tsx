@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import {
   AlertDialog,
@@ -39,6 +39,18 @@ interface CalendarInfo {
   accessRole: string;
 }
 
+/** One row of the layout picker's "Widgets" section — an installed
+ *  (builtin-backed) widget, in `data/config/dashboard.json` order. Sourced
+ *  from BUILTIN_WIDGETS resolved through config order by the shell (see
+ *  app-shell.tsx's `widgetPickerEntries`); this component imports neither
+ *  the registry nor the config schema directly. */
+export interface WidgetPickerEntry {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  enabled: boolean;
+}
+
 interface SettingsMenuProps {
   /** Persisted calendar-widget setting `hiddenCalendars` (see
    *  client/src/widgets/calendar/shell-bridge.ts). A calendar is shown iff
@@ -57,6 +69,18 @@ interface SettingsMenuProps {
   onCalendarRemoved?: (calendarId: string) => void;
   /** Compact circular trigger (52px, rail-chip styling) for use in the nav rail, instead of the default header icon button. */
   compactTrigger?: boolean;
+  /** Layout picker (Task 9): every installed widget, in config order,
+   *  enabled or not. Absent/empty hides the "Widgets" section entirely
+   *  (defensive — the shell always has at least the three built-ins). */
+  widgetPickerEntries?: WidgetPickerEntry[];
+  /** Persists an enable/disable toggle via the shell's PUT-the-whole-config
+   *  helper. The shell also re-derives the guard below from live config on
+   *  write, but the switch itself is pre-disabled for the last enabled
+   *  widget so the user never has to discover the guard by failing. */
+  onToggleWidget?: (id: string, enabled: boolean) => void;
+  /** Swaps this widget with its neighbor in the picker's displayed order
+   *  (direction -1 = up/earlier, +1 = down/later). */
+  onMoveWidget?: (id: string, direction: -1 | 1) => void;
 }
 
 export function SettingsMenu({
@@ -69,7 +93,11 @@ export function SettingsMenu({
   onSubscribeSuccess,
   onCalendarRemoved,
   compactTrigger = false,
+  widgetPickerEntries = [],
+  onToggleWidget,
+  onMoveWidget,
 }: SettingsMenuProps) {
+  const enabledWidgetCount = widgetPickerEntries.filter((e) => e.enabled).length;
   const [isOpen, setIsOpen] = useState(false);
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem('calendar-brightness');
@@ -320,6 +348,68 @@ export function SettingsMenu({
             </div>
 
             <Separator />
+
+            {/* Widgets — layout picker (Task 9): enable/disable + reorder */}
+            {widgetPickerEntries.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="h-4 w-4" />
+                    <Label className="text-sm font-medium">Widgets</Label>
+                  </div>
+                  <div className="space-y-1">
+                    {widgetPickerEntries.map((entry, index) => {
+                      const Icon = entry.icon;
+                      const lastEnabled = entry.enabled && enabledWidgetCount <= 1;
+                      return (
+                        <div key={entry.id} className="flex items-center gap-1">
+                          <Icon className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
+                          <span className="text-sm flex-1 truncate">{entry.label}</span>
+                          <button
+                            type="button"
+                            className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                            onClick={() => onMoveWidget?.(entry.id, -1)}
+                            disabled={index === 0}
+                            title="Move up"
+                            data-testid={`widget-move-up-${entry.id}`}
+                          >
+                            <ChevronUp className="h-5 w-5" />
+                          </button>
+                          <button
+                            type="button"
+                            className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                            onClick={() => onMoveWidget?.(entry.id, 1)}
+                            disabled={index === widgetPickerEntries.length - 1}
+                            title="Move down"
+                            data-testid={`widget-move-down-${entry.id}`}
+                          >
+                            <ChevronDown className="h-5 w-5" />
+                          </button>
+                          <label
+                            className="touch-button flex items-center justify-center flex-shrink-0"
+                            title={lastEnabled ? "At least one widget must stay enabled" : undefined}
+                          >
+                            <Switch
+                              checked={entry.enabled}
+                              disabled={lastEnabled}
+                              onCheckedChange={(checked) => onToggleWidget?.(entry.id, checked)}
+                              data-testid={`widget-toggle-${entry.id}`}
+                            />
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {enabledWidgetCount <= 1 && (
+                    <p className="text-xs text-rb-faint leading-snug">
+                      At least one widget must stay enabled.
+                    </p>
+                  )}
+                </div>
+
+                <Separator />
+              </>
+            )}
 
             {/* Calendar Selection */}
             <div className="space-y-3">

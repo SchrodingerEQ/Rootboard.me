@@ -48,10 +48,23 @@ export interface WidgetHost {
 
   /** Read-only view of this widget instance's settings values (as
    *  declared in the manifest, edited in the host UI, persisted in the
-   *  dashboard config file). */
+   *  dashboard config file) — plus one write path, `patch()`. */
   settings: {
     get(): Record<string, unknown>;
     subscribe(cb: (next: Record<string, unknown>) => void): () => void;
+    /** The one way a widget may write its OWN settings (founder-ratified
+     *  2026-08-19; supersedes the transitional window-event bridge some
+     *  first-party widgets used before this). `build` is called with this
+     *  widget's CURRENT settings, freshly read by the host at write time —
+     *  not a value the widget captured earlier and may have gone stale —
+     *  and returns the partial patch to merge in, or `null` to skip the
+     *  write. Functional rather than a plain delta object specifically so
+     *  two patches racing in the same tick (from this widget or, in
+     *  principle, concurrent instances) each observe the other's
+     *  already-applied write instead of clobbering it — see CONTRACT.md §4.
+     *  The host binds `widgetId` at host-creation time; a widget cannot
+     *  patch another widget's settings. */
+    patch(build: (current: Record<string, unknown>) => Record<string, unknown> | null): void;
   };
 
   /** Theme tokens are ambient CSS custom properties (--rb-*) inherited

@@ -15,7 +15,6 @@ import { BUILTIN_WIDGETS } from "@/widgets/registry";
 import { createWidgetHost, type WidgetHostHandle } from "@/lib/widget-host-services";
 import { applyWidgetSettingsPatch } from "@/lib/widget-config";
 import {
-  CALENDAR_SETTINGS_PATCH_EVENT,
   CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
   CALENDAR_WIDGET_ID,
   DISABLED_CALENDARS_KEY,
@@ -23,7 +22,6 @@ import {
   POWER_SAVING_CHANGE_EVENT,
   toCalendarIdSet,
   withCalendarId,
-  type CalendarSettingsPatchDetail,
   type PowerSavingChangeDetail,
 } from "@/widgets/calendar/shell-bridge";
 import { defaultDashboardConfig, type DashboardConfig } from "@shared/dashboard-config";
@@ -64,6 +62,15 @@ export default function AppShell() {
   const { toast } = useToast();
   const configQuery = useQuery<DashboardConfigResponse>({
     queryKey: ["/api/config/dashboard"],
+    // CONTRACT.md §5: "hand-edits over SSH are picked up without a restart
+    // on the next poll" — the server already re-reads the file on every GET
+    // (configService.ts), but until now the client only ever fetched once.
+    // Poll here so a hand-edited data/config/dashboard.json surfaces without
+    // requiring a reload. react-query's default structural sharing means an
+    // unchanged response produces the same object identity, so this can't
+    // cause a re-render (or re-run any config-derived memo/effect below)
+    // when nothing on disk actually changed.
+    refetchInterval: 60_000,
   });
   const dashboardConfig = configQuery.data?.config ?? defaultConfig;
 
@@ -93,6 +100,28 @@ export default function AppShell() {
   }, [dashboardConfig, builtinById]);
 
   const renderableIds = useMemo(() => renderableEntries.map((e) => e.id), [renderableEntries]);
+
+  // Every INSTALLED widget (builtin-backed), enabled or not, in config
+  // order — the layout picker's source list (Task 9). Unlike
+  // renderableEntries above this does NOT filter on `enabled`: the picker
+  // needs to show disabled widgets too, with a switch to re-enable them. An
+  // id enabled in config but not installed is still excluded — there is
+  // nothing to show a name/icon for (folder-drop widgets, and therefore
+  // "uninstalled but configured" entries, arrive in Phase 4).
+  const widgetPickerEntries = useMemo(() => {
+    const entries: Array<{ id: string; label: string; icon: NavRailItem["icon"]; enabled: boolean }> = [];
+    for (const w of dashboardConfig.widgets) {
+      const builtin = builtinById.get(w.id);
+      if (!builtin) continue;
+      entries.push({
+        id: w.id,
+        label: builtin.manifest.name,
+        icon: builtin.navIcon ?? DEFAULT_NAV_ICON,
+        enabled: w.enabled,
+      });
+    }
+    return entries;
+  }, [dashboardConfig, builtinById]);
 
   // Fall back to defaultWidget if the localStorage-remembered (or default
   // "calendar") section can't actually render — mirrors CONTRACT.md §5:
@@ -184,6 +213,107 @@ export default function AppShell() {
     staleTime: 60 * 1000,
   });
 
+  // --- Dashboard config writes ---------------------------------------------
+  // The shell owns the single read-merge-PUT-invalidate implementation for
+  // `data/config/dashboard.json`, shared by both writers below:
+  //  - `updateWidgetSettings` merges a patch into ONE widget's `settings`
+  //    blob (host.settings.patch(), the Settings popover's per-calendar
+  //    switches, unsubscribe).
+  //  - `updateWidgetLayout` replaces the whole `widgets` array (the layout
+  //    picker's enable/disable + reorder — Task 9).
+  // Both share `writeDashboardConfig`'s guard/optimistic-write/PUT/invalidate
+  // shell so there is one merge and one race domain no matter which slice of
+  // the document is being edited. The optimistic setQueryData is what makes
+  // a toggle feel instant AND is what pushes new values into host.settings
+  // subscribers immediately (the notify effect below watches this query).
+  //
+  // `buildNext` receives the CURRENT cached config — read at write time, not
+  // from a closure captured when the caller was created — and returns the
+  // full next config to PUT, or null for "nothing to write". Two things
+  // matter here:
+  //  1. Data safety: if the config query has no data (still pending, or
+  //     failed — the query never retries), `cached` is undefined and there
+  //     is no real on-disk config to merge onto. Writing anyway would PUT
+  //     `defaultDashboardConfig()` + edit, silently destroying the user's
+  //     actual widget order/settings. So this bails and drops the change
+  //     rather than ever writing a config not derived from loaded data,
+  //     nudging a refetch so a later attempt can succeed.
+  //  2. Race safety: because `buildNext` is called with a fresh cache read on
+  //     every invocation, two same-tick calls each see the other's
+  //     already-applied optimistic write (the first call's synchronous
+  //     `setQueryData` below runs before the second call's `getQueryData`,
+  //     since both stay synchronous up to their first `await`). That is what
+  //     lets `host.settings.patch()` (and the calendar chip row before it)
+  //     derive deltas — add/remove one id — instead of shipping a whole
+  //     array built from a stale render's state.
+  const writeDashboardConfig = useCallback(
+    async (buildNext: (current: DashboardConfig) => DashboardConfig | null, errorTitle: string) => {
+      const cached = queryClient.getQueryData<DashboardConfigResponse>(["/api/config/dashboard"]);
+      if (!cached?.config) {
+        console.warn("[app-shell] config not loaded; change dropped");
+        void queryClient.invalidateQueries({ queryKey: ["/api/config/dashboard"] });
+        return;
+      }
+      const next = buildNext(cached.config);
+      if (!next) return;
+
+      queryClient.setQueryData<DashboardConfigResponse>(["/api/config/dashboard"], {
+        config: next,
+        source: cached.source,
+      });
+
+      try {
+        await apiRequest("PUT", "/api/config/dashboard", next);
+      } catch (error) {
+        // Never swallow this silently on a kiosk: the optimistic state is
+        // about to be rolled back by the refetch below, so the user would
+        // otherwise just see their change snap back for no reason.
+        toast({
+          title: errorTitle,
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
+      } finally {
+        // Re-read the file the server actually wrote (or restore truth after
+        // a failed write).
+        await queryClient.invalidateQueries({ queryKey: ["/api/config/dashboard"] });
+      }
+    },
+    [queryClient, toast],
+  );
+
+  const updateWidgetSettings = useCallback(
+    (
+      widgetId: string,
+      buildPatch: (currentSettings: Record<string, unknown>) => Record<string, unknown> | null,
+    ) =>
+      writeDashboardConfig((current) => {
+        const currentSettings = current.widgets.find((w) => w.id === widgetId)?.settings ?? {};
+        const patch = buildPatch(currentSettings);
+        if (!patch) return null;
+        // Merge is pure + spec'd in client/src/lib/widget-config.spec.ts;
+        // null == this widget has no config entry, so nothing to write.
+        return applyWidgetSettingsPatch(current, widgetId, patch);
+      }, "Couldn't save settings"),
+    [writeDashboardConfig],
+  );
+
+  // Layout picker writes (Task 9): `mutateWidgets` receives the CURRENT
+  // `widgets` array and returns the next one (reordered/toggled), or null
+  // for "nothing to write" — same guard/race-safety properties as
+  // `updateWidgetSettings` above, since both go through
+  // `writeDashboardConfig`. Never builds from defaults; always PUTs the
+  // whole loaded document back with just the widgets array edited.
+  const updateWidgetLayout = useCallback(
+    (mutateWidgets: (widgets: DashboardConfig["widgets"]) => DashboardConfig["widgets"] | null) =>
+      writeDashboardConfig((current) => {
+        const nextWidgets = mutateWidgets(current.widgets);
+        if (!nextWidgets) return null;
+        return { ...current, widgets: nextWidgets };
+      }, "Couldn't save layout"),
+    [writeDashboardConfig],
+  );
+
   // --- Widget hosts -------------------------------------------------------
   // One WidgetHost per enabled built-in widget, owned by the shell (per
   // WidgetHostMount's contract: it never creates/disposes hosts itself —
@@ -221,6 +351,10 @@ export default function AppShell() {
           listeners.add(cb);
           return () => listeners!.delete(cb);
         },
+        // `id` is captured from this loop iteration, not supplied by the
+        // widget — a widget calling host.settings.patch() can only ever
+        // target its own settings entry (see widget-host-services.ts).
+        patchSettings: (build) => void updateWidgetSettings(id, build),
         setBadge: (count) => {
           setBadges((prev) => (prev[id] === count ? prev : { ...prev, [id]: count }));
         },
@@ -247,7 +381,7 @@ export default function AppShell() {
     }
 
     if (changed) setHostsVersion((v) => v + 1);
-  }, [enabledBuiltinIds, handleSleep]);
+  }, [enabledBuiltinIds, handleSleep, updateWidgetSettings]);
 
   // Notify each widget's settings subscribers when the dashboard config
   // actually changes (real query data only — never fire off the initial
@@ -260,81 +394,48 @@ export default function AppShell() {
     });
   }, [configQuery.data, dashboardConfig]);
 
-  // --- Widget settings writes ---------------------------------------------
-  // `host.settings` is read-only by contract (no `settings.set()` in
-  // apiVersion 1), so the shell owns the single read-merge-PUT-invalidate
-  // implementation for `data/config/dashboard.json`. Everything that writes
-  // widget settings — the Settings popover's per-calendar switches, the
-  // calendar's own header chips (via CALENDAR_SETTINGS_PATCH_EVENT), and
-  // unsubscribe — funnels through here, so there is one merge and one race
-  // domain. The optimistic setQueryData is what makes a chip tap feel
-  // instant AND is what pushes the new values into host.settings
-  // subscribers immediately (the notify effect above watches this query).
-  //
-  // `buildPatch` receives the target widget's CURRENT settings — read from
-  // the query cache at write time, not from a closure captured when the
-  // caller was created — and returns the patch to merge, or null for
-  // "nothing to write". Two callbacks matter here:
-  //  1. Data safety: if the config query has no data (still pending, or
-  //     failed — the query never retries), `cached` is undefined and there
-  //     is no real on-disk config to merge onto. Writing anyway would PUT
-  //     `defaultDashboardConfig()` + patch, silently destroying the user's
-  //     actual widget order/settings. So this bails and drops the change
-  //     rather than ever writing a config not derived from loaded data,
-  //     nudging a refetch so a later attempt can succeed.
-  //  2. Race safety: because `buildPatch` is called with a fresh cache read
-  //     on every invocation, two same-tick calls each see the other's
-  //     already-applied optimistic write (the first call's synchronous
-  //     `setQueryData` below runs before the second call's `getQueryData`,
-  //     since both stay synchronous up to their first `await`). That lets
-  //     callers derive deltas (add/remove one id) instead of shipping a
-  //     whole array built from a stale render's state — see
-  //     shell-bridge.ts's CalendarSettingsPatchDetail doc for the concrete
-  //     failure mode this avoids.
-  const updateWidgetSettings = useCallback(
-    async (
-      widgetId: string,
-      buildPatch: (currentSettings: Record<string, unknown>) => Record<string, unknown> | null,
-    ) => {
-      const cached = queryClient.getQueryData<DashboardConfigResponse>(["/api/config/dashboard"]);
-      if (!cached?.config) {
-        console.warn("[app-shell] config not loaded; settings change dropped");
-        void queryClient.invalidateQueries({ queryKey: ["/api/config/dashboard"] });
-        return;
-      }
-      const current = cached.config;
-      const currentSettings = current.widgets.find((w) => w.id === widgetId)?.settings ?? {};
-      const patch = buildPatch(currentSettings);
-      if (!patch) return;
-
-      // Merge is pure + spec'd in client/src/lib/widget-config.spec.ts;
-      // null == this widget has no config entry, so nothing to write.
-      const next = applyWidgetSettingsPatch(current, widgetId, patch);
-      if (!next) return;
-
-      queryClient.setQueryData<DashboardConfigResponse>(["/api/config/dashboard"], {
-        config: next,
-        source: cached.source,
+  // --- Layout picker writes (Task 9) --------------------------------------
+  // Both callbacks operate on the PICKER'S displayed order (installed,
+  // builtin-backed ids — widgetPickerEntries above), not necessarily
+  // physically adjacent positions in the underlying `widgets` array: a
+  // configured-but-uninstalled id (folder-drop, Phase 4) could sit between
+  // two displayed entries. Resolving "the widget below this one" through the
+  // displayed id list first, then swapping THOSE two entries' actual array
+  // positions, keeps reorder correct even if that ever happens.
+  const moveWidget = useCallback(
+    (id: string, direction: -1 | 1) => {
+      void updateWidgetLayout((widgets) => {
+        const displayedIds = widgets.filter((w) => builtinById.has(w.id)).map((w) => w.id);
+        const pos = displayedIds.indexOf(id);
+        if (pos === -1) return null;
+        const targetPos = pos + direction;
+        if (targetPos < 0 || targetPos >= displayedIds.length) return null;
+        const otherId = displayedIds[targetPos];
+        const idxA = widgets.findIndex((w) => w.id === id);
+        const idxB = widgets.findIndex((w) => w.id === otherId);
+        const next = [...widgets];
+        [next[idxA], next[idxB]] = [next[idxB], next[idxA]];
+        return next;
       });
-
-      try {
-        await apiRequest("PUT", "/api/config/dashboard", next);
-      } catch (error) {
-        // Never swallow this silently on a kiosk: the optimistic state is
-        // about to be rolled back by the refetch below, so the user would
-        // otherwise just see their toggle snap back for no reason.
-        toast({
-          title: "Couldn't save settings",
-          description: error instanceof Error ? error.message : "Unknown error",
-          variant: "destructive",
-        });
-      } finally {
-        // Re-read the file the server actually wrote (or restore truth after
-        // a failed write).
-        await queryClient.invalidateQueries({ queryKey: ["/api/config/dashboard"] });
-      }
     },
-    [queryClient, toast],
+    [updateWidgetLayout, builtinById],
+  );
+
+  // Guarded client-side too (not just by the picker disabling the switch):
+  // the schema requires at least one enabled widget, so refuse to ever build
+  // a config that would violate it.
+  const toggleWidgetEnabled = useCallback(
+    (id: string, enabled: boolean) => {
+      void updateWidgetLayout((widgets) => {
+        if (!enabled) {
+          const target = widgets.find((w) => w.id === id);
+          const enabledCount = widgets.filter((w) => w.enabled).length;
+          if (target?.enabled && enabledCount <= 1) return null;
+        }
+        return widgets.map((w) => (w.id === id ? { ...w, enabled } : w));
+      });
+    },
+    [updateWidgetLayout],
   );
 
   // --- Calendar visibility settings (ratified delta 2) ---------------------
@@ -408,25 +509,11 @@ export default function AppShell() {
     [updateWidgetSettings],
   );
 
-  // Calendar chip taps arrive as a window event (the widget has no props and
-  // no settings-write capability) — see shell-bridge.ts. The event carries a
-  // delta (`{ key, calendarId, present }`), not a pre-built array, so this
-  // reads the CURRENT list for that key from the cache snapshot
-  // `updateWidgetSettings` takes at write time rather than trusting whatever
-  // array the widget had in view when it dispatched.
-  useEffect(() => {
-    const handleSettingsPatch = (event: Event) => {
-      const detail = (event as CustomEvent<CalendarSettingsPatchDetail>).detail;
-      if (!detail?.key || !detail.calendarId) return;
-      const { key, calendarId, present } = detail;
-      void updateWidgetSettings(CALENDAR_WIDGET_ID, (currentSettings) => {
-        const ids = toCalendarIdSet(currentSettings[key]);
-        return { [key]: withCalendarId(ids, calendarId, present) };
-      });
-    };
-    window.addEventListener(CALENDAR_SETTINGS_PATCH_EVENT, handleSettingsPatch);
-    return () => window.removeEventListener(CALENDAR_SETTINGS_PATCH_EVENT, handleSettingsPatch);
-  }, [updateWidgetSettings]);
+  // Calendar chip taps used to arrive as a window event (CALENDAR_SETTINGS_
+  // PATCH_EVENT) — the widget now calls host.settings.patch() directly
+  // (founder-ratified 2026-08-19), which is wired straight to
+  // updateWidgetSettings above via the per-host `patchSettings` option. No
+  // shell-side listener needed any more.
 
   // The power-saving overlay stays shell-owned, but widgets need to know it
   // is up (the calendar suppresses its event-form/auth dialogs while dimmed
@@ -496,6 +583,9 @@ export default function AppShell() {
               window.dispatchEvent(new CustomEvent(CALENDAR_SUBSCRIBE_SUCCESS_EVENT))
             }
             onCalendarRemoved={handleCalendarRemoved}
+            widgetPickerEntries={widgetPickerEntries}
+            onToggleWidget={toggleWidgetEnabled}
+            onMoveWidget={moveWidget}
           />
         ) : undefined}
       />
