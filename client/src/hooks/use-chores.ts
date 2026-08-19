@@ -1,5 +1,4 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { useAppState } from "@/hooks/use-app-state";
 import { useWidgetState } from "@/hooks/use-widget-state";
 import type { WidgetHost } from "@/widgets/types";
 import {
@@ -26,10 +25,14 @@ function emptyState(): ChoresState {
   return { people: [], tallyDate: localDateKey() };
 }
 
-/** Shared `{state, setState, isLoaded}` -> `UseChoresReturn` API, built once
- *  so `useChores()` (legacy `useAppState`) and `useChoresWithHost()` (new
- *  `useWidgetState`) stay byte-for-byte identical in the callbacks/derived
- *  values they expose — only the persistence layer underneath differs. */
+/** Shared `{state, setState, isLoaded}` -> `UseChoresReturn` API, used by
+ *  `useChoresWithHost()` below (built on `useWidgetState`). Kept as its own
+ *  function — rather than inlined — because it used to also back a legacy
+ *  `useChores()` variant (direct `useAppState`/`fetch`, pre-widget-host);
+ *  that variant is gone (deleted Task 10, nothing referenced it once Chores
+ *  moved onto the contract in Task 6), but this split still keeps the
+ *  callbacks/derived-values shape in one place if a future persistence layer
+ *  is ever added. */
 function useChoresApi(
   state: ChoresState,
   setState: Dispatch<SetStateAction<ChoresState>>,
@@ -76,38 +79,19 @@ function useChoresApi(
 }
 
 /**
- * Owns ChoresState for the whole app (hoisted in calendar.tsx so the rail
- * badge stays live regardless of which section is showing). Built on the
- * shared `useAppState` persistence hook (client/src/hooks/use-app-state.ts)
- * — see that file for the hardened load/persist/retry pattern. Runs the
- * midnight tally rollover on load and every 60s (the kiosk runs 24/7 across
- * midnight).
+ * Owns ChoresState for the Chores widget, built on `useWidgetState` over a
+ * widget host's public `storage` surface (client/src/widgets/chores/index.tsx
+ * is the only caller). Existing `app_state` data round-trips bit-for-bit
+ * through the host's `chores` legacy-key alias (see
+ * client/src/lib/widget-host-services.ts). Runs the midnight tally rollover
+ * on load and every 60s (the kiosk runs 24/7 across midnight).
  *
- * Superseded by `useChoresWithHost` now that Chores runs as a contract
- * widget (client/src/widgets/chores/index.tsx) — left in place per the
- * phase-3 migration plan even though nothing references it anymore
- * (deletion is a later task).
- */
-export function useChores() {
-  const { state, setState, isLoaded } = useAppState<ChoresState>({
-    key: STATE_KEY,
-    emptyState,
-    normalize: normalizeChoresState,
-    transformOnLoad: (s) => rolloverTallies(s, localDateKey()),
-    pollTransformMs: ROLLOVER_CHECK_MS,
-  });
-
-  return useChoresApi(state, setState, isLoaded);
-}
-
-/**
- * Same `UseChoresReturn` shape as `useChores()`, but built on
- * `useWidgetState` over a widget host's public `storage` surface instead of
- * the direct `useAppState`/`fetch` path — this is what the Chores widget
- * (client/src/widgets/chores/index.tsx) actually uses. Identical
- * emptyState/normalize/rollover config, so existing `app_state` data (read
- * through the host's `chores` legacy-key alias, see
- * client/src/lib/widget-host-services.ts) round-trips bit-for-bit.
+ * Formerly paired with a hoisted `useChores()` (direct `useAppState`/`fetch`,
+ * pre-widget-host) that lived in calendar.tsx so the nav-rail badge stayed
+ * live regardless of section. That variant, and the `useAppState` hook it
+ * was built on, were deleted in Task 10 once WidgetHostMount's keep-alive
+ * (client/src/components/widget-host-mount.tsx) made hoisting unnecessary —
+ * the badge is now fed by `host.ui.setBadge` instead (see app-shell.tsx).
  */
 export function useChoresWithHost(host: WidgetHost) {
   const { state, setState, isLoaded } = useWidgetState<ChoresState>(host, {
@@ -120,4 +104,4 @@ export function useChoresWithHost(host: WidgetHost) {
   return useChoresApi(state, setState, isLoaded);
 }
 
-export type UseChoresReturn = ReturnType<typeof useChores>;
+export type UseChoresReturn = ReturnType<typeof useChoresApi>;

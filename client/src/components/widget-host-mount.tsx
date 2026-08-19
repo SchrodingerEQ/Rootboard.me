@@ -52,11 +52,16 @@ const REFRESH_TICK_MS = 30_000;
 /**
  * Mounts every enabled widget once and keeps instances alive across section
  * switches (display-hidden, not unmounted) — this is what preserves live
- * nav badges, debounce timers, and in-memory cooldowns across navigation,
- * per CONTRACT.md §3's keep-alive guarantee.
+ * nav badges and in-memory-only widget state (e.g. dinner's vote cooldown,
+ * client/src/hooks/use-dinner.ts) across navigation, per CONTRACT.md §3's
+ * keep-alive guarantee.
  *
- * Nothing imports this component yet (Task 4) — it starts being exercised
- * for real once built-in widgets exist (Task 6+).
+ * A widget's PERSISTED-state debounce timer does NOT depend on this: it
+ * lives inside that widget's `AppStateClient` instance (client/src/lib/
+ * app-state-client.ts), owned by app-shell's `hostsRef` for as long as the
+ * widget is enabled — independent of whether WidgetHostMount currently has
+ * it mounted. Even if this component unmounted/remounted widgets on every
+ * section switch, a pending debounced PUT would still survive.
  */
 export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
   const containerRefs = useRef(new Map<string, HTMLDivElement>());
@@ -104,15 +109,24 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
       scheduler.setOnline(navigator.onLine);
       // A widget can now be mounted mid-session (the layout picker enabling
       // it, Task 9) instead of only at startup — so "is this the active
-      // section" is no longer enough on its own: if the screensaver is
-      // currently dimmed, this entry must come up hidden even when it
-      // happens to be the active id (e.g. it becomes the fallback section
-      // right as it's enabled). `awake ⇒ false` mirrors the screensaver
-      // dim/wake handler below, which drives every OTHER mounted widget the
-      // same way. Explicitly calling onVisibilityChange(false) here (rather
-      // than relying on the widget's own default) is a deliberate belt: a
-      // future widget's internal default isn't contract, so a freshly
-      // mounted active-while-dimmed entry gets told "hidden" for real.
+      // section" is no longer enough on its own: if `awakeRef` is currently
+      // false, this entry must come up hidden even when it happens to be the
+      // active id (e.g. it becomes the fallback section right as it's
+      // enabled). `awake ⇒ false` mirrors the screensaver dim/wake handler
+      // below, which drives every OTHER mounted widget the same way.
+      // Explicitly calling onVisibilityChange(false) here (rather than
+      // relying on the widget's own default) is a deliberate belt: a future
+      // widget's internal default isn't contract, so a freshly mounted
+      // active-while-dimmed entry gets told "hidden" for real.
+      //
+      // Caveat inherited from `awakeRef` itself: it only tracks the
+      // `screensaver-state-change` event, i.e. the AUTO screensaver
+      // (useScreensaver's inactivity timeout). Manual sleep
+      // (host.ui.sleep() -> app-shell's handleSleep -> setIsPowerSaving)
+      // does not dispatch that event, so `awakeRef` stays true and a widget
+      // mounted while manually put to sleep comes up visible — a pre-
+      // existing asymmetry (docs/SPEC.md §6 quirks index), not something
+      // this mid-session-mount handling introduced or fixes.
       const isActiveNow = entry.manifest.id === activeIdRef.current;
       const initiallyVisible = isActiveNow && awakeRef.current;
       scheduler.setVisible(initiallyVisible);
