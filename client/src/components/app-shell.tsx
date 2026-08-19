@@ -424,7 +424,7 @@ export default function AppShell() {
     if (!configQuery.data) return;
     Array.from(settingsListenersRef.current.entries()).forEach(([id, listeners]) => {
       const settings = dashboardConfig.widgets.find((w) => w.id === id)?.settings ?? {};
-      listeners.forEach((cb) => cb(settings));
+      listeners.forEach((cb) => cb({ ...settings })); // Clone to prevent cache mutations
     });
   }, [configQuery.data, dashboardConfig]);
 
