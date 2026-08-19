@@ -53,27 +53,61 @@ export default function AppShell() {
   });
   const dashboardConfig = configQuery.data?.config ?? defaultConfig;
 
-  // Once the real config has loaded, fall back to defaultWidget if the
-  // localStorage-remembered (or default "calendar") section isn't a
-  // currently-enabled widget id — mirrors CONTRACT.md §5: "defaultWidget
-  // is what survives a browser reset."
-  useEffect(() => {
-    if (!configQuery.data) return;
-    const enabledIds = dashboardConfig.widgets.filter((w) => w.enabled).map((w) => w.id);
-    if (enabledIds.includes(section)) return;
-    // Schema only guarantees SOME widget is enabled, not that defaultWidget
-    // itself is one of them — fall back to the first enabled id in that
-    // (config-authoring-error) case so this can't loop forever re-setting
-    // section to a defaultWidget that will never be in enabledIds.
-    const fallback = enabledIds.includes(dashboardConfig.defaultWidget)
-      ? dashboardConfig.defaultWidget
-      : enabledIds[0];
-    if (fallback && fallback !== section) setSection(fallback);
-  }, [configQuery.data, dashboardConfig, section]);
-
   // BUILTIN_WIDGETS is a static module-level constant — this map never
   // needs to be rebuilt after first render.
   const builtinById = useMemo(() => new Map(BUILTIN_WIDGETS.map((w) => [w.manifest.id, w])), []);
+
+  // Config entries that can actually RENDER a pane: enabled AND either
+  // ported to the widget contract (BUILTIN_WIDGETS) or covered by
+  // LEGACY_NAV_META (calendar, dinner). An id enabled in config but not
+  // installed (e.g. a hand-edited data/config/dashboard.json referencing a
+  // widget that isn't built) is excluded here — this is the exact set
+  // navItems renders from below, and the ONLY set a stored/active
+  // `section` should ever be validated against (see fallback effect
+  // below). Extracted so navItems and that effect share one resolution
+  // instead of two independently maintained lists drifting apart.
+  const renderableEntries = useMemo(() => {
+    const entries: Array<{ id: string; label: string; icon: NavRailItem["icon"] }> = [];
+    for (const w of dashboardConfig.widgets) {
+      if (!w.enabled) continue;
+      const builtin = builtinById.get(w.id);
+      if (builtin) {
+        entries.push({ id: w.id, label: builtin.manifest.name, icon: builtin.navIcon ?? DEFAULT_NAV_ICON });
+        continue;
+      }
+      const legacy = LEGACY_NAV_META[w.id];
+      if (legacy) entries.push({ id: w.id, label: legacy.label, icon: legacy.icon });
+    }
+    return entries;
+  }, [dashboardConfig, builtinById]);
+
+  const renderableIds = useMemo(() => renderableEntries.map((e) => e.id), [renderableEntries]);
+
+  // Fall back to defaultWidget if the localStorage-remembered (or default
+  // "calendar") section can't actually render — mirrors CONTRACT.md §5:
+  // "defaultWidget is what survives a browser reset." Validated against
+  // renderableIds (not just "enabled in config") so an id that's enabled
+  // but not installed (BUILTIN_WIDGETS-missing, non-legacy — reachable via
+  // a hand-edited data/config/dashboard.json, a supported SSH workflow)
+  // can't leave `section` pointing at a pane that never renders, which
+  // would otherwise blank the app permanently. Runs even before/without a
+  // loaded config: dashboardConfig already falls back to
+  // defaultDashboardConfig() while configQuery is pending, so
+  // renderableIds is never empty (calendar/chores/dinner) and a garbage
+  // localStorage value gets corrected immediately rather than left
+  // unvalidated for the whole session.
+  useEffect(() => {
+    if (renderableIds.includes(section)) return;
+    // Schema only guarantees SOME widget is enabled, not that defaultWidget
+    // itself is renderable — fall back to the first renderable id in that
+    // (config-authoring-error) case, then to "calendar" as a last resort,
+    // so this can't loop forever re-setting section to something that will
+    // never be in renderableIds.
+    const fallback = renderableIds.includes(dashboardConfig.defaultWidget)
+      ? dashboardConfig.defaultWidget
+      : renderableIds[0] ?? "calendar";
+    if (fallback !== section) setSection(fallback);
+  }, [renderableIds, dashboardConfig, section]);
 
   // Config ids that are both enabled AND actually ported to the widget
   // contract (i.e. have a BUILTIN_WIDGETS entry) — this is what drives
@@ -350,32 +384,18 @@ export default function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabledBuiltinIds, builtinById, hostsVersion]);
 
-  // Nav-rail items, in config order: a BUILTIN_WIDGETS entry (chores) uses
-  // its manifest name + registry navIcon; an id not yet ported to the
-  // widget contract (calendar, dinner) falls back to LEGACY_NAV_META so it
-  // keeps rendering with today's exact icon/label; any other unknown id
-  // (references a widget that isn't installed) is skipped in v1.
-  const navItems = useMemo<NavRailItem[]>(() => {
-    const items: NavRailItem[] = [];
-    for (const w of dashboardConfig.widgets) {
-      if (!w.enabled) continue;
-      const builtin = builtinById.get(w.id);
-      if (builtin) {
-        items.push({
-          id: w.id,
-          label: builtin.manifest.name,
-          icon: builtin.navIcon ?? DEFAULT_NAV_ICON,
-          badgeCount: badges[w.id] ?? null,
-        });
-        continue;
-      }
-      const legacy = LEGACY_NAV_META[w.id];
-      if (legacy) {
-        items.push({ id: w.id, label: legacy.label, icon: legacy.icon, badgeCount: badges[w.id] ?? null });
-      }
-    }
-    return items;
-  }, [dashboardConfig, builtinById, badges]);
+  // Nav-rail items, in config order — built from renderableEntries above
+  // (a BUILTIN_WIDGETS entry like chores uses its manifest name + registry
+  // navIcon; a not-yet-ported id like calendar/dinner uses LEGACY_NAV_META;
+  // an unknown/uninstalled id was already excluded there) plus per-widget
+  // badge counts. Kept as its own memo, rather than folded into
+  // renderableEntries, so a badge count change doesn't force
+  // renderableEntries/renderableIds — and therefore the section-fallback
+  // effect above — to recompute.
+  const navItems = useMemo<NavRailItem[]>(
+    () => renderableEntries.map((e) => ({ ...e, badgeCount: badges[e.id] ?? null })),
+    [renderableEntries, badges],
+  );
 
   return (
     <div className="h-screen flex bg-background">

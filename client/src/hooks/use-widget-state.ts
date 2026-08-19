@@ -24,6 +24,61 @@ export interface UseWidgetStateResult<T> {
   isLoaded: boolean;
 }
 
+// --- Pure decision kernel ---------------------------------------------
+//
+// No React renderer exists in this repo's test setup, so the hook itself
+// can't be exercised directly (see use-widget-state.spec.ts). These three
+// functions carry ALL of the hook's non-trivial decision logic and take no
+// `host`/storage reference at all — so by construction none of them can
+// call `host.storage.set()`. The hook below is thin wiring around them:
+// each call site is responsible for invoking `host.storage.set()` (the
+// side effect) itself, only when the kernel reports `changed: true`. That
+// caller contract — "set on mutation only, never on load" — is exactly
+// what's asserted from the outside in the spec.
+
+/** Resolves what state a load should produce: `null` (host had nothing
+ *  stored yet) becomes `emptyState()`; anything else is defensively
+ *  coerced via `normalize`. `transformOnLoad`, if given, is applied last
+ *  in both cases (e.g. midnight tally rollover already due at load time).
+ *  Pure — has no access to storage, so it cannot itself persist anything;
+ *  the caller (the hook's load effect) must never call `storage.set` with
+ *  this result, only `setState`-the-React-setter. */
+export function resolveLoadedState<T>(
+  raw: unknown,
+  { emptyState, normalize, transformOnLoad }: Pick<UseWidgetStateConfig<T>, "emptyState" | "normalize" | "transformOnLoad">,
+): T {
+  let loaded = raw === null ? emptyState() : normalize(raw);
+  if (transformOnLoad) loaded = transformOnLoad(loaded);
+  return loaded;
+}
+
+/** Resolves a `SetStateAction<T>` (either a plain value or a React-style
+ *  functional updater) against the current state, exactly like React's own
+ *  `setState` would. Extracted so the resolved value — the object that
+ *  actually gets mirrored to `host.storage.set()` — can be asserted
+ *  directly instead of only indirectly through hook behavior. */
+export function resolveSetStateAction<T>(action: SetStateAction<T>, prev: T): T {
+  return typeof action === "function" ? (action as (prev: T) => T)(prev) : action;
+}
+
+export interface MutationResult<T> {
+  value: T;
+  /** False iff `next` is reference-equal to `prev` — the shared "no-op"
+   *  bailout both `setState` and the poll-transform tick rely on. */
+  changed: boolean;
+}
+
+/** Compares a candidate next value against the previous one and reports
+ *  whether it actually changed. Both `setState` (candidate = the resolved
+ *  `SetStateAction`) and the poll-transform tick (candidate =
+ *  `transformOnLoad(prev)`) route through this so "same reference -> no
+ *  persist, no state churn" is one rule instead of two hand-duplicated
+ *  `=== ` checks. The caller mirrors to `host.storage.set(value)` iff
+ *  `changed` is true; this function itself never touches storage. */
+export function resolveMutation<T>(prev: T, next: T): MutationResult<T> {
+  return next === prev ? { value: prev, changed: false } : { value: next, changed: true };
+}
+
 /**
  * Gives a widget the old `useAppState` ergonomics (client/src/hooks/
  * use-app-state.ts), rebuilt on top of the PUBLIC `host.storage` surface
@@ -74,8 +129,7 @@ export function useWidgetState<T>(
     let cancelled = false;
     host.storage.get<T>().then((value) => {
       if (cancelled) return;
-      let loaded = value === null ? emptyState() : normalize(value);
-      if (transformRef.current) loaded = transformRef.current(loaded);
+      const loaded = resolveLoadedState(value, { emptyState, normalize, transformOnLoad: transformRef.current });
       setStateInternal(loaded);
       loadedRef.current = true;
       setIsLoaded(true);
@@ -102,10 +156,9 @@ export function useWidgetState<T>(
     const id = setInterval(() => {
       if (!loadedRef.current || !transformRef.current) return;
       setStateInternal((prev) => {
-        const next = transformRef.current!(prev);
-        if (next === prev) return prev;
-        host.storage.set(next);
-        return next;
+        const { value, changed } = resolveMutation(prev, transformRef.current!(prev));
+        if (changed) host.storage.set(value);
+        return value;
       });
     }, pollTransformMs);
     return () => clearInterval(id);
@@ -114,10 +167,9 @@ export function useWidgetState<T>(
   const setState: Dispatch<SetStateAction<T>> = useCallback(
     (next) => {
       setStateInternal((prev) => {
-        const resolved = typeof next === "function" ? (next as (prev: T) => T)(prev) : next;
-        if (resolved === prev) return prev;
-        host.storage.set(resolved);
-        return resolved;
+        const { value, changed } = resolveMutation(prev, resolveSetStateAction(next, prev));
+        if (changed) host.storage.set(value);
+        return value;
       });
     },
     [host],
