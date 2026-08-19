@@ -74,6 +74,8 @@ sized the API surface is digested in "Repo facts" below.
 
 ### Phase 2 — Combined refactor: color sweep + decoupling
 
+→ Execution plan: [PHASE2-EXECUTION.md](PHASE2-EXECUTION.md)
+
 Pure refactor; **success test: the app is pixel-identical before and
 after**, all tests green. No feature work mixed in.
 
