@@ -1,7 +1,8 @@
-import { ClipboardCheck, type LucideIcon } from "lucide-react";
+import { ClipboardCheck, UtensilsCrossed, type LucideIcon } from "lucide-react";
 import { WIDGET_API_VERSION, widgetManifestSchema, type WidgetManifest } from "@shared/widget-manifest";
 import type { RootboardWidget } from "./types";
 import choresWidget, { manifest as choresManifest } from "./chores";
+import dinnerWidget, { manifest as dinnerManifest } from "./dinner";
 
 export interface BuiltinWidgetEntry {
   manifest: WidgetManifest;
@@ -11,14 +12,16 @@ export interface BuiltinWidgetEntry {
 
 /**
  * Built-in widgets, registered here as they're ported in Tasks 6-8
- * (chores, dinner, calendar). Calendar and dinner are still legacy-
- * rendered by AppShell until their own tasks land — AppShell's nav-rail
- * resolution falls back to a small hardcoded icon/label map
- * (client/src/components/nav-rail.tsx LEGACY_NAV_META) for any dashboard-
- * config id not found here.
+ * (chores, dinner, calendar). Calendar is still legacy-rendered by
+ * AppShell until its own task lands — AppShell's nav-rail resolution falls
+ * back to a small hardcoded icon/label map (client/src/components/
+ * nav-rail.tsx LEGACY_NAV_META) for any dashboard-config id not found here.
+ * Array order here is cosmetic only — nav-rail order comes from
+ * dashboard-config (CONTRACT.md §5), not from this array.
  */
 export const BUILTIN_WIDGETS: BuiltinWidgetEntry[] = [
   { manifest: choresManifest, widget: choresWidget, navIcon: ClipboardCheck },
+  { manifest: dinnerManifest, widget: dinnerWidget, navIcon: UtensilsCrossed },
 ];
 
 /**

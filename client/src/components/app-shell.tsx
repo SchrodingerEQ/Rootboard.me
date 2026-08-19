@@ -5,8 +5,6 @@ import { UpdateNotification } from "@/components/calendar/update-notification";
 import { NavRail, LEGACY_NAV_META, DEFAULT_NAV_ICON, type NavRailItem } from "@/components/nav-rail";
 import { CalendarSection } from "@/components/calendar/calendar-section";
 import { WidgetHostMount, type WidgetHostMountEntry } from "@/components/widget-host-mount";
-import DinnerPage from "@/pages/dinner";
-import { useDinner } from "@/hooks/use-dinner";
 import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
 import { useQuery } from "@tanstack/react-query";
@@ -59,7 +57,7 @@ export default function AppShell() {
 
   // Config entries that can actually RENDER a pane: enabled AND either
   // ported to the widget contract (BUILTIN_WIDGETS) or covered by
-  // LEGACY_NAV_META (calendar, dinner). An id enabled in config but not
+  // LEGACY_NAV_META (calendar). An id enabled in config but not
   // installed (e.g. a hand-edited data/config/dashboard.json referencing a
   // widget that isn't built) is excluded here — this is the exact set
   // navItems renders from below, and the ONLY set a stored/active
@@ -111,9 +109,8 @@ export default function AppShell() {
 
   // Config ids that are both enabled AND actually ported to the widget
   // contract (i.e. have a BUILTIN_WIDGETS entry) — this is what drives
-  // WidgetHostMount. Calendar/dinner are enabled-in-config but not yet
-  // built-in (Tasks 7-8), so they never appear here; they stay legacy-
-  // rendered below.
+  // WidgetHostMount. Calendar is enabled-in-config but not yet built-in
+  // (Task 8), so it never appears here; it stays legacy-rendered below.
   const enabledBuiltinIds = useMemo(
     () => dashboardConfig.widgets.filter((w) => w.enabled && builtinById.has(w.id)).map((w) => w.id),
     [dashboardConfig, builtinById],
@@ -177,13 +174,6 @@ export default function AppShell() {
     refetchOnWindowFocus: false,
     staleTime: 60 * 1000,
   });
-
-  // Hoisted here (rather than inside DinnerPage) so switching sections never
-  // unmounts the hook: its debounced persist effect would otherwise clear
-  // its pending PUT timer without flushing on unmount (losing a vote/edit
-  // made within the debounce window), and its in-memory vote cooldown would
-  // reset, letting the cooldown be bypassed by bouncing sections.
-  const dinner = useDinner();
 
   // Get calendars for the auto-enable-new-calendars effect below. Same
   // queryKey as CalendarSection's own calendars query, so react-query shares
@@ -385,9 +375,10 @@ export default function AppShell() {
   }, [enabledBuiltinIds, builtinById, hostsVersion]);
 
   // Nav-rail items, in config order — built from renderableEntries above
-  // (a BUILTIN_WIDGETS entry like chores uses its manifest name + registry
-  // navIcon; a not-yet-ported id like calendar/dinner uses LEGACY_NAV_META;
-  // an unknown/uninstalled id was already excluded there) plus per-widget
+  // (a BUILTIN_WIDGETS entry like chores/dinner uses its manifest name +
+  // registry navIcon; a not-yet-ported id like calendar uses
+  // LEGACY_NAV_META; an unknown/uninstalled id was already excluded there)
+  // plus per-widget
   // badge counts. Kept as its own memo, rather than folded into
   // renderableEntries, so a badge count change doesn't force
   // renderableEntries/renderableIds — and therefore the section-fallback
@@ -428,8 +419,6 @@ export default function AppShell() {
           onCalendarEventToggle={handleCalendarEventToggle}
           onRegisterRefresh={registerRefresh}
         />
-
-        {section === 'dinner' && <DinnerPage onSleep={handleSleep} dinner={dinner} />}
 
         <WidgetHostMount entries={widgetEntries} activeId={section} />
       </div>
