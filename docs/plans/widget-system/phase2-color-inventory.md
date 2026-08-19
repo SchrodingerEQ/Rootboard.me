@@ -44,7 +44,7 @@ points back to one of these. Recommendation given for each.
 
 | # | Question | Recommendation |
 |---|---|---|
-| **Q1** | **Value drift on Tailwind palette classes.** Mapping `text-gray-500` (#6b7280) → `text-rb-muted` (#9aa0aa) is *not* pixel-identical, and the same is true for every red/blue/green/amber class. Phase 0 called the sweep a "pure refactor, pixel-identical"; the Task 5 brief explicitly prescribes these mappings. Which wins? | **Harmonize** (accept the small shifts). The drift is confined to secondary dialog chrome — settings popover, update notification, auth dialog, event-details dialog, 404 page — none of which is in the primary kiosk view. Preserving Tailwind's exact grays would bake 9 arbitrary greys into the theme system and defeat the point. |
+| **Q1** | **Value drift on Tailwind palette classes.** Mapping `text-gray-500` (#6b7280) → `text-rb-muted` (#9aa0aa) is *not* pixel-identical, and the same is true for every red/blue/green/amber class. Phase 0 called the sweep a "pure refactor, pixel-identical"; the Task 5 brief explicitly prescribes these mappings. Which wins? | **Harmonize** (accept the small shifts). The drift is confined to secondary dialog chrome — settings popover, update notification, auth dialog, event-details dialog, 404 page — none of which is in the primary kiosk view. Preserving Tailwind's exact grays would bake 9 arbitrary greys into the theme system and defeat the point. **Scope: this question applies to EVERY Tailwind palette-class → rb-variable mapping in this document (all ~144 class occurrences across Areas B–H), not only rows previously marked — approve Q1 once and it governs them all.** |
 | **Q2** | **`#5b626d` — one token or two?** Pre-decided as `--rb-nav-inactive-ink`, but the same value is the standard control/label ink in ~20 non-nav sites (header buttons, dialog descriptions, mini-month arrows, chores/dinner header buttons). | Two names, one value: `--rb-ink-secondary: #5b626d` and `--rb-nav-inactive-ink: var(--rb-ink-secondary)`. Honors the pre-decision and lets a theme move the nav independently. |
 | **Q3** | **`#fdeae8` — nav active bg (pre-decided) vs. the Dinner "TODAY" pill** (`day-cell.tsx:53`). | Same pattern: `--rb-accent-wash: #fdeae8`, `--rb-nav-active-bg: var(--rb-accent-wash)`. (Note `--rb-today-wash` is a *different* value, #fff1ea — do not merge.) |
 | **Q4** | **`#2b3038` as a dark button/keyboard-key background** (7 sites) vs. as body ink (`--rb-ink`, 20+ sites). | Separate token `--rb-btn-dark-bg: #2b3038`. A dark theme will invert ink but must keep a dark-on-light button; collapsing them makes that impossible. |
@@ -77,6 +77,8 @@ points back to one of these. Recommendation given for each.
 - Tailwind palette classes → `rb` utilities from Task 6
   (`text-gray-500` → `text-rb-muted`, `bg-white` → `bg-rb-surface`,
   `border-gray-100` → `border-rb-grid-line`).
+
+Note: All Tailwind palette-class rows are governed by founder question **Q1** (value drift vs. exact-value aliases).
 
 Legend: **(E)** = existing variable reused · **(P)** = new, pre-decided/ratified ·
 **(N)** = new, proposed · **?** = see the question in column 4.
@@ -137,9 +139,9 @@ Legend: **(E)** = existing variable reused · **(P)** = new, pre-decided/ratifie
 | `calendar-header.tsx` | 166 | `hover:bg-[#15803d]` | sync button hover fill | `--rb-success-hover` (N) |
 | `calendar-header.tsx` | 166 | `text-white` | sync button label | `text-rb-on-color-ink` (N) |
 | `calendar-header.tsx` | 178 | `#8b919b` | sync-status meta ink | `--rb-muted` (E) **?Q10** |
-| `calendar-header.tsx` | 180 | `text-red-600` | sync-error icon | `text-rb-danger` (N) **?Q1** |
+| `calendar-header.tsx` | 180 | `text-red-600` | sync-error icon | `text-rb-danger` (N) |
 | `calendar-header.tsx` | 182 | `bg-emerald-500` | sync-ok dot | `bg-rb-success` (N) **?Q13** |
-| `calendar-header.tsx` | 190 | `text-red-600` | "Last sync failed" ink | `text-rb-danger` (N) **?Q1** |
+| `calendar-header.tsx` | 190 | `text-red-600` | "Last sync failed" ink | `text-rb-danger` (N) |
 | `calendar-header.tsx` | 207 | `#5b626d` | settings/secondary button ink | `--rb-ink-secondary` (N) |
 
 ### coming-up.tsx / mini-month.tsx / day-view.tsx
@@ -181,9 +183,9 @@ Legend: **(E)** = existing variable reused · **(P)** = new, pre-decided/ratifie
 
 | File | Line | Literal | Role | Variable |
 |---|---|---|---|---|
-| `event-details-dialog.tsx` | 35, 45, 66 | `text-gray-900` ×3 | dialog title / primary ink | `text-rb-ink` (E) **?Q1** |
-| `event-details-dialog.tsx` | 43, 64, 85 | `text-gray-500` ×3 | metadata icon ink | `text-rb-muted` (E) **?Q1** |
-| `event-details-dialog.tsx` | 49, 54, 76 | `text-gray-600` ×3 | secondary body ink | `text-rb-ink-secondary` (N) **?Q1** |
+| `event-details-dialog.tsx` | 35, 45, 66 | `text-gray-900` ×3 | dialog title / primary ink | `text-rb-ink` (E) |
+| `event-details-dialog.tsx` | 43, 64, 85 | `text-gray-500` ×3 | metadata icon ink | `text-rb-muted` (E) |
+| `event-details-dialog.tsx` | 49, 54, 76 | `text-gray-600` ×3 | secondary body ink | `text-rb-ink-secondary` (N) |
 | `event-details-dialog.tsx` | 89 | `text-white` | calendar chip label | `text-rb-on-color-ink` (N) |
 | `event-details-dialog.tsx` | 91 | `'#4285f4'` | calendar color fallback | `EVENT_FALLBACK_COLOR` **?Q11** |
 | `event-form-dialog.tsx` | 431 | `rgba(242,101,90,.35)` | save button shadow | `--rb-shadow-accent` (N) |
@@ -191,7 +193,7 @@ Legend: **(E)** = existing variable reused · **(P)** = new, pre-decided/ratifie
 | `event-item.tsx` | 35 | `"#2563eb"` | event color fallback | `EVENT_FALLBACK_COLOR` (P) |
 | `loading-indicator.tsx` | 11 | `bg-white` | toast surface | `bg-rb-surface` (E) |
 | `loading-indicator.tsx` | 14 | `#5b626d` | toast label ink | `--rb-ink-secondary` (N) |
-| `auth-dialog.tsx` | 32 | `text-red-500` | error icon | `text-rb-danger` (N) **?Q1** |
+| `auth-dialog.tsx` | 32 | `text-red-500` | error icon | `text-rb-danger` (N) |
 | `auth-dialog.tsx` | 42 | `bg-red-50` / `border-red-200` | error detail panel | `bg-rb-danger-wash` / `border-rb-danger-border` (N) **?Q14** |
 | `auth-dialog.tsx` | 43 | `text-red-700` | error detail text | `text-rb-danger-ink` (N) |
 | `auth-dialog.tsx` | 47 | `bg-blue-50` / `border-blue-200` / `text-blue-700` | setup-help panel | `bg-rb-info-wash` / `border-rb-info-border` / `text-rb-info-ink` (N) **?Q14** |
@@ -205,7 +207,7 @@ Legend: **(E)** = existing variable reused · **(P)** = new, pre-decided/ratifie
 | `update-notification.tsx` | 88 | `text-green-700` | success message | `text-rb-success-ink` (N) |
 | `update-notification.tsx` | 93 | `text-red-700` | error message | `text-rb-danger-ink` (N) |
 | `update-notification.tsx` | 95 | `bg-red-50` / `text-red-600` | error detail block | `bg-rb-danger-wash` / `text-rb-danger` (N) |
-| `update-notification.tsx` | 108 | `bg-gray-50` | version panel fill | `bg-rb-canvas` (E) **?Q1** |
+| `update-notification.tsx` | 108 | `bg-gray-50` | version panel fill | `bg-rb-canvas` (E) |
 | `update-notification.tsx` | 110, 114, 119, 127 | `text-gray-600` ×3, `text-gray-700` | version labels / release notes | `text-rb-ink-secondary` (N) |
 | `update-notification.tsx` | 127 | `bg-blue-50` | release-notes panel | `bg-rb-info-wash` (N) |
 | `update-notification.tsx` | 167 | `bg-blue-600` / `hover:bg-blue-700` | update button | `bg-rb-info` / `hover:bg-rb-info-hover` (N) |
@@ -369,11 +371,11 @@ Legend: **(E)** = existing variable reused · **(P)** = new, pre-decided/ratifie
 | `on-screen-keyboard.tsx` | 243 | `text-white` | active key label | `text-rb-on-color-ink` (N) |
 | `on-screen-keyboard.tsx` | 245, 246 | `border-[#d5d0c6]` ×2 | key border | `--rb-key-border` (N) |
 | `on-screen-keyboard.tsx` | 245 | `bg-[#d9d5cc]` | ctrl key fill | `--rb-key-ctrl-bg` (N) **?Q8** |
-| `on-screen-keyboard.tsx` | 245 | `text-gray-800` | ctrl key label | `text-rb-ink-soft` (N) **?Q1** |
+| `on-screen-keyboard.tsx` | 245 | `text-gray-800` | ctrl key label | `text-rb-ink-soft` (N) |
 | `on-screen-keyboard.tsx` | 245 | `group-active:bg-[#cbc6bb]` | ctrl key press fill | `--rb-key-ctrl-active-bg` (N) |
 | `on-screen-keyboard.tsx` | 246 | `bg-white` | char key fill | `bg-rb-surface` (E) |
-| `on-screen-keyboard.tsx` | 246 | `text-gray-900` | char key label | `text-rb-ink` (E) **?Q1** |
-| `on-screen-keyboard.tsx` | 246 | `group-active:bg-gray-100` | char key press fill | `bg-rb-chip` (E) **?Q1** |
+| `on-screen-keyboard.tsx` | 246 | `text-gray-900` | char key label | `text-rb-ink` (E) |
+| `on-screen-keyboard.tsx` | 246 | `group-active:bg-gray-100` | char key press fill | `bg-rb-chip` (E) |
 
 ---
 
@@ -406,7 +408,7 @@ Legend: **(E)** = existing variable reused · **(P)** = new, pre-decided/ratifie
 
 | File | Line | Literal | Role | Variable |
 |---|---|---|---|---|
-| `pages/not-found.tsx` | 6 | `bg-gray-50` | 404 page canvas | `bg-rb-canvas` (E) **?Q1** |
+| `pages/not-found.tsx` | 6 | `bg-gray-50` | 404 page canvas | `bg-rb-canvas` (E) |
 | `pages/not-found.tsx` | 10 | `text-red-500` | 404 alert icon | `text-rb-danger` (N) |
 | `pages/not-found.tsx` | 11 | `text-gray-900` | 404 heading | `text-rb-ink` (E) |
 | `pages/not-found.tsx` | 14 | `text-gray-600` | 404 body | `text-rb-ink-secondary` (N) |
