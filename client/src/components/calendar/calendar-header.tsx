@@ -95,7 +95,7 @@ export function CalendarHeader({
       // button that made the label dark-on-dark, i.e. invisible.
       className={`touch-button px-5 rounded-full text-base font-bold transition-colors h-[38px] ${
         currentView === view
-          ? 'bg-rb-btn-dark-bg text-rb-on-color-ink hover:bg-rb-btn-dark-bg hover:text-rb-on-color-ink'
+          ? 'bg-[var(--rb-btn-dark-bg)] text-rb-on-color-ink hover:bg-[var(--rb-btn-dark-bg)] hover:text-rb-on-color-ink'
           : 'text-rb-ink-secondary hover:bg-rb-surface hover:text-rb-ink-secondary'
       }`}
       onClick={() => onViewChange(view)}
