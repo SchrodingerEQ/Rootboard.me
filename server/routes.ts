@@ -1,4 +1,6 @@
 import type { Express } from "express";
+import express from "express";
+import path from "path";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
@@ -6,6 +8,7 @@ import { googleCalendarService } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
 import { getWeather } from "./services/weatherService";
 import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
+import { discoverWidgets } from "./services/widgetDiscovery";
 import { APP_VERSION } from "@shared/version";
 import { dashboardConfigSchema } from "@shared/dashboard-config";
 
@@ -398,6 +401,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to save dashboard config" });
     }
   });
+
+  // Folder-drop community widgets (Phase 4): re-scan widgets/ on every
+  // request (sideload a folder over SD card/SSH, then refresh the picker —
+  // no restart needed). Same-origin kiosk UI endpoint, no localhost-only
+  // guard, matching the other read routes above.
+  app.get("/api/widgets", (req, res) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
+    res.json(discoverWidgets());
+  });
+
+  // Serves sideloaded widget assets (entry scripts, icons) directly out of
+  // widgets/<id>/. Path traversal is contained two ways: express.static
+  // resolves requests within its root and refuses to serve outside it, and
+  // the manifest schema already rejects `..` segments in `entry`/`icon`.
+  app.use("/widgets", express.static(path.resolve("widgets"), { index: false }));
 
   const httpServer = createServer(app);
   return httpServer;
