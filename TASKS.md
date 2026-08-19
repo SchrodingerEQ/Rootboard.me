@@ -16,7 +16,10 @@
 - [ ] Write contribution guide + trust-model note (no sandbox in v1: widgets run with full access, install ones you trust) (added 2026-08-15)
 - [ ] Create awesome-rootboard list, seeded with first-party entries (added 2026-08-15)
 - [ ] Build one reference community widget in a separate repo, public API only (candidate: stock ticker or grocery list) (added 2026-08-15)
+- [ ] Fix stale-closure keyboard nav: the calendar keyboard effect captures `currentDate` with only `[currentView]` deps, so repeated ArrowLeft/Right presses navigate from a stale date (pre-existing, predates widget migration; an eslint-disable in widgets/calendar/index.tsx currently conceals it) (added 2026-08-19)
 - [ ] Fix duplicate calendar-color fallback: settings-menu.tsx:186-188 copy-pastes a hash with a different palette than lib/calendar-meta.ts getCalendarColor(), so uncolored calendars render different colors in Settings vs. views — replace local list+hash with getCalendarColor() (found in phase-2 inventory, Q12) (added 2026-08-19)
+- [ ] Phase-4-prep hardenings from the phase-3 final review (all sub-hour, become load-bearing when folder-drop lands): move validateBuiltinManifest out of registry.ts to break the registry↔widget import cycle; guard LEGACY_KEY_ALIASES lookup with Object.hasOwn (prototype-chain ids like "constructor"); CONTRACT wording — theme.subscribe may never fire without a theme engine, visibility callbacks may repeat values (implement idempotently) (added 2026-08-19)
+- [ ] Investigate React warning "Attempted to synchronously unmount a root while React was already rendering" (stack rooted at WidgetHostMount), reproducing on cold boot in dev even at HEAD before Task 9 (differential-tested via `git stash` + fresh dev-server restart) — predates the widget-picker work, not yet root-caused; leading suspect is the nested `createRoot()` roots inside widget `mount()` interacting with Vite dev-mode module updates, unconfirmed (added 2026-08-19)
 
 ## Deferred (recorded, not scheduled)
 

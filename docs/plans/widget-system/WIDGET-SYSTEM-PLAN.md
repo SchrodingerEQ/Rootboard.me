@@ -1,6 +1,6 @@
 # Rootboard Widget System — Combined Refactor & Build Plan
 
-**Status:** Phases 1-2 complete; Phases 3-5 not started.
+**Status:** Phases 1-3 complete; Phases 4-5 not started.
 **Decided:** 2026-08-19 (contract-shape choices founder-ratified this date)
 **Parent decision:** [0006 — Community-buildable widget system](../../decisions/0006-community-widget-system.md)
 **Contract spec:** [CONTRACT.md](CONTRACT.md)
@@ -101,7 +101,7 @@ per area in one visit:
 - **Harness:** add vitest + `npm test` first, so every sweep commit is
   gated.
 
-### Phase 3 — Widget host, config-as-text, first-party migration
+### Phase 3 — Widget host, config-as-text, first-party migration ✅
 
 The substantive build.
 

@@ -1,6 +1,6 @@
 # Rootboard Widget Contract — apiVersion 1
 
-**Status:** DRAFT — spec design complete, not yet implemented.
+**Status:** apiVersion 1 implemented for built-ins; folder-drop discovery/loading pending Phase 4.
 **Parent decision:** [0006 — Community-buildable widget system](../../decisions/0006-community-widget-system.md)
 **Shape decisions:** [0007 — Widget contract shape](../../decisions/0007-widget-contract-shape.md)
 **Plan:** [WIDGET-SYSTEM-PLAN.md](WIDGET-SYSTEM-PLAN.md)
@@ -51,7 +51,8 @@ server-side discovery and client-side built-in registration).
 `type ∈ { "string", "number", "boolean", "select" }`; `options`
 (`{value,label}[]`) required iff `type === "select"`. The host renders
 these in its settings UI and persists values in the dashboard config
-file — widgets never write their own settings.
+file — widgets never write their own settings except through
+`host.settings.patch()`, which the host validates and persists.
 
 Example:
 
@@ -138,10 +139,21 @@ interface WidgetHost {
 
   /** Read-only view of this widget instance's settings values (as
    *  declared in the manifest, edited in the host UI, persisted in the
-   *  dashboard config file). */
+   *  dashboard config file) — plus one write path, `patch()`. */
   settings: {
     get(): Record<string, unknown>;
     subscribe(cb: (next: Record<string, unknown>) => void): () => void;
+    /** The one way a widget may write its OWN settings (founder-ratified
+     *  2026-08-19). `build` receives this widget's CURRENT settings, read
+     *  fresh by the host at write time, and returns the partial patch to
+     *  merge in, or `null` to skip the write — deliberately a functional
+     *  builder rather than a plain delta object, so two patches racing in
+     *  the same tick (this widget's own rapid-fire calls, e.g.) each
+     *  observe the other's already-applied write instead of clobbering it.
+     *  The host binds `widgetId` at host-creation time — there is no id
+     *  parameter here, so a widget can never target another widget's
+     *  settings entry. */
+    patch(build: (current: Record<string, unknown>) => Record<string, unknown> | null): void;
   };
 
   /** Theme tokens are ambient CSS custom properties (--rb-*) inherited
@@ -159,6 +171,12 @@ interface WidgetHost {
   ui: {
     /** Numeric badge on this widget's nav-rail button (null clears). */
     setBadge(count: number | null): void;
+
+    /** Requests the shell's power-saving overlay (screensaver) immediately,
+     *  as if the kiosk had gone idle. The overlay itself is shell-owned —
+     *  this only triggers it; the widget has no control over dimming,
+     *  timing, or exit. */
+    sleep(): void;
   };
 }
 ```
@@ -167,8 +185,17 @@ interface WidgetHost {
 chores/dinner need `storage` (today: `app_state` blobs) and `setBadge`
 (today: hoisted hook feeding the rail badge); calendar and any
 weather-like widget need `fetch` and refresh cadence; theming needs the
-CSS variables; per-widget options need `settings`. Nothing first-party
-needs more, so nothing more is exposed.
+CSS variables; per-widget options need `settings`, including its
+`patch()` write path — added by founder ratification (2026-08-19) to
+retire a first-party-only window-event bridge (`CALENDAR_SETTINGS_PATCH_
+EVENT`) the calendar widget's header chips used before a real contract
+method existed; `ui.sleep()` was added
+by founder ratification because all three first-party widgets (calendar,
+chores, dinner) carry an explicit Sleep button that puts the kiosk into
+its power-saving overlay on demand — the overlay itself remains entirely
+shell-owned (widgets cannot dim, time, or dismiss it themselves; `sleep()`
+only requests that the shell start it, exactly as an idle timeout would).
+Nothing else first-party needs more, so nothing more is exposed.
 
 **Storage key mapping:** community widgets use `app_state` key
 `widget:<id>` (server whitelist becomes the legacy set `{chores,

@@ -1,0 +1,9 @@
+{
+  "id": "chores",
+  "name": "Chores",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.js",
+  "slots": ["section"],
+  "description": "Per-person daily chore checklists with a live open-chore nav badge."
+}

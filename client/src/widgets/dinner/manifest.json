@@ -1,0 +1,9 @@
+{
+  "id": "dinner",
+  "name": "Dinner",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.js",
+  "slots": ["section"],
+  "description": "Weekly dinner planner with meal voting and a saved-meals list."
+}

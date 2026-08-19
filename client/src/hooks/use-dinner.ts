@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { useAppState } from "@/hooks/use-app-state";
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useWidgetState } from "@/hooks/use-widget-state";
+import type { WidgetHost } from "@/widgets/types";
 import {
   type DinnerState,
   VOTE_COOLDOWN_MS,
@@ -20,27 +21,19 @@ const STATE_KEY = "dinner";
 const PURGE_CHECK_MS = 60_000;
 const COOLDOWN_TICK_MS = 1_000;
 
-/**
- * Owns DinnerState, built on the shared `useAppState` persistence hook
- * (client/src/hooks/use-app-state.ts). Lives inside DinnerPage (unlike
- * useChores, which is hoisted for the rail badge) — nothing outside the
- * Dinner section needs this state. Runs the weekly-rollover purge on load
- * and every 60s (the kiosk runs 24/7 and crosses week boundaries while
- * still mounted).
+/** Shared `{state, setState, isLoaded}` -> `UseDinnerReturn` API, used by
+ *  `useDinnerWithHost()` below (built on `useWidgetState`). Formerly also
+ *  backed a legacy `useDinner()` variant (direct `useAppState`/`fetch`,
+ *  pre-widget-host) — deleted in Task 10 once nothing referenced it anymore.
  *
- * `cooldownUntil` is intentionally NOT part of DinnerState — it's an
- * in-memory-only timestamp per the build plan, so it never persists and
- * never survives a reload (a fresh page load always starts vote-ready).
- */
-export function useDinner() {
-  const { state, setState, isLoaded } = useAppState<DinnerState>({
-    key: STATE_KEY,
-    emptyState: emptyDinnerState,
-    normalize: normalizeDinnerState,
-    transformOnLoad: (s) => purgeOldDinners(s, localDateKey()),
-    pollTransformMs: PURGE_CHECK_MS,
-  });
-
+ *  `cooldownUntil` is intentionally NOT part of DinnerState — it's an
+ *  in-memory-only timestamp per the build plan, so it never persists and
+ *  never survives a reload (a fresh page load always starts vote-ready).
+ *  Owning it here (rather than inline in `useDinnerWithHost`) keeps that
+ *  semantic in one place, including "not resettable by bouncing sections":
+ *  the widget only unmounts if the host itself is disposed, not on a mere
+ *  section switch (WidgetHostMount keeps it mounted-but-hidden). */
+function useDinnerApi(state: DinnerState, setState: Dispatch<SetStateAction<DinnerState>>, isLoaded: boolean) {
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(() => Date.now());
 
@@ -105,4 +98,28 @@ export function useDinner() {
   };
 }
 
-export type UseDinnerReturn = ReturnType<typeof useDinner>;
+/**
+ * Owns DinnerState for the Dinner widget, built on `useWidgetState` over a
+ * widget host's public `storage` surface (client/src/widgets/dinner/index.tsx
+ * is the only caller). Existing `app_state` data round-trips bit-for-bit
+ * through the host's `dinner` legacy-key alias (see
+ * client/src/lib/widget-host-services.ts). Runs the weekly-rollover purge on
+ * load and every 60s (the kiosk runs 24/7 and crosses week boundaries while
+ * still mounted).
+ *
+ * Formerly paired with a hoisted `useDinner()` (direct `useAppState`/`fetch`,
+ * pre-widget-host) — deleted in Task 10 along with `useAppState` itself once
+ * Dinner moved onto the contract in Task 6 and nothing referenced it anymore.
+ */
+export function useDinnerWithHost(host: WidgetHost) {
+  const { state, setState, isLoaded } = useWidgetState<DinnerState>(host, {
+    emptyState: emptyDinnerState,
+    normalize: normalizeDinnerState,
+    transformOnLoad: (s) => purgeOldDinners(s, localDateKey()),
+    pollTransformMs: PURGE_CHECK_MS,
+  });
+
+  return useDinnerApi(state, setState, isLoaded);
+}
+
+export type UseDinnerReturn = ReturnType<typeof useDinnerApi>;
