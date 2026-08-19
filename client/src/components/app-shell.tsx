@@ -2,16 +2,30 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { SettingsMenu } from "@/components/calendar/settings-menu";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { UpdateNotification } from "@/components/calendar/update-notification";
-import { NavRail, LEGACY_NAV_META, DEFAULT_NAV_ICON, type NavRailItem } from "@/components/nav-rail";
-import { CalendarSection } from "@/components/calendar/calendar-section";
+import { NavRail, DEFAULT_NAV_ICON, type NavRailItem } from "@/components/nav-rail";
 import { WidgetHostMount, type WidgetHostMountEntry } from "@/components/widget-host-mount";
 import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useScreensaverState } from "@/hooks/useScreensaverState";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { BUILTIN_WIDGETS } from "@/widgets/registry";
 import { createWidgetHost, type WidgetHostHandle } from "@/lib/widget-host-services";
+import { applyWidgetSettingsPatch } from "@/lib/widget-config";
+import {
+  CALENDAR_SETTINGS_PATCH_EVENT,
+  CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
+  CALENDAR_WIDGET_ID,
+  DISABLED_CALENDARS_KEY,
+  HIDDEN_CALENDARS_KEY,
+  POWER_SAVING_CHANGE_EVENT,
+  toCalendarIdSet,
+  withCalendarId,
+  type CalendarSettingsPatchDetail,
+  type PowerSavingChangeDetail,
+} from "@/widgets/calendar/shell-bridge";
 import { defaultDashboardConfig, type DashboardConfig } from "@shared/dashboard-config";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
@@ -46,6 +60,8 @@ export default function AppShell() {
   // is fixed via useMemo so config-derived useMemo/useEffect deps below
   // don't churn every render before real data arrives).
   const defaultConfig = useMemo(() => defaultDashboardConfig(), []);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const configQuery = useQuery<DashboardConfigResponse>({
     queryKey: ["/api/config/dashboard"],
   });
@@ -55,26 +71,23 @@ export default function AppShell() {
   // needs to be rebuilt after first render.
   const builtinById = useMemo(() => new Map(BUILTIN_WIDGETS.map((w) => [w.manifest.id, w])), []);
 
-  // Config entries that can actually RENDER a pane: enabled AND either
-  // ported to the widget contract (BUILTIN_WIDGETS) or covered by
-  // LEGACY_NAV_META (calendar). An id enabled in config but not
-  // installed (e.g. a hand-edited data/config/dashboard.json referencing a
-  // widget that isn't built) is excluded here — this is the exact set
-  // navItems renders from below, and the ONLY set a stored/active
-  // `section` should ever be validated against (see fallback effect
-  // below). Extracted so navItems and that effect share one resolution
-  // instead of two independently maintained lists drifting apart.
+  // Config entries that can actually RENDER a pane: enabled AND ported to
+  // the widget contract (BUILTIN_WIDGETS). As of Task 8 that is every
+  // first-party section — the LEGACY_NAV_META fallback for not-yet-ported
+  // ids is gone. An id enabled in config but not installed (e.g. a
+  // hand-edited data/config/dashboard.json referencing a widget that isn't
+  // built) is excluded here — this is the exact set navItems renders from
+  // below, and the ONLY set a stored/active `section` should ever be
+  // validated against (see fallback effect below). Extracted so navItems
+  // and that effect share one resolution instead of two independently
+  // maintained lists drifting apart.
   const renderableEntries = useMemo(() => {
     const entries: Array<{ id: string; label: string; icon: NavRailItem["icon"] }> = [];
     for (const w of dashboardConfig.widgets) {
       if (!w.enabled) continue;
       const builtin = builtinById.get(w.id);
-      if (builtin) {
-        entries.push({ id: w.id, label: builtin.manifest.name, icon: builtin.navIcon ?? DEFAULT_NAV_ICON });
-        continue;
-      }
-      const legacy = LEGACY_NAV_META[w.id];
-      if (legacy) entries.push({ id: w.id, label: legacy.label, icon: legacy.icon });
+      if (!builtin) continue;
+      entries.push({ id: w.id, label: builtin.manifest.name, icon: builtin.navIcon ?? DEFAULT_NAV_ICON });
     }
     return entries;
   }, [dashboardConfig, builtinById]);
@@ -107,17 +120,12 @@ export default function AppShell() {
     if (fallback !== section) setSection(fallback);
   }, [renderableIds, dashboardConfig, section]);
 
-  // Config ids that are both enabled AND actually ported to the widget
-  // contract (i.e. have a BUILTIN_WIDGETS entry) — this is what drives
-  // WidgetHostMount. Calendar is enabled-in-config but not yet built-in
-  // (Task 8), so it never appears here; it stays legacy-rendered below.
-  const enabledBuiltinIds = useMemo(
-    () => dashboardConfig.widgets.filter((w) => w.enabled && builtinById.has(w.id)).map((w) => w.id),
-    [dashboardConfig, builtinById],
-  );
+  // `renderableIds` IS the set of widget hosts to run: since Task 8 every
+  // renderable section is a built-in widget, so "can render a nav pane" and
+  // "needs a WidgetHost" are the same question. (Before Task 8 these were
+  // two lists because calendar could render without being a widget.)
+  const enabledBuiltinIds = renderableIds;
 
-  const [enabledCalendars, setEnabledCalendars] = useState<Set<string>>(new Set());
-  const [visibleCalendarsInHeader, setVisibleCalendarsInHeader] = useState<Set<string>>(new Set());
   const [isPowerSaving, setIsPowerSaving] = useState(false);
 
   // Version checking for updates
@@ -147,11 +155,12 @@ export default function AppShell() {
   // Power saving is active if manually triggered OR auto-triggered by inactivity
   const isPowerSavingActive = isPowerSaving || screensaver.isActive;
 
-  // Settings coupling #1: SettingsMenu (rendered here in the nav rail) needs
-  // authStatus to gate its trigger button. This used to come from
-  // CalendarSection's useCalendar() instance; now the shell owns a small,
-  // independent query for it (same queryKey, so it shares cache/network
-  // with CalendarSection's own auth-status query via react-query). Options
+  // SettingsMenu (rendered here in the nav rail) needs authStatus to gate
+  // its trigger button. This used to come from the calendar's useCalendar()
+  // instance; now the shell owns a small, independent query for it (same
+  // queryKey, so it shares cache/network with the calendar widget's own
+  // auth-status query via react-query — note the widget runs its own React
+  // root but against the SAME module-singleton QueryClient). Options
   // below are copied verbatim from use-calendar.ts's auth-status query
   // (lines 43-60) so the two observers on this key never diverge — same
   // online/screensaver gating, retry/backoff, and staleness.
@@ -174,102 +183,6 @@ export default function AppShell() {
     refetchOnWindowFocus: false,
     staleTime: 60 * 1000,
   });
-
-  // Get calendars for the auto-enable-new-calendars effect below. Same
-  // queryKey as CalendarSection's own calendars query, so react-query shares
-  // the cache/network request between the two instances.
-  const { data: calendars } = useQuery<any[]>({
-    queryKey: ['/api/calendar/calendars'],
-    enabled: true,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Track calendar IDs we have already seen so we only auto-enable genuinely
-  // new ones. This prevents a normal refetch (or post-subscribe invalidation)
-  // from re-enabling calendars the user intentionally toggled off.
-  const seenCalendarIds = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!calendars || calendars.length === 0) return;
-
-    const newIds = calendars
-      .map(cal => cal.id)
-      .filter(id => !seenCalendarIds.current.has(id));
-
-    if (newIds.length === 0) return; // nothing new — don't touch toggle state
-
-    // Record them so future refetches don't re-enable them
-    for (const id of newIds) seenCalendarIds.current.add(id);
-
-    setEnabledCalendars(prev => {
-      const next = new Set(prev);
-      for (const id of newIds) next.add(id);
-      return next;
-    });
-    setVisibleCalendarsInHeader(prev => {
-      const next = new Set(prev);
-      for (const id of newIds) next.add(id);
-      return next;
-    });
-  }, [calendars]);
-
-  // Handle header button clicks - toggles event visibility
-  const handleCalendarEventToggle = (calendarId: string, enabled: boolean) => {
-    setEnabledCalendars(prev => {
-      const newSet = new Set(prev);
-      if (enabled) {
-        newSet.add(calendarId);
-      } else {
-        newSet.delete(calendarId);
-      }
-      return newSet;
-    });
-  };
-
-  // Handle calendar removal: prune from all local sets so events vanish immediately
-  const handleCalendarRemoved = useCallback((calendarId: string) => {
-    seenCalendarIds.current.delete(calendarId);
-    setEnabledCalendars(prev => { const s = new Set(prev); s.delete(calendarId); return s; });
-    setVisibleCalendarsInHeader(prev => { const s = new Set(prev); s.delete(calendarId); return s; });
-  }, []);
-
-  // Handle settings menu toggles - controls both header visibility AND event visibility
-  const handleCalendarHeaderToggle = (calendarId: string, visible: boolean) => {
-    // Update header visibility
-    setVisibleCalendarsInHeader(prev => {
-      const newSet = new Set(prev);
-      if (visible) {
-        newSet.add(calendarId);
-      } else {
-        newSet.delete(calendarId);
-      }
-      return newSet;
-    });
-
-    // Also update event visibility to match
-    setEnabledCalendars(prev => {
-      const newSet = new Set(prev);
-      if (visible) {
-        newSet.add(calendarId);
-      } else {
-        newSet.delete(calendarId);
-      }
-      return newSet;
-    });
-  };
-
-  // Settings coupling #2: onSubscribeSuccess used to be manualRefresh from
-  // CalendarSection's useCalendar() instance. Rather than re-deriving that
-  // request sequence by hand (which drifted from the original: no online
-  // guard, no isRefreshing/LoadingIndicator, no throttle bookkeeping, no
-  // in-flight guard, and an unhandled rejection on sync failure),
-  // CalendarSection hands up its real manualRefresh via onRegisterRefresh,
-  // and we call it through a ref so SettingsMenu always invokes the current
-  // instance without needing manualRefresh to be a stable dependency here.
-  const refreshRef = useRef<() => void>(() => {});
-  const registerRefresh = useCallback((fn: () => void) => {
-    refreshRef.current = fn;
-  }, []);
 
   // --- Widget hosts -------------------------------------------------------
   // One WidgetHost per enabled built-in widget, owned by the shell (per
@@ -347,6 +260,122 @@ export default function AppShell() {
     });
   }, [configQuery.data, dashboardConfig]);
 
+  // --- Widget settings writes ---------------------------------------------
+  // `host.settings` is read-only by contract (no `settings.set()` in
+  // apiVersion 1), so the shell owns the single read-merge-PUT-invalidate
+  // implementation for `data/config/dashboard.json`. Everything that writes
+  // widget settings — the Settings popover's per-calendar switches, the
+  // calendar's own header chips (via CALENDAR_SETTINGS_PATCH_EVENT), and
+  // unsubscribe — funnels through here, so there is one merge and one race
+  // domain. The optimistic setQueryData is what makes a chip tap feel
+  // instant AND is what pushes the new values into host.settings
+  // subscribers immediately (the notify effect above watches this query).
+  const updateWidgetSettings = useCallback(
+    async (widgetId: string, patch: Record<string, unknown>) => {
+      const cached = queryClient.getQueryData<DashboardConfigResponse>(["/api/config/dashboard"]);
+      const current = cached?.config ?? dashboardConfigRef.current;
+      // Merge is pure + spec'd in client/src/lib/widget-config.spec.ts;
+      // null == this widget has no config entry, so nothing to write.
+      const next = applyWidgetSettingsPatch(current, widgetId, patch);
+      if (!next) return;
+
+      queryClient.setQueryData<DashboardConfigResponse>(["/api/config/dashboard"], {
+        config: next,
+        source: cached?.source ?? "default",
+      });
+
+      try {
+        await apiRequest("PUT", "/api/config/dashboard", next);
+      } catch (error) {
+        // Never swallow this silently on a kiosk: the optimistic state is
+        // about to be rolled back by the refetch below, so the user would
+        // otherwise just see their toggle snap back for no reason.
+        toast({
+          title: "Couldn't save settings",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
+      } finally {
+        // Re-read the file the server actually wrote (or restore truth after
+        // a failed write).
+        await queryClient.invalidateQueries({ queryKey: ["/api/config/dashboard"] });
+      }
+    },
+    [queryClient, toast],
+  );
+
+  // --- Calendar visibility settings (ratified delta 2) ---------------------
+  // Per-calendar visibility used to be two ephemeral Sets right here, reset
+  // on every browser restart, plus a `seenCalendarIds` ref to stop refetches
+  // from resurrecting calendars the user had turned off. All of that is now
+  // two persisted id LISTS in the calendar widget's settings — see
+  // client/src/widgets/calendar/shell-bridge.ts for the model. The shell
+  // keeps only what its own chrome (the Settings popover) needs to render
+  // and write; the widget derives its own view of the same values through
+  // host.settings.
+  const calendarSettings = useMemo(
+    () => dashboardConfig.widgets.find((w) => w.id === CALENDAR_WIDGET_ID)?.settings ?? {},
+    [dashboardConfig],
+  );
+  const hiddenCalendars = useMemo(
+    () => toCalendarIdSet(calendarSettings[HIDDEN_CALENDARS_KEY]),
+    [calendarSettings],
+  );
+  const disabledCalendars = useMemo(
+    () => toCalendarIdSet(calendarSettings[DISABLED_CALENDARS_KEY]),
+    [calendarSettings],
+  );
+
+  // Settings popover switch: hides/shows a calendar in the chip row AND its
+  // events. Switching one back ON also clears any chip-level disable —
+  // matching the pre-widget handler, which wrote both Sets.
+  const handleCalendarVisibilityToggle = useCallback(
+    (calendarId: string, visible: boolean) => {
+      const patch: Record<string, unknown> = {
+        [HIDDEN_CALENDARS_KEY]: withCalendarId(hiddenCalendars, calendarId, !visible),
+      };
+      if (visible && disabledCalendars.has(calendarId)) {
+        patch[DISABLED_CALENDARS_KEY] = withCalendarId(disabledCalendars, calendarId, false);
+      }
+      void updateWidgetSettings(CALENDAR_WIDGET_ID, patch);
+    },
+    [hiddenCalendars, disabledCalendars, updateWidgetSettings],
+  );
+
+  // Unsubscribe purge: drop the id from BOTH lists so a later re-subscribe
+  // comes back visible-by-default instead of inheriting a stale toggle.
+  const handleCalendarRemoved = useCallback(
+    (calendarId: string) => {
+      void updateWidgetSettings(CALENDAR_WIDGET_ID, {
+        [HIDDEN_CALENDARS_KEY]: withCalendarId(hiddenCalendars, calendarId, false),
+        [DISABLED_CALENDARS_KEY]: withCalendarId(disabledCalendars, calendarId, false),
+      });
+    },
+    [hiddenCalendars, disabledCalendars, updateWidgetSettings],
+  );
+
+  // Calendar chip taps arrive as a window event (the widget has no props and
+  // no settings-write capability) — see shell-bridge.ts.
+  useEffect(() => {
+    const handleSettingsPatch = (event: Event) => {
+      const detail = (event as CustomEvent<CalendarSettingsPatchDetail>).detail;
+      if (!detail?.patch) return;
+      void updateWidgetSettings(CALENDAR_WIDGET_ID, detail.patch);
+    };
+    window.addEventListener(CALENDAR_SETTINGS_PATCH_EVENT, handleSettingsPatch);
+    return () => window.removeEventListener(CALENDAR_SETTINGS_PATCH_EVENT, handleSettingsPatch);
+  }, [updateWidgetSettings]);
+
+  // The power-saving overlay stays shell-owned, but widgets need to know it
+  // is up (the calendar suppresses its event-form/auth dialogs while dimmed
+  // — behavior it used to get from an `isPowerSavingActive` prop). A widget
+  // container is an opaque HTMLElement, so this is a page-global event, like
+  // the existing screensaver-state-change / screensaver-exit signals.
+  useEffect(() => {
+    const detail: PowerSavingChangeDetail = { isActive: isPowerSavingActive };
+    window.dispatchEvent(new CustomEvent(POWER_SAVING_CHANGE_EVENT, { detail }));
+  }, [isPowerSavingActive]);
+
   // App-shutdown safety net — the kiosk normally runs for the app's whole
   // life, but if AppShell itself ever unmounts, flush+dispose whatever
   // hosts are still live rather than leaking their timers.
@@ -375,10 +404,8 @@ export default function AppShell() {
   }, [enabledBuiltinIds, builtinById, hostsVersion]);
 
   // Nav-rail items, in config order — built from renderableEntries above
-  // (a BUILTIN_WIDGETS entry like chores/dinner uses its manifest name +
-  // registry navIcon; a not-yet-ported id like calendar uses
-  // LEGACY_NAV_META; an unknown/uninstalled id was already excluded there)
-  // plus per-widget
+  // (every id uses its BUILTIN_WIDGETS manifest name + registry navIcon; an
+  // unknown/uninstalled id was already excluded there) plus per-widget
   // badge counts. Kept as its own memo, rather than folded into
   // renderableEntries, so a badge count change doesn't force
   // renderableEntries/renderableIds — and therefore the section-fallback
@@ -397,29 +424,21 @@ export default function AppShell() {
         settingsButton={authStatus?.authenticated ? (
           <SettingsMenu
             compactTrigger
-            visibleCalendarsInHeader={visibleCalendarsInHeader}
-            onCalendarToggle={handleCalendarHeaderToggle}
+            hiddenCalendars={hiddenCalendars}
+            onCalendarToggle={handleCalendarVisibilityToggle}
             setBrightness={screensaver.setBrightness}
             currentBrightness={screensaver.currentBrightness}
             onCheckForUpdates={checkForUpdates}
             onRollback={startRollback}
-            onSubscribeSuccess={() => refreshRef.current()}
+            onSubscribeSuccess={() =>
+              window.dispatchEvent(new CustomEvent(CALENDAR_SUBSCRIBE_SUCCESS_EVENT))
+            }
             onCalendarRemoved={handleCalendarRemoved}
           />
         ) : undefined}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <CalendarSection
-          isVisible={section === 'calendar'}
-          onSleep={handleSleep}
-          isPowerSavingActive={isPowerSavingActive}
-          visibleCalendarsInHeader={visibleCalendarsInHeader}
-          enabledCalendars={enabledCalendars}
-          onCalendarEventToggle={handleCalendarEventToggle}
-          onRegisterRefresh={registerRefresh}
-        />
-
         <WidgetHostMount entries={widgetEntries} activeId={section} />
       </div>
 

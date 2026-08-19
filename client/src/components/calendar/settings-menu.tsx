@@ -40,7 +40,14 @@ interface CalendarInfo {
 }
 
 interface SettingsMenuProps {
-  visibleCalendarsInHeader: Set<string>;
+  /** Persisted calendar-widget setting `hiddenCalendars` (see
+   *  client/src/widgets/calendar/shell-bridge.ts). A calendar is shown iff
+   *  its id is NOT in here — a hidden-LIST, so a calendar the user has never
+   *  touched (including one added after this setting was written) is visible
+   *  by default. */
+  hiddenCalendars: Set<string>;
+  /** Writes `hiddenCalendars` through the shell's dashboard-config helper;
+   *  persists to data/config/dashboard.json, so it survives a reload. */
   onCalendarToggle: (calendarId: string, visible: boolean) => void;
   setBrightness?: (brightness: number) => void;
   currentBrightness?: number;
@@ -53,7 +60,7 @@ interface SettingsMenuProps {
 }
 
 export function SettingsMenu({
-  visibleCalendarsInHeader,
+  hiddenCalendars,
   onCalendarToggle,
   setBrightness: externalSetBrightness,
   currentBrightness = 1.0,
@@ -352,7 +359,7 @@ export function SettingsMenu({
                   <div className="text-xs text-rb-muted">Loading calendars...</div>
                 ) : calendars && calendars.length > 0 ? (
                   calendars.map((calendar) => {
-                    const isVisible = visibleCalendarsInHeader.has(calendar.id);
+                    const isVisible = !hiddenCalendars.has(calendar.id);
                     const color = getCalendarColor(calendar);
                     
                     return (

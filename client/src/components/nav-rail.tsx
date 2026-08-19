@@ -1,4 +1,4 @@
-import { CalendarDays, LayoutGrid, type LucideIcon } from "lucide-react";
+import { LayoutGrid, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import logoImage from "@assets/image_1753142842256.png";
 
@@ -11,18 +11,10 @@ export interface NavRailItem {
   badgeCount?: number | null;
 }
 
-/**
- * Icon/label fallback for dashboard-config widget ids that don't (yet) have
- * a BUILTIN_WIDGETS entry — i.e. calendar, still legacy-rendered by
- * AppShell until its own task ports it onto the widget contract. Once an id
- * gets a real BUILTIN_WIDGETS manifest, that manifest's `name`/`navIcon`
- * take over and this entry becomes dead for that id (left for whichever
- * ids remain legacy). Dinner was removed from this map in Task 7 — it now
- * resolves via BUILTIN_WIDGETS like chores.
- */
-export const LEGACY_NAV_META: Record<string, { label: string; icon: LucideIcon }> = {
-  calendar: { label: "Calendar", icon: CalendarDays },
-};
+/* LEGACY_NAV_META (a hardcoded icon/label map for not-yet-ported sections)
+ * was deleted in Task 8: calendar was its last entry, and calendar now
+ * resolves through BUILTIN_WIDGETS like chores and dinner. Every nav item
+ * is manifest-driven — there is no legacy-rendered section left. */
 
 /** Fallback for a BUILTIN_WIDGETS entry that doesn't declare a `navIcon`
  *  (optional per registry.ts) — every first-party widget sets one today, so

@@ -1,0 +1,12 @@
+{
+  "id": "calendar",
+  "name": "Calendar",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.js",
+  "slots": ["section"],
+  "description": "Google Calendar month, week, and day views with event create/edit and sync.",
+  "refresh": {
+    "intervalSeconds": 600
+  }
+}

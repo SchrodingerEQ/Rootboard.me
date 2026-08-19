@@ -64,6 +64,13 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
   const prevActiveIdRef = useRef<string | null>(null);
   const activeIdRef = useRef(activeId);
   activeIdRef.current = activeId;
+  // Screen-wide awake flag, mirrored here so a scheduler created LATER (a
+  // widget enabled mid-session) starts from the truth rather than from
+  // RefreshScheduler's "nothing has been told to me yet" default. Without
+  // seeding it at construction, `awake` would stay false until the first
+  // screensaver dim/wake, and no widget's refresh() could ever fire before
+  // then — the app starts awake, so that is the correct initial value.
+  const awakeRef = useRef(true);
 
   // Mount every not-yet-mounted entry exactly once (ref-guarded via
   // mountedRef), and tear down any entry that has disappeared from the
@@ -93,6 +100,7 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
           Promise.resolve(instance.refresh?.()).finally(() => scheduler.noteRefreshed());
         },
       });
+      scheduler.setAwake(awakeRef.current);
       scheduler.setOnline(navigator.onLine);
       scheduler.setVisible(entry.manifest.id === activeIdRef.current);
 
@@ -131,6 +139,7 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
   useEffect(() => {
     const handleScreensaverChange = (event: Event) => {
       const { isActive } = (event as CustomEvent<{ isActive: boolean }>).detail;
+      awakeRef.current = !isActive;
       Array.from(mountedRef.current.entries()).forEach(([id, mounted]) => {
         mounted.scheduler.setAwake(!isActive);
         if (isActive) {
