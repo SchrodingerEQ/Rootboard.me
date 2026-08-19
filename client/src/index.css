@@ -45,6 +45,22 @@
   --p-green: #16a34a;
   --p-orange: #ea8c00;
   --p-red: #e11d48;
+
+  /* Phase 2 additions — roles extracted from hardcoded literals */
+  --rb-nav-active-bg: #fdeae8;
+  --rb-nav-inactive-ink: #5b626d;
+  --rb-badge: #ea8c00;
+  --rb-badge-ink: #ffffff;
+  --rb-shadow-soft: rgba(0, 0, 0, 0.05);
+  --rb-scrollbar-thumb: #d9d5cc;
+  --rb-scrollbar-thumb-hover: #c4bfb2;
+  --rb-screensaver-bg-1: #0f0f0f;
+  --rb-screensaver-bg-2: #1a1a1a;
+  --rb-confetti-1: #f2655a;
+  --rb-confetti-2: #f5a623;
+  --rb-confetti-3: #16a34a;
+  --rb-confetti-4: #2563eb;
+  --rb-confetti-5: #9333ea;
 }
 
 .dark {

@@ -65,6 +65,23 @@ export default {
           border: "var(--sidebar-border)",
           ring: "var(--sidebar-ring)",
         },
+        rb: {
+          canvas: "var(--rb-canvas)",
+          surface: "var(--rb-surface)",
+          ink: "var(--rb-ink)",
+          muted: "var(--rb-muted)",
+          faint: "var(--rb-faint)",
+          chip: "var(--rb-chip)",
+          "chip-hover": "var(--rb-chip-hover)",
+          accent: "var(--rb-accent)",
+          "accent-hover": "var(--rb-accent-hover)",
+          "today-wash": "var(--rb-today-wash)",
+          "grid-line": "var(--rb-grid-line)",
+          "nav-active-bg": "var(--rb-nav-active-bg)",
+          "nav-inactive-ink": "var(--rb-nav-inactive-ink)",
+          badge: "var(--rb-badge)",
+          "badge-ink": "var(--rb-badge-ink)",
+        },
       },
       keyframes: {
         "accordion-down": {
