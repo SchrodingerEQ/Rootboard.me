@@ -45,6 +45,8 @@ attached_assets/*
 .agents/
 .cache/
 .upm/
+# Local Claude Code session config (machine-specific launch commands)
+.claude/
 
 # Logs
 *.log

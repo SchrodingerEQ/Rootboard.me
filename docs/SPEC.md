@@ -227,6 +227,11 @@ from Open-Meteo and cached server-side.
   hoisted by hand. A widget's `unmount()` is called only when it leaves
   the enabled set (disabled in settings, or its folder removed — Phase
   4) or the app shuts down — never on a mere section switch.
+- **Community widget ecosystem repos** (Phase 5): the starter template
+  + tutorial + contribution guide live in `rootboard-widget-template`,
+  the reference widget in `rootboard-widget-grocery-list`, and the
+  community list in `awesome-rootboard` — all under the same GitHub
+  account as this repo. The contract doc here stays normative.
 - **Community widget loading** (folder-drop, Phase 4;
   `lib/community-widgets.ts`, `server/services/widgetDiscovery.ts`): the
   shell polls `GET /api/widgets` every 60 s (same cadence as the

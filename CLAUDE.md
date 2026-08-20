@@ -31,6 +31,7 @@ Guidance for any AI agent (Claude Code, etc.) working in this repository.
 - Stack: Express + React/Vite (TypeScript), `better-sqlite3` for storage (native module — must be `npm install`ed on the target, never copied between architectures).
 - Self-hosted default: SQLite (`calendar.db`); Google auth via a **service-account JSON key**. `DATABASE_URL` is only used for hosted (Postgres) deployments.
 - Ships an **auto-update** feature (`server/services/updateService.ts`) that downloads the latest GitHub **release source tarball**, applies it, runs `npm install && npm run build`, and restarts under a supervisor (`scripts/start.sh` / systemd).
+- Has a **community widget system** (contract: `docs/plans/widget-system/CONTRACT.md`; sideloaded folders in `/widgets/`, gitignored + update-preserved). Three companion public repos live under the same GitHub account: `rootboard-widget-template` (starter + tutorial + contribution guide, MIT), `rootboard-widget-grocery-list` (reference widget, MIT), `awesome-rootboard` (community list, CC0). Changes to the contract or host must keep those repos' docs in sync.
 
 ## ⚠️ MANDATORY: security review before every push/release
 

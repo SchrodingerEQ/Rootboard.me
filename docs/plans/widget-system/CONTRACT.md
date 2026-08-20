@@ -9,6 +9,15 @@ This document is the single source of truth for what a widget is, what it
 may touch, and what the host guarantees. First-party widgets follow it
 with zero exceptions — there are no privileged internal widgets.
 
+**Practical companions:** the
+[widget template](https://github.com/SchrodingerEQ/rootboard-widget-template)
+(starter code, the 30-minute tutorial, and the contribution guide), the
+[grocery-list reference widget](https://github.com/SchrodingerEQ/rootboard-widget-grocery-list)
+(a real widget built purely on this contract), and
+[awesome-rootboard](https://github.com/SchrodingerEQ/awesome-rootboard)
+(the community list). This contract stays normative; those repos show it
+in use.
+
 ---
 
 ## 1. What a widget is
