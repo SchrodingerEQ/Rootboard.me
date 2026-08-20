@@ -152,10 +152,12 @@ Shipped: [rootboard-widget-template](https://github.com/SchrodingerEQ/rootboard-
 [rootboard-widget-grocery-list](https://github.com/SchrodingerEQ/rootboard-widget-grocery-list)
 (the reference widget, public-contract-only), and
 [awesome-rootboard](https://github.com/SchrodingerEQ/awesome-rootboard).
-Provenance: full folder-drop E2E on the dev kiosk
-([phase4-e2e-notes.md](phase4-e2e-notes.md)) plus a fresh subagent
+Provenance: the hello-world folder-drop E2E was Phase 4's proof
+([phase4-e2e-notes.md](phase4-e2e-notes.md)); Phase 5 repeated it for
+the grocery-list folder-drop and picker flow, plus a fresh subagent
 following the tutorial verbatim end-to-end (the tutorial-gate) — both
-gates passed per [PHASE5-EXECUTION.md](PHASE5-EXECUTION.md).
+verified in per-task review, no public write-up, per
+[PHASE5-EXECUTION.md](PHASE5-EXECUTION.md).
 
 **Deferred (unchanged from 0006):** registry / one-click install /
 widget auto-updates — only if a community materializes.

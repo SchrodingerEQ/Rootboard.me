@@ -96,7 +96,11 @@ Specs (TDD): valid manifest passes; bad id/semver/apiVersion/slots/`..`-path/sel
 
 **Files:** Create `client/src/lib/app-state-client.ts` + `client/src/lib/app-state-client.spec.ts`. **`use-app-state.ts` is NOT touched** (chores/dinner keep working on it until their migration tasks).
 
-Reproduce the exact semantics of [use-app-state.ts](../../../client/src/hooks/use-app-state.ts) as a framework-free class (constructor `(key: string, fetchImpl = fetch)`):
+Reproduce the exact semantics of `use-app-state.ts` (later deleted per
+Task 10 below; its successor is
+[app-state-client.ts](../../../client/src/lib/app-state-client.ts), the
+file this task creates) as a framework-free class (constructor `(key:
+string, fetchImpl = fetch)`):
 
 - `load<T>(): Promise<T | null>` — GET `/api/state/:key`, retry every 15 s forever until success (cancellable via `dispose()`); resolves with the stored value (`null` if empty). Sets the internal `loadSucceeded` gate.
 - `set(value)` — **rejected (console.error, no-op) until `loadSucceeded`**; then 600 ms debounced PUT; failed PUT schedules a 15 s retry that re-reads the latest value at fire time; a newer `set` supersedes any pending retry.
