@@ -37,11 +37,91 @@ interface WidgetHostMountProps {
    *  folder removed) or when WidgetHostMount itself unmounts. */
   entries: WidgetHostMountEntry[];
   activeId: string;
+  /** Fired when a widget's `mount()` throws, or returns something that
+   *  isn't `{ unmount(): void, ... }` — a widget (first-party or
+   *  sideloaded) is otherwise-untrusted, host-executed code (CONTRACT
+   *  §7), and a single bad `mount()` call must not white-screen the
+   *  whole kiosk. The entry is never added to mountedRef on crash — its
+   *  pane simply stays empty. The caller (app-shell.tsx) is expected to
+   *  record `id` as crashed and drop it from the next `entries` array it
+   *  passes in (dropping the id from `entries` is what stops this
+   *  component from retrying the mount every render — WidgetHostMount
+   *  itself has no memory of past crashes). */
+  onWidgetCrash?: (id: string, error: unknown) => void;
 }
 
 interface MountedEntry {
   instance: WidgetInstance;
   scheduler: RefreshScheduler;
+  /** The exact `entry.widget` object this instance was mounted from —
+   *  compared by reference on every mount-effect pass so a widget object
+   *  identity change (e.g. a community widget's `version` bumped and
+   *  re-imported by community-widgets.ts's id+version cache) triggers an
+   *  unmount-then-remount instead of silently keeping the stale instance
+   *  alive forever. Builtins never change identity (static import), so
+   *  this only ever fires for community widgets in practice. */
+  widget: RootboardWidget;
+}
+
+/**
+ * Runs `widget.mount()` guarded: a widget's entry module is
+ * otherwise-untrusted code (CONTRACT §7) and `mount()` is the one call
+ * site with no other safety net before an instance exists. Also
+ * validates the return value's SHAPE (object with a callable `unmount`)
+ * rather than trusting the TypeScript type, since a widget returning
+ * `undefined`/a bare function/etc. would otherwise crash later at
+ * unmount time instead of failing loudly here.
+ */
+function safeMount(
+  id: string,
+  widget: RootboardWidget,
+  container: HTMLElement,
+  host: WidgetHost,
+): { ok: true; instance: WidgetInstance } | { ok: false; error: unknown } {
+  try {
+    const instance = widget.mount(container, host);
+    if (
+      !instance ||
+      typeof instance !== "object" ||
+      typeof (instance as { unmount?: unknown }).unmount !== "function"
+    ) {
+      return {
+        ok: false,
+        error: new Error(
+          `"${id}" mount() did not return an object with a callable unmount()`,
+        ),
+      };
+    }
+    return { ok: true, instance };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+/** Guards `instance.unmount()` — teardown must keep going past a
+ *  throwing widget so one bad `unmount()` can't strand every OTHER
+ *  widget's teardown in the same pass (component unmount, or the
+ *  disappeared-from-`entries` sweep). Callers still always delete the
+ *  mountedRef entry themselves regardless of whether this throws. */
+function safeUnmount(id: string, instance: WidgetInstance): void {
+  try {
+    instance.unmount();
+  } catch (error) {
+    console.error(`[widget-host] "${id}" unmount() threw`, error);
+  }
+}
+
+/** Guards every `instance.onVisibilityChange()` call site — a widget's
+ *  visibility handler is as untrusted as its mount()/unmount(), and a
+ *  throw here must not abort whichever effect (mount, active-switch,
+ *  screensaver dim/wake) happened to be driving it, which would strand
+ *  every OTHER widget mid-loop. */
+function safeVisibilityChange(id: string, instance: WidgetInstance, visible: boolean): void {
+  try {
+    instance.onVisibilityChange?.(visible);
+  } catch (error) {
+    console.error(`[widget-host] "${id}" onVisibilityChange() threw`, error);
+  }
 }
 
 /** Host calls every widget's RefreshScheduler.tick() on this shared
@@ -63,7 +143,7 @@ const REFRESH_TICK_MS = 30_000;
  * it mounted. Even if this component unmounted/remounted widgets on every
  * section switch, a pending debounced PUT would still survive.
  */
-export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
+export function WidgetHostMount({ entries, activeId, onWidgetCrash }: WidgetHostMountProps) {
   const containerRefs = useRef(new Map<string, HTMLDivElement>());
   const mountedRef = useRef(new Map<string, MountedEntry>());
   const prevActiveIdRef = useRef<string | null>(null);
@@ -94,15 +174,63 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
     const currentIds = new Set(entries.map((e) => e.manifest.id));
 
     for (const entry of entries) {
-      if (mountedRef.current.has(entry.manifest.id)) continue;
+      const existing = mountedRef.current.get(entry.manifest.id);
+      if (existing) {
+        // Minor #2: a version-bumped community widget re-imports to a NEW
+        // widget object (community-widgets.ts's id+version cache) — that
+        // new object arrives here as a different `entry.widget` reference
+        // while `existing` is still the stale instance. Unmount the stale
+        // one (guarded — a crashing unmount must not block the remount
+        // below) and fall through to mount the fresh module, so an
+        // SSH'd-in version bump takes effect without a full page reload.
+        // Builtins never change identity (static import), so this branch
+        // is a no-op for them (`entry.widget === existing.widget` always).
+        if (existing.widget === entry.widget) continue;
+        safeUnmount(entry.manifest.id, existing.instance);
+        mountedRef.current.delete(entry.manifest.id);
+      }
       const container = containerRefs.current.get(entry.manifest.id);
       if (!container) continue;
 
-      const instance = entry.widget.mount(container, entry.host);
+      const mounted = safeMount(entry.manifest.id, entry.widget, container, entry.host);
+      if (!mounted.ok) {
+        // CONTRACT §7: a widget's mount() is otherwise-untrusted code — a
+        // throw (or a malformed return, caught inside safeMount) must not
+        // white-screen the kiosk. Report it and leave the pane empty; the
+        // caller is expected to drop this id from the NEXT `entries` array
+        // (see onWidgetCrash's doc comment) so this effect doesn't retry
+        // the same crashing mount() on every future render.
+        console.error(`[widget-host] "${entry.manifest.id}" crashed on mount`, mounted.error);
+        onWidgetCrash?.(entry.manifest.id, mounted.error);
+        continue;
+      }
+      const instance = mounted.instance;
       const scheduler = new RefreshScheduler({
         intervalSeconds: entry.manifest.refresh?.intervalSeconds,
         onRefresh: () => {
-          Promise.resolve(instance.refresh?.()).finally(() => scheduler.noteRefreshed());
+          // Guard the SYNCHRONOUS call: `instance.refresh?.()` executes
+          // immediately as this function body runs (it is NOT already
+          // wrapped by the Promise.resolve() below — that only wraps its
+          // return value). This closure runs from inside the shared 30s
+          // interval's forEach (see the tick effect further down), one
+          // call per mounted widget — an uncaught synchronous throw here
+          // would propagate straight out of that forEach iteration and
+          // abort every OTHER widget's tick for this cycle. Catching it
+          // HERE, inside this widget's own onRefresh, keeps the blast
+          // radius to just this one widget.
+          let result: void | Promise<void>;
+          try {
+            result = instance.refresh?.();
+          } catch (error) {
+            console.error(`[widget-host] "${entry.manifest.id}" refresh() threw`, error);
+            scheduler.noteRefreshed();
+            return;
+          }
+          Promise.resolve(result)
+            .catch((error) => {
+              console.error(`[widget-host] "${entry.manifest.id}" refresh() rejected`, error);
+            })
+            .finally(() => scheduler.noteRefreshed());
         },
       });
       scheduler.setAwake(awakeRef.current);
@@ -131,18 +259,18 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
       const initiallyVisible = isActiveNow && awakeRef.current;
       scheduler.setVisible(initiallyVisible);
       if (isActiveNow) {
-        instance.onVisibilityChange?.(initiallyVisible);
+        safeVisibilityChange(entry.manifest.id, instance, initiallyVisible);
       }
 
-      mountedRef.current.set(entry.manifest.id, { instance, scheduler });
+      mountedRef.current.set(entry.manifest.id, { instance, scheduler, widget: entry.widget });
     }
 
     Array.from(mountedRef.current.entries()).forEach(([id, mounted]) => {
       if (currentIds.has(id)) return;
-      mounted.instance.unmount();
+      safeUnmount(id, mounted.instance);
       mountedRef.current.delete(id);
     });
-  }, [entries]);
+  }, [entries, onWidgetCrash]);
 
   // onVisibilityChange on active-section switch: hide the previously
   // active widget, show the newly active one. Runs after the mount effect
@@ -161,12 +289,12 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
     const prevId = prevActiveIdRef.current;
     if (prevId !== null && prevId !== activeId) {
       const prev = mountedRef.current.get(prevId);
-      prev?.instance.onVisibilityChange?.(false);
+      if (prev) safeVisibilityChange(prevId, prev.instance, false);
       prev?.scheduler.setVisible(false);
     }
     const next = mountedRef.current.get(activeId);
     const nextVisible = awakeRef.current;
-    next?.instance.onVisibilityChange?.(nextVisible);
+    if (next) safeVisibilityChange(activeId, next.instance, nextVisible);
     next?.scheduler.setVisible(nextVisible);
     prevActiveIdRef.current = activeId;
   }, [activeId, entries]);
@@ -183,10 +311,10 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
       Array.from(mountedRef.current.entries()).forEach(([id, mounted]) => {
         mounted.scheduler.setAwake(!isActive);
         if (isActive) {
-          mounted.instance.onVisibilityChange?.(false);
+          safeVisibilityChange(id, mounted.instance, false);
           mounted.scheduler.setVisible(false);
         } else if (id === activeIdRef.current) {
-          mounted.instance.onVisibilityChange?.(true);
+          safeVisibilityChange(id, mounted.instance, true);
           mounted.scheduler.setVisible(true);
         }
       });
@@ -230,8 +358,8 @@ export function WidgetHostMount({ entries, activeId }: WidgetHostMountProps) {
   // instead of either double-mounting or silently no-op'ing.
   useEffect(() => {
     return () => {
-      Array.from(mountedRef.current.values()).forEach((mounted) => {
-        mounted.instance.unmount();
+      Array.from(mountedRef.current.entries()).forEach(([id, mounted]) => {
+        safeUnmount(id, mounted.instance);
       });
       mountedRef.current.clear();
     };

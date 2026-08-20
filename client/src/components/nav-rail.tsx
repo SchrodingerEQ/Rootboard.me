@@ -1,5 +1,5 @@
 import { LayoutGrid, Puzzle, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import logoImage from "@assets/image_1753142842256.png";
 
 /** A nav-rail glyph is either a lucide component (built-ins) or a
@@ -43,8 +43,33 @@ export const COMMUNITY_FALLBACK_ICON: LucideIcon = Puzzle;
 // manual browser verification: builtin nav icons rendered as broken
 // `<img>`s with no `src`).
 function NavGlyph({ icon }: { icon: NavRailIconSpec }) {
-  if (typeof icon === "object" && icon !== null && "kind" in icon && icon.kind === "image") {
-    return <img src={icon.src} alt="" width={26} height={26} style={{ objectFit: "contain" }} />;
+  const isImage = typeof icon === "object" && icon !== null && "kind" in icon && icon.kind === "image";
+  // Tracks the specific `src` that last failed to load (not just a
+  // boolean) — a sideloaded icon path can be bad (typo, corrupt file, the
+  // widget's folder edited mid-session), and an <img> with a broken src
+  // fires onError once and then just sits there as a broken-image box
+  // forever with no re-render trigger. State-flip per id (this component
+  // instance is keyed by id in NavRail's .map() below) rather than a DOM
+  // hack (e.g. hiding the element via ref) keeps the fallback declarative
+  // and re-render-driven. Comparing against the CURRENT src (not a bare
+  // flag) means a manifest update that fixes the icon path automatically
+  // retries instead of staying stuck on the fallback forever.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  if (isImage) {
+    const src = (icon as { src: string }).src;
+    if (src === failedSrc) {
+      return <COMMUNITY_FALLBACK_ICON size={26} strokeWidth={2.2} />;
+    }
+    return (
+      <img
+        src={src}
+        alt=""
+        width={26}
+        height={26}
+        style={{ objectFit: "contain" }}
+        onError={() => setFailedSrc(src)}
+      />
+    );
   }
   const Icon = icon as LucideIcon;
   return <Icon size={26} strokeWidth={2.2} />;

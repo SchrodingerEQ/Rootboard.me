@@ -38,6 +38,65 @@ export function extractWidgetFromModule(mod: unknown): RootboardWidget | null {
   return widget as RootboardWidget;
 }
 
+/**
+ * Founder-ratified (A): app-shell.tsx passes only ENABLED manifests to
+ * useCommunityWidgetLoads below, so a disabled/not-yet-added widget's
+ * module is never imported. Pure + extracted so this filter — the actual
+ * enforcement point of decision A — is unit-testable without a React
+ * renderer (this repo's vitest has none; see useCommunityWidgetLoads' own
+ * doc comment).
+ */
+export function filterEnabledManifests(
+  manifests: WidgetManifest[],
+  enabledIds: ReadonlySet<string>,
+): WidgetManifest[] {
+  return manifests.filter((m) => enabledIds.has(m.id));
+}
+
+/** A widget's mount()-crash record — see widget-host-mount.tsx's
+ *  `onWidgetCrash` and app-shell.tsx's `crashedWidgets` state. */
+export interface CrashRecord {
+  /** The manifest `version` in effect at the moment this widget crashed —
+   *  compared against the CURRENT version by pruneStaleCrashRecords below
+   *  to decide whether to retry. */
+  version: string;
+  message: string;
+}
+
+/**
+ * Re-attempt path: drops a crash record once its widget's CURRENT manifest
+ * version no longer matches the version recorded at crash time (a fixed
+ * build re-sideloaded, or an app update for a builtin) — app-shell.tsx
+ * calls this whenever builtin/discovered manifests change. `resolveVersion`
+ * returns `undefined` for an id whose manifest can't currently be resolved
+ * at all (e.g. its folder was removed); such a record is left untouched
+ * rather than cleared, since "no manifest" isn't evidence of a fix.
+ *
+ * Preserves reference equality when nothing changes (returns `crashed`
+ * itself, not a copy) so a caller's `setState(prev => ...)` can bail out
+ * via `prev === next` the same way the rest of this codebase's reducers do.
+ * Pure + extracted for the same reason as filterEnabledManifests above —
+ * no React renderer in this repo's test setup.
+ */
+export function pruneStaleCrashRecords(
+  crashed: Map<string, CrashRecord>,
+  resolveVersion: (id: string) => string | undefined,
+): Map<string, CrashRecord> {
+  let next: Map<string, CrashRecord> | null = null;
+  // Array.from(...).forEach(), not for...of — this repo's tsconfig target
+  // predates native Map iteration (see the same pattern throughout
+  // widget-host-mount.tsx/app-shell.tsx); a bare for...of over a Map is a
+  // build-time TS2802 error here without --downlevelIteration.
+  Array.from(crashed.entries()).forEach(([id, info]) => {
+    const version = resolveVersion(id);
+    if (version !== undefined && version !== info.version) {
+      if (!next) next = new Map(crashed);
+      next.delete(id);
+    }
+  });
+  return next ?? crashed;
+}
+
 type ImportFn = (url: string) => Promise<unknown>;
 
 // vite-ignore: this URL is only known at runtime (sideloaded content, not
@@ -57,7 +116,22 @@ interface CacheEntry {
  *  code") invalidates the old entry and is re-imported; a version that
  *  hasn't changed reuses the cached promise even if that promise resolved
  *  to an error — a broken widget doesn't get hammered on every poll, but
- *  bumping its version is what makes it retry. */
+ *  bumping its version is what makes it retry.
+ *
+ *  Founder-ratified (A): app-shell.tsx only ever passes ENABLED manifests
+ *  into useCommunityWidgetLoads below, so a disabled widget's module is
+ *  never imported in the first place. One consequence worth stating
+ *  explicitly: toggling a widget OFF then back ON, with no version bump in
+ *  between, reuses this same cache entry rather than re-importing — which
+ *  means the module's own TOP-LEVEL code (anything that runs at import
+ *  time, outside of `mount()`/`unmount()` — module-scope side effects, a
+ *  singleton set up on first evaluation, etc.) only ever executes ONCE,
+ *  the first time the widget is enabled, for as long as its `version`
+ *  string doesn't change. Disabling/re-enabling only replays the
+ *  mount()/unmount() lifecycle (via WidgetHostMount, driven by whether the
+ *  id is in app-shell's `entries`) — it does not re-run the module itself.
+ *  A widget author relying on top-level code re-running on every enable
+ *  needs to move that logic into `mount()` instead. */
 const cache = new Map<string, CacheEntry>();
 
 /**

@@ -2,7 +2,10 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import {
   _resetCommunityWidgetCacheForTests,
   extractWidgetFromModule,
+  filterEnabledManifests,
   loadCommunityWidget,
+  pruneStaleCrashRecords,
+  type CrashRecord,
 } from "./community-widgets";
 import type { WidgetManifest } from "@shared/widget-manifest";
 
@@ -113,5 +116,73 @@ describe("loadCommunityWidget — id+version cache", () => {
     expect(importFn).toHaveBeenCalledTimes(2);
     expect(importFn).toHaveBeenCalledWith("/widgets/a-widget/index.js");
     expect(importFn).toHaveBeenCalledWith("/widgets/b-widget/index.js");
+  });
+});
+
+describe("filterEnabledManifests — founder-ratified (A) enforcement point", () => {
+  test("keeps only manifests whose id is in enabledIds", () => {
+    const manifests = [manifest({ id: "a" }), manifest({ id: "b" }), manifest({ id: "c" })];
+    const result = filterEnabledManifests(manifests, new Set(["b"]));
+    expect(result.map((m) => m.id)).toEqual(["b"]);
+  });
+
+  test("an empty enabledIds set drops every manifest", () => {
+    const manifests = [manifest({ id: "a" }), manifest({ id: "b" })];
+    expect(filterEnabledManifests(manifests, new Set())).toEqual([]);
+  });
+
+  test("an empty manifest list returns empty regardless of enabledIds", () => {
+    expect(filterEnabledManifests([], new Set(["a"]))).toEqual([]);
+  });
+
+  test("preserves input order", () => {
+    const manifests = [manifest({ id: "a" }), manifest({ id: "b" }), manifest({ id: "c" })];
+    const result = filterEnabledManifests(manifests, new Set(["c", "a"]));
+    expect(result.map((m) => m.id)).toEqual(["a", "c"]);
+  });
+});
+
+describe("pruneStaleCrashRecords — crashed-widget re-attempt path", () => {
+  function record(overrides: Partial<CrashRecord> = {}): CrashRecord {
+    return { version: "1.0.0", message: "boom", ...overrides };
+  }
+
+  test("drops a record whose current version differs from the recorded one", () => {
+    const crashed = new Map([["a", record({ version: "1.0.0" })]]);
+    const result = pruneStaleCrashRecords(crashed, () => "1.0.1");
+    expect(result.has("a")).toBe(false);
+  });
+
+  test("keeps a record whose current version still matches", () => {
+    const crashed = new Map([["a", record({ version: "1.0.0" })]]);
+    const result = pruneStaleCrashRecords(crashed, () => "1.0.0");
+    expect(result.get("a")).toEqual(record({ version: "1.0.0" }));
+  });
+
+  test("keeps a record when resolveVersion returns undefined (manifest currently unresolvable)", () => {
+    const crashed = new Map([["a", record()]]);
+    const result = pruneStaleCrashRecords(crashed, () => undefined);
+    expect(result.get("a")).toEqual(record());
+  });
+
+  test("returns the SAME Map reference when nothing changes (setState bail-out)", () => {
+    const crashed = new Map([["a", record({ version: "1.0.0" })]]);
+    const result = pruneStaleCrashRecords(crashed, () => "1.0.0");
+    expect(result).toBe(crashed);
+  });
+
+  test("only drops the stale entries, leaving other ids' records untouched", () => {
+    const crashed = new Map([
+      ["stale", record({ version: "1.0.0" })],
+      ["fresh", record({ version: "2.0.0" })],
+    ]);
+    const result = pruneStaleCrashRecords(crashed, (id) => (id === "stale" ? "1.0.1" : "2.0.0"));
+    expect(result.has("stale")).toBe(false);
+    expect(result.get("fresh")).toEqual(record({ version: "2.0.0" }));
+  });
+
+  test("an empty map returns itself unchanged", () => {
+    const crashed = new Map<string, CrashRecord>();
+    expect(pruneStaleCrashRecords(crashed, () => "1.0.0")).toBe(crashed);
   });
 });

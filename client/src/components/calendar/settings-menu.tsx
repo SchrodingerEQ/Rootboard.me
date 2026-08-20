@@ -49,6 +49,15 @@ export interface WidgetPickerEntry {
   label: string;
   icon: LucideIcon;
   enabled: boolean;
+  /** Present when this widget's `mount()` crashed (threw, or returned
+   *  something other than `{ unmount(): void, ... }`) — see
+   *  widget-host-mount.tsx's `onWidgetCrash` and app-shell.tsx's
+   *  `crashedWidgets`. Short crash message. While set, the row's switch
+   *  is force-disabled (there's nothing to toggle back into — the widget
+   *  is already excluded from rendering) and clears automatically once
+   *  the widget's manifest `version` changes (app-shell.tsx's re-attempt
+   *  path), not from anything in this component. */
+  crashed?: string;
 }
 
 /** One row of the layout picker's "Community Widgets" section (Phase 4) —
@@ -70,18 +79,32 @@ export interface CommunityWidgetPickerEntry {
   enabled: boolean;
   /** True iff this id already has an entry in config.widgets (regardless
    *  of enabled/disabled) — controls whether reorder arrows are shown at
-   *  all (nothing to reorder before it has a position). */
+   *  all (nothing to reorder before it has a position). Always false for
+   *  a "ghost" row (below) even though it DOES have a config entry: a
+   *  ghost has no discovered position to reorder among. */
   installed: boolean;
-  /** "loading": import in flight (or apiVersion check not yet run — same
-   *  visual treatment). "ready": loaded and mountable — the only status
-   *  the enable switch may be turned ON from. "newer-api"/"error": listed
-   *  per CONTRACT.md §6, never loadable; the switch can still be turned
-   *  OFF if it happens to be enabled (e.g. a working widget's folder was
-   *  edited to bump apiVersion after being enabled — the user must still
-   *  be able to disable it from here), just never back ON. */
-  status: "loading" | "ready" | "newer-api" | "error";
-  /** Present for "newer-api" ("built for a newer Rootboard") and "error"
-   *  (the load failure message) — absent for "loading"/"ready". */
+  /** "not-loaded": disabled (or not yet added to config) and, per
+   *  founder-ratified decision A, therefore never imported — nothing to
+   *  report except "flip the switch to load it". "loading": enabled,
+   *  import in flight. "ready": loaded and mountable — the only status
+   *  the enable switch may be turned ON from (a not-loaded row can also
+   *  be turned on — that's what triggers the import). "newer-api": listed
+   *  per CONTRACT.md §6, computed straight from manifest data (no import
+   *  needed), so it applies even while disabled; the switch can never be
+   *  turned ON from here but CAN be turned OFF if it happens to be
+   *  enabled already. "error": enabled, imported, and failed — same
+   *  disable-only-from-here rule; note this NEVER appears for a disabled
+   *  row (see IMPORTANT #2 — disabling clears back to "not-loaded", so a
+   *  load error is only ever visible after (re-)enabling). "crashed":
+   *  imported fine but `mount()` itself threw at runtime — always
+   *  disable-only, regardless of enabled state, since there is nothing
+   *  useful the switch being ON accomplishes while crashed. "ghost": a
+   *  config entry (CONTRACT §5 "unknown widget ids are kept but shown as
+   *  unavailable") whose id has no discovered manifest at all — disable-
+   *  only, so the user has an escape hatch to remove it from config. */
+  status: "not-loaded" | "loading" | "ready" | "newer-api" | "error" | "crashed" | "ghost";
+  /** Present for every status except "loading"/"ready" — the reason
+   *  string shown under the row. */
   statusMessage?: string;
 }
 
@@ -166,11 +189,30 @@ export function SettingsMenu({
   onMoveCommunityWidget,
   invalidWidgetPickerEntries = [],
 }: SettingsMenuProps) {
+  // IMPORTANT #1: only count widgets that actually RENDER a pane toward
+  // the "at least one widget must stay enabled" guard — a builtin always
+  // counts once enabled (nothing gates it further), but a community entry
+  // only counts while "ready" (actually loaded and mountable). An enabled-
+  // but-ghost/crashed/newer-api/error/not-loaded community row contributes
+  // nothing to the app's actual renderable set, so counting it would let
+  // the guard fail OPEN — blocking the user from disabling the one real
+  // widget that's propping the count up, while never blocking the useless
+  // entry itself. Failing closed here also resolves the cosmetic mismatch
+  // the pre-fix version had: this count could disagree with
+  // renderableEntries.length in app-shell.tsx by exactly the number of
+  // enabled-but-unrenderable community rows.
   const enabledWidgetCount =
-    widgetPickerEntries.filter((e) => e.enabled).length +
-    communityWidgetPickerEntries.filter((e) => e.enabled).length;
+    widgetPickerEntries.filter((e) => e.enabled && !e.crashed).length +
+    communityWidgetPickerEntries.filter((e) => e.enabled && e.status === "ready").length;
   const installedCommunityEntries = communityWidgetPickerEntries.filter((e) => e.installed);
   const [isOpen, setIsOpen] = useState(false);
+  // Minor #4: per-id "this icon's src failed to load" state, so a broken
+  // sideloaded icon (bad path, corrupt file) falls back to the generic
+  // Puzzle glyph instead of sitting as a permanently broken <img> box.
+  // Keyed by id -> the specific src that failed, not a bare boolean, so a
+  // later manifest update with a fixed path automatically retries instead
+  // of staying stuck on the fallback.
+  const [failedIconSrc, setFailedIconSrc] = useState<Map<string, string>>(new Map());
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem('calendar-brightness');
     return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
@@ -432,42 +474,61 @@ export function SettingsMenu({
                   <div className="space-y-1">
                     {widgetPickerEntries.map((entry, index) => {
                       const Icon = entry.icon;
-                      const lastEnabled = entry.enabled && enabledWidgetCount <= 1;
+                      const isCrashed = !!entry.crashed;
+                      // A crashed widget's own switch is force-disabled
+                      // (see WidgetPickerEntry's `crashed` doc) and never
+                      // counts toward the guard (enabledWidgetCount above
+                      // already excludes it) — so it can't itself be the
+                      // reason another row's switch is guard-locked.
+                      const lastEnabled = !isCrashed && entry.enabled && enabledWidgetCount <= 1;
                       return (
-                        <div key={entry.id} className="flex items-center gap-1">
-                          <Icon className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
-                          <span className="text-sm flex-1 truncate">{entry.label}</span>
-                          <button
-                            type="button"
-                            className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
-                            onClick={() => onMoveWidget?.(entry.id, -1)}
-                            disabled={index === 0}
-                            title="Move up"
-                            data-testid={`widget-move-up-${entry.id}`}
-                          >
-                            <ChevronUp className="h-5 w-5" />
-                          </button>
-                          <button
-                            type="button"
-                            className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
-                            onClick={() => onMoveWidget?.(entry.id, 1)}
-                            disabled={index === widgetPickerEntries.length - 1}
-                            title="Move down"
-                            data-testid={`widget-move-down-${entry.id}`}
-                          >
-                            <ChevronDown className="h-5 w-5" />
-                          </button>
-                          <label
-                            className="touch-button flex items-center justify-center flex-shrink-0"
-                            title={lastEnabled ? "At least one widget must stay enabled" : undefined}
-                          >
-                            <Switch
-                              checked={entry.enabled}
-                              disabled={lastEnabled}
-                              onCheckedChange={(checked) => onToggleWidget?.(entry.id, checked)}
-                              data-testid={`widget-toggle-${entry.id}`}
-                            />
-                          </label>
+                        <div key={entry.id} className="space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            <Icon className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
+                            <span className="text-sm flex-1 truncate">{entry.label}</span>
+                            <button
+                              type="button"
+                              className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                              onClick={() => onMoveWidget?.(entry.id, -1)}
+                              disabled={index === 0}
+                              title="Move up"
+                              data-testid={`widget-move-up-${entry.id}`}
+                            >
+                              <ChevronUp className="h-5 w-5" />
+                            </button>
+                            <button
+                              type="button"
+                              className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                              onClick={() => onMoveWidget?.(entry.id, 1)}
+                              disabled={index === widgetPickerEntries.length - 1}
+                              title="Move down"
+                              data-testid={`widget-move-down-${entry.id}`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            <label
+                              className="touch-button flex items-center justify-center flex-shrink-0"
+                              title={
+                                isCrashed
+                                  ? entry.crashed
+                                  : lastEnabled
+                                    ? "At least one widget must stay enabled"
+                                    : undefined
+                              }
+                            >
+                              <Switch
+                                checked={entry.enabled}
+                                disabled={isCrashed || lastEnabled}
+                                onCheckedChange={(checked) => onToggleWidget?.(entry.id, checked)}
+                                data-testid={`widget-toggle-${entry.id}`}
+                              />
+                            </label>
+                          </div>
+                          {isCrashed && (
+                            <p className="text-xs text-rb-danger leading-snug truncate pl-5">
+                              crashed: {entry.crashed}
+                            </p>
+                          )}
                         </div>
                       );
                     })}
@@ -499,21 +560,43 @@ export function SettingsMenu({
                   <div className="space-y-1.5">
                     {communityWidgetPickerEntries.map((entry) => {
                       const ready = entry.status === "ready";
-                      // Never allowed to flip ON while not ready; always
-                      // allowed to flip OFF (even mid-"loading", even
-                      // broken) so a misbehaving widget can't trap the
-                      // user out of disabling it.
-                      const switchDisabled = !ready && !entry.enabled;
+                      const isCrashed = entry.status === "crashed";
+                      const isGhost = entry.status === "ghost";
+                      // "Turn ON" is blocked for newer-api/crashed/ghost —
+                      // none of them can be helped by flipping the switch
+                      // while off. "Turn OFF" is ALWAYS allowed whenever
+                      // currently enabled (crashed/ghost/newer-api/error/
+                      // loading alike) so a misbehaving or broken widget
+                      // can never trap the user out of disabling it — this
+                      // mirrors "error"'s pre-existing disable-only rule
+                      // (ghost/crashed are new instances of the same
+                      // pattern, not a new rule).
+                      const canToggleOn = entry.status !== "newer-api" && !isCrashed && !isGhost;
+                      const switchDisabled = !canToggleOn && !entry.enabled;
+                      const iconSrc = entry.icon?.src;
+                      const iconFailed = iconSrc !== undefined && failedIconSrc.get(entry.id) === iconSrc;
                       const installedIndex = installedCommunityEntries.findIndex((e) => e.id === entry.id);
+                      // Only a "ready" (actually rendering) entry counts
+                      // toward the last-enabled guard — see
+                      // enabledWidgetCount's doc comment above for why.
+                      const guardBlocksDisable = ready && entry.enabled && enabledWidgetCount <= 1;
                       return (
                         <div key={entry.id} className="space-y-0.5">
                           <div className="flex items-center gap-1">
-                            {entry.icon ? (
+                            {entry.icon && !iconFailed ? (
                               <img
                                 src={entry.icon.src}
                                 alt=""
                                 className="h-4 w-4 flex-shrink-0"
                                 style={{ objectFit: "contain" }}
+                                onError={() =>
+                                  setFailedIconSrc((prev) => {
+                                    if (prev.get(entry.id) === iconSrc) return prev;
+                                    const next = new Map(prev);
+                                    next.set(entry.id, iconSrc!);
+                                    return next;
+                                  })
+                                }
                               />
                             ) : (
                               <Puzzle className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
@@ -546,7 +629,7 @@ export function SettingsMenu({
                             <label
                               className="touch-button flex items-center justify-center flex-shrink-0"
                               title={
-                                entry.enabled && enabledWidgetCount <= 1
+                                guardBlocksDisable
                                   ? "At least one widget must stay enabled"
                                   : switchDisabled
                                     ? (entry.statusMessage ?? "Not loadable")
@@ -555,18 +638,30 @@ export function SettingsMenu({
                             >
                               <Switch
                                 checked={entry.enabled}
-                                disabled={switchDisabled || (entry.enabled && enabledWidgetCount <= 1)}
+                                disabled={switchDisabled || guardBlocksDisable}
                                 onCheckedChange={(checked) => onToggleCommunityWidget?.(entry.id, checked)}
                                 data-testid={`community-widget-toggle-${entry.id}`}
                               />
                             </label>
                           </div>
-                          {ready && entry.description && (
+                          {/* Description is manifest data — shown for a
+                              disabled/not-loaded row too (discovery-
+                              derived info, no import required), not just
+                              a ready one. */}
+                          {entry.description && (
                             <p className="text-xs text-rb-faint leading-snug truncate pl-5">{entry.description}</p>
                           )}
                           {!ready && (
-                            <p className="text-xs text-rb-warn leading-snug pl-5">
-                              {entry.status === "loading" ? "Loading…" : entry.statusMessage}
+                            <p
+                              className={`text-xs leading-snug truncate pl-5 ${
+                                isCrashed ? "text-rb-danger" : "text-rb-warn"
+                              }`}
+                            >
+                              {entry.status === "loading"
+                                ? "Loading…"
+                                : isCrashed
+                                  ? `crashed: ${entry.statusMessage}`
+                                  : entry.statusMessage}
                             </p>
                           )}
                         </div>
