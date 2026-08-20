@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OnScreenKeyboard } from "@/components/keyboard/on-screen-keyboard";
+import { AppErrorBoundary } from "@/components/app-error-boundary";
 import CalendarPage from "@/pages/calendar";
 import SetupPage from "@/pages/setup";
 import NotFound from "@/pages/not-found";
@@ -23,7 +24,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <AppErrorBoundary>
+          <Router />
+        </AppErrorBoundary>
         <OnScreenKeyboard />
       </TooltipProvider>
     </QueryClientProvider>

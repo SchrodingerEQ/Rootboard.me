@@ -1,6 +1,6 @@
 # Rootboard Widget Contract — apiVersion 1
 
-**Status:** apiVersion 1 implemented for built-ins; folder-drop discovery/loading pending Phase 4.
+**Status:** apiVersion 1 fully implemented, including folder-drop loading (Phase 4).
 **Parent decision:** [0006 — Community-buildable widget system](../../decisions/0006-community-widget-system.md)
 **Shape decisions:** [0007 — Widget contract shape](../../decisions/0007-widget-contract-shape.md)
 **Plan:** [WIDGET-SYSTEM-PLAN.md](WIDGET-SYSTEM-PLAN.md)
@@ -42,7 +42,7 @@ server-side discovery and client-side built-in registration).
 | `entry` | string | yes | relative path to the ESM entry, no `..` segments (default convention: `index.js`) |
 | `slots` | string[] | yes | v1: must include `"section"`; unknown slot names are ignored (forward-compat) |
 | `description` | string | no | ≤200 chars, shown in the layout picker |
-| `icon` | string | no | relative path to an SVG/PNG in the folder; SVG is sanitized (scripts stripped) before render |
+| `icon` | string | no | relative path to an SVG/PNG in the folder; rendered via `<img src>` only — never inline/innerHTML — which is what makes an embedded script inert; this is the v1 sanitization mechanism, not a separate script-stripping pass |
 | `refresh` | object | no | `{ intervalSeconds: number ≥ 30 }` — host calls `refresh()` on this cadence while the widget is visible and the screen is awake |
 | `settings` | array | no | field descriptors driving the host's settings editor (below) |
 
@@ -114,6 +114,7 @@ interface WidgetInstance {
 - `onVisibilityChange(visible)` fires when the widget's section is
   shown/hidden and when the screensaver dims/wakes (dim ⇒ `false`).
   Optional; widgets that keep private timers should pause on `false`.
+  Callbacks may repeat the current value; implement handlers idempotently.
 
 ## 4. Host services — `WidgetHost`
 
@@ -161,7 +162,7 @@ interface WidgetHost {
    *  getToken resolves a computed value for canvas/JS use. */
   theme: {
     getToken(name: string): string;   // e.g. getToken("--rb-accent")
-    subscribe(cb: () => void): () => void;  // fires on theme switch
+    subscribe(cb: () => void): () => void;  // fires on theme switch (hosts without a theme engine may never fire it)
   };
 
   /** Plain fetch — full network access per the v1 trust model. Also the
@@ -242,19 +243,39 @@ touchscreen UI is an editor over it. Location: `data/config/dashboard.json`
   `scripts/start.sh` — or updates delete installed widgets.
 - Server: `GET /api/widgets` scans `widgets/*/widget.json`, validates
   each with the shared Zod schema, and returns
-  `{ widgets: [...manifests], invalid: [{folder, errors}] }`. Invalid
-  widgets are skipped, never fatal; the layout picker surfaces the
-  error so a sideloading user isn't debugging blind.
+  `{ widgets: [...manifests], invalid: [{folder, errors}] }` — this
+  response shape is implemented as specified. Invalid widgets are
+  skipped, never fatal; the layout picker surfaces the error so a
+  sideloading user isn't debugging blind.
 - Static serving: `express.static("widgets")` mounted at `/widgets`
   **inside `registerRoutes`** so it precedes both the prod SPA
-  catch-all and the dev Vite middleware.
+  catch-all and the dev Vite middleware, behind a realpath containment
+  guard that also rejects symlink escapes out of `widgets/`.
 - Client loads a community widget with dynamic
   `import(/* @vite-ignore */ `/widgets/${id}/${entry}`)`.
 - **apiVersion gate:** host constant `WIDGET_API_VERSION = 1` in
   `shared/widget-manifest.ts`. A manifest with `apiVersion >
   WIDGET_API_VERSION` is listed but not loadable, with the message
   "built for a newer Rootboard" (mirrors the theme manifest's
-  `engineVersion` policy).
+  `engineVersion` policy). The gate runs before any import is
+  attempted — a newer-apiVersion widget never triggers a module fetch.
+- **Enabled-only loading:** only manifests enabled in
+  `data/config/dashboard.json` are ever imported; a discovered but
+  disabled widget's entry module is never fetched or executed.
+- **Crash handling:** every widget lifecycle call (`mount()`,
+  `unmount()`, `refresh()`, `onVisibilityChange()`, and
+  `host.settings.subscribe()` notification callbacks) is guarded. A
+  widget whose `mount()` throws (or returns something that isn't
+  `{unmount(): void, ...}`) is isolated — dropped from the renderable
+  set and surfaced as a crash in the picker — rather than treated as
+  fatal to the app.
+- **Disabling stops future loading, not already-executed code:**
+  disabling a widget stops it from being imported/mounted again, but
+  any module top-level code that already ran (before it was disabled)
+  stays resident in the page until the next full reload — there is no
+  way to unload an already-evaluated JS module. A widget author must
+  not rely on `mount()`/`unmount()` as the only lifecycle boundary for
+  cleanup that matters (timers, listeners registered at module scope).
 - Built-in widgets ship in `client/src/widgets/<id>/` (manifest imported
   as JSON + a TS entry), registered through a static registry that runs
   the **same** Zod validation at startup. Same contract, different

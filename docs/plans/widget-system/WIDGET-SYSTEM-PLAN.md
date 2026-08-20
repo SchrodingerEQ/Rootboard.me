@@ -1,6 +1,6 @@
 # Rootboard Widget System — Combined Refactor & Build Plan
 
-**Status:** Phases 1-3 complete; Phases 4-5 not started.
+**Status:** Phases 1-4 complete; Phase 5 not started.
 **Decided:** 2026-08-19 (contract-shape choices founder-ratified this date)
 **Parent decision:** [0006 — Community-buildable widget system](../../decisions/0006-community-widget-system.md)
 **Contract spec:** [CONTRACT.md](CONTRACT.md)
@@ -129,7 +129,7 @@ The substantive build.
    it fits, own timers where it doesn't).
 7. Update `docs/SPEC.md` §3 for the new client architecture.
 
-### Phase 4 — Folder-drop loading
+### Phase 4 — Folder-drop loading ✅
 
 1. `express.static("widgets")` mounted inside `registerRoutes`;
    `GET /api/widgets` discovery endpoint (validated manifests +

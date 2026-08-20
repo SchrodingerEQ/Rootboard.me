@@ -56,3 +56,8 @@ npm-debug.log*
 
 # docs/ is tracked and public (see docs/decisions/0001) — keep deployment
 # specifics (hostnames, IPs, real names) out of everything in it.
+
+# Sideloaded folder-drop widgets (Phase 4) — user content dropped onto a
+# deployed kiosk via SD card/SSH, never tracked, never shipped in the
+# release tarball.
+/widgets/

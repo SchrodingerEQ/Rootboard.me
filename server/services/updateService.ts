@@ -53,6 +53,11 @@ const PRESERVE_PATHS = [
   'calendar.db',
   'calendar.db-shm',
   'calendar.db-wal',
+  // Sideloaded folder-drop widgets (Phase 4). Also gitignored, so also NOT
+  // contained in the GitHub release tarball. Without preserving this path, a
+  // *successful* update would delete users' sideloaded widgets and never
+  // restore them. See .gitignore.
+  'widgets',
 ];
 
 // Repo metadata that ships in the GitHub release source tarball but has no

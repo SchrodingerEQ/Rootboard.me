@@ -2,7 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 
-**Status:** planned 2026-08-19; not started.
+**Status:** implemented 2026-08-20, branch `feat/phase4-folder-drop`.
+
+**Ratified during execution:** two decisions surfaced mid-phase and were
+founder-ratified rather than left to implementer judgment — (A)
+discovered widgets are imported **only** when enabled in
+`data/config/dashboard.json`; a disabled widget's entry module is never
+fetched or executed. (B) the layout picker reorders built-in and
+community widgets as **separate pools** over the one `config.widgets`
+array, rather than one combined displayed order — a not-yet-installed
+community id has no position to reorder among. See CONTRACT.md §6 and
+`docs/SPEC.md` §3.1 for the resulting behavior.
 
 **Goal:** A widget folder dropped into `/widgets/` (SD card or SSH) appears in the layout picker, mounts through the same contract as built-ins, survives auto-updates, and fails safe — invalid manifests surface as picker errors, newer-apiVersion widgets are listed but not loadable.
 

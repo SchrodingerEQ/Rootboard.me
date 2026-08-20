@@ -1,4 +1,7 @@
 import type { Express } from "express";
+import express from "express";
+import path from "path";
+import fs from "fs";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
@@ -6,6 +9,7 @@ import { googleCalendarService } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
 import { getWeather } from "./services/weatherService";
 import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
+import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscovery";
 import { APP_VERSION } from "@shared/version";
 import { dashboardConfigSchema } from "@shared/dashboard-config";
 
@@ -398,6 +402,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to save dashboard config" });
     }
   });
+
+  // Folder-drop community widgets (Phase 4): re-scan widgets/ on every
+  // request (sideload a folder over SD card/SSH, then refresh the picker —
+  // no restart needed). Same-origin kiosk UI endpoint, no localhost-only
+  // guard, matching the other read routes above.
+  app.get("/api/widgets", (req, res) => {
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+    });
+    res.json(discoverWidgets());
+  });
+
+  // Serves sideloaded widget assets (entry scripts, icons) directly out of
+  // widgets/<id>/. Containment is enforced three ways, in order: (1) the
+  // realpath guard below, which resolves symlinks before deciding what's
+  // "inside" widgets/ — express.static alone follows symlinks via fs.stat,
+  // so a sideloaded folder containing e.g.
+  // `widgets/evil/x -> ../../service-account.json` would otherwise be
+  // served straight through on `GET /widgets/evil/x`, with no `..` ever
+  // appearing in the URL for express.static's own traversal check to catch;
+  // (2) express.static's own refusal to resolve a literal `..` in the
+  // (non-symlink) path; (3) the manifest schema already rejecting `..`
+  // segments in `entry`/`icon`. The realpath guard is the one that actually
+  // covers the symlink case — the other two are defense in depth.
+  app.use(
+    "/widgets",
+    (req, res, next) => {
+      // Resolved per request, not cached at boot: widgets/ is sideloaded
+      // content and may not exist yet when the server starts (see
+      // widgetDiscovery.ts header) — a kiosk owner can drop it in later
+      // without a restart.
+      let widgetsRootReal: string;
+      try {
+        widgetsRootReal = fs.realpathSync(path.resolve("widgets"));
+      } catch {
+        return res.status(404).end();
+      }
+
+      const result = resolveContainedPath(widgetsRootReal, req.path);
+      if (!result.ok) {
+        if (result.reason === "forbidden") {
+          // Real target resolves (often via a symlink) to somewhere outside
+          // widgets/ — generic body, no detail about what was found.
+          return res.status(403).json({ message: "Forbidden" });
+        }
+        // "not-found" and "bad-request" both collapse to a plain 404 so the
+        // response shape doesn't tell an attacker which case it was.
+        return res.status(404).end();
+      }
+
+      next();
+    },
+    express.static(path.resolve("widgets"), { index: false }),
+  );
 
   const httpServer = createServer(app);
   return httpServer;

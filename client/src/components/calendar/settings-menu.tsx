@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, type LucideIcon } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, Puzzle, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
+import { WidgetSettingsFields } from "@/components/widget-settings-fields";
+import type { WidgetSettingField } from "@shared/widget-manifest";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +51,96 @@ export interface WidgetPickerEntry {
   label: string;
   icon: LucideIcon;
   enabled: boolean;
+  /** Present when this widget's `mount()` crashed (threw, or returned
+   *  something other than `{ unmount(): void, ... }`) — see
+   *  widget-host-mount.tsx's `onWidgetCrash` and app-shell.tsx's
+   *  `crashedWidgets`. Short crash message. While set, the row's switch
+   *  is force-disabled (there's nothing to toggle back into — the widget
+   *  is already excluded from rendering) and clears automatically once
+   *  the widget's manifest `version` changes (app-shell.tsx's re-attempt
+   *  path), not from anything in this component. */
+  crashed?: string;
+  /** This widget's manifest `settings` descriptors (Phase 4 Task 5) —
+   *  absent/empty hides the row's settings expander entirely. Builtins
+   *  currently declare none (their manifests have no `settings` array), so
+   *  in practice this only ever populates for a community entry, but the
+   *  editor applies to ANY widget whose manifest declares settings. */
+  settings?: WidgetSettingField[];
+  /** This widget's current persisted settings blob
+   *  (data/config/dashboard.json widgets[].settings), handed straight to
+   *  WidgetSettingsFields for display — never written here, only read. */
+  settingsValues?: Record<string, unknown>;
+}
+
+/** One row of the layout picker's "Community Widgets" section (Phase 4) —
+ *  every widget discovered under `/widgets/`, whether or not it's currently
+ *  in `data/config/dashboard.json`. Sourced by the shell's
+ *  `communityWidgetPickerEntries` memo (app-shell.tsx), which merges
+ *  `GET /api/widgets` with the config and the dynamic-import load result
+ *  for each id. */
+export interface CommunityWidgetPickerEntry {
+  id: string;
+  label: string;
+  description?: string;
+  /** null when the manifest declares no `icon` — rendered as a generic
+   *  Puzzle glyph, never a lucide icon (community widgets don't get one). */
+  icon: { kind: "image"; src: string } | null;
+  /** True iff this id has a config entry with `enabled: true`. False for
+   *  both "disabled" and "not yet added to config" — `installed`
+   *  disambiguates those two. */
+  enabled: boolean;
+  /** True iff this id already has an entry in config.widgets (regardless
+   *  of enabled/disabled) — controls whether reorder arrows are shown at
+   *  all (nothing to reorder before it has a position). Always false for
+   *  a "ghost" row (below) even though it DOES have a config entry: a
+   *  ghost has no discovered position to reorder among. */
+  installed: boolean;
+  /** "not-loaded": disabled (or not yet added to config) and, per
+   *  founder-ratified decision A, therefore never imported — nothing to
+   *  report except "flip the switch to load it". "loading": enabled,
+   *  import in flight. "ready": loaded and mountable — the only status
+   *  the enable switch may be turned ON from (a not-loaded row can also
+   *  be turned on — that's what triggers the import). "newer-api": listed
+   *  per CONTRACT.md §6, computed straight from manifest data (no import
+   *  needed), so it applies even while disabled; the switch can never be
+   *  turned ON from here but CAN be turned OFF if it happens to be
+   *  enabled already. "error": enabled, imported, and failed — same
+   *  disable-only-from-here rule; note this NEVER appears for a disabled
+   *  row (see IMPORTANT #2 — disabling clears back to "not-loaded", so a
+   *  load error is only ever visible after (re-)enabling). "crashed":
+   *  imported fine but `mount()` itself threw at runtime — always
+   *  disable-only, regardless of enabled state, since there is nothing
+   *  useful the switch being ON accomplishes while crashed. "ghost": a
+   *  config entry (CONTRACT §5 "unknown widget ids are kept but shown as
+   *  unavailable") whose id has no discovered manifest at all — disable-
+   *  only, so the user has an escape hatch to remove it from config. */
+  status: "not-loaded" | "loading" | "ready" | "newer-api" | "error" | "crashed" | "ghost";
+  /** Present for every status except "loading"/"ready" — the reason
+   *  string shown under the row. */
+  statusMessage?: string;
+  /** This widget's manifest `settings` descriptors (Phase 4 Task 5) —
+   *  absent/empty (always the case for a "ghost" row, which has no
+   *  discovered manifest at all) hides the row's settings expander. Applies
+   *  regardless of `status` otherwise — a disabled/not-loaded/crashed/
+   *  newer-api/error community widget's settings are still just config
+   *  data, editable without the widget itself ever running. */
+  settings?: WidgetSettingField[];
+  /** This widget's current persisted settings blob
+   *  (data/config/dashboard.json widgets[].settings), handed straight to
+   *  WidgetSettingsFields for display — never written here, only read. */
+  settingsValues?: Record<string, unknown>;
+}
+
+/** One row of the layout picker's "Widget Folder Errors" section (Phase 4)
+ *  — a `/widgets/<folder>` directory that failed manifest validation
+ *  (server/services/widgetDiscovery.ts `invalid` entries). No controls:
+ *  there's nothing installable here until the folder itself is fixed. */
+export interface InvalidWidgetPickerEntry {
+  folder: string;
+  /** First validation error only (widgetDiscovery.ts collects all of
+   *  them; the picker row shows just enough to point at the problem —
+   *  the full list isn't worth the space on a 104px-rail kiosk popover). */
+  error: string;
 }
 
 interface SettingsMenuProps {
@@ -81,6 +173,33 @@ interface SettingsMenuProps {
   /** Swaps this widget with its neighbor in the picker's displayed order
    *  (direction -1 = up/earlier, +1 = down/later). */
   onMoveWidget?: (id: string, direction: -1 | 1) => void;
+  /** Every widget discovered under `/widgets/` (Phase 4), in the shell's
+   *  display order (in-config ones first, in config order; then
+   *  not-yet-added ones). Absent/empty hides the "Community Widgets"
+   *  section entirely — a kiosk with no sideloaded widgets never shows an
+   *  empty section. */
+  communityWidgetPickerEntries?: CommunityWidgetPickerEntry[];
+  /** Enables/disables a community widget. For an id with no config entry
+   *  yet, enabling APPENDS `{id, enabled: true, settings: {}}` to
+   *  config.widgets (CONTRACT.md §5) rather than requiring a separate
+   *  "install" step. */
+  onToggleCommunityWidget?: (id: string, enabled: boolean) => void;
+  /** Reorders a community widget among the OTHER community widgets that
+   *  already have a config position — mirrors onMoveWidget's swap-actual-
+   *  array-positions semantics, scoped to the community pool instead of
+   *  the builtin pool (app-shell.tsx moveCommunityWidget). */
+  onMoveCommunityWidget?: (id: string, direction: -1 | 1) => void;
+  /** `/widgets/<folder>` directories that failed manifest validation
+   *  (Phase 4). Absent/empty hides the section. */
+  invalidWidgetPickerEntries?: InvalidWidgetPickerEntry[];
+  /** Commits one settings-field edit for one widget (Phase 4 Task 5) —
+   *  wired to the shell's `updateWidgetSettings(widgetId, builder)` merge
+   *  pipeline via a single-key builder, so every OTHER key already in that
+   *  widget's settings (including ones this editor doesn't know about) is
+   *  preserved untouched. Shared by both the "Widgets" and "Community
+   *  Widgets" sections — settings storage doesn't distinguish builtin from
+   *  community. */
+  onPatchWidgetSetting?: (id: string, key: string, value: string | number | boolean) => void;
 }
 
 export function SettingsMenu({
@@ -96,9 +215,51 @@ export function SettingsMenu({
   widgetPickerEntries = [],
   onToggleWidget,
   onMoveWidget,
+  communityWidgetPickerEntries = [],
+  onToggleCommunityWidget,
+  onMoveCommunityWidget,
+  invalidWidgetPickerEntries = [],
+  onPatchWidgetSetting,
 }: SettingsMenuProps) {
-  const enabledWidgetCount = widgetPickerEntries.filter((e) => e.enabled).length;
+  // IMPORTANT #1: only count widgets that actually RENDER a pane toward
+  // the "at least one widget must stay enabled" guard — a builtin always
+  // counts once enabled (nothing gates it further), but a community entry
+  // only counts while "ready" (actually loaded and mountable). An enabled-
+  // but-ghost/crashed/newer-api/error/not-loaded community row contributes
+  // nothing to the app's actual renderable set, so counting it would let
+  // the guard fail OPEN — blocking the user from disabling the one real
+  // widget that's propping the count up, while never blocking the useless
+  // entry itself. Failing closed here also resolves the cosmetic mismatch
+  // the pre-fix version had: this count could disagree with
+  // renderableEntries.length in app-shell.tsx by exactly the number of
+  // enabled-but-unrenderable community rows.
+  const enabledWidgetCount =
+    widgetPickerEntries.filter((e) => e.enabled && !e.crashed).length +
+    communityWidgetPickerEntries.filter((e) => e.enabled && e.status === "ready").length;
+  const installedCommunityEntries = communityWidgetPickerEntries.filter((e) => e.installed);
   const [isOpen, setIsOpen] = useState(false);
+  // Minor #4: per-id "this icon's src failed to load" state, so a broken
+  // sideloaded icon (bad path, corrupt file) falls back to the generic
+  // Puzzle glyph instead of sitting as a permanently broken <img> box.
+  // Keyed by id -> the specific src that failed, not a bare boolean, so a
+  // later manifest update with a fixed path automatically retries instead
+  // of staying stuck on the fallback.
+  const [failedIconSrc, setFailedIconSrc] = useState<Map<string, string>>(new Map());
+  // Phase 4 Task 5: which widget rows have their settings expander open,
+  // by id. Shared across both "Widgets" and "Community Widgets" sections —
+  // an id collision between a builtin and a community widget can't happen
+  // (widgetIdSchema-validated ids are globally unique in config), so one
+  // Set is enough. Local-only (not persisted) — a reopen of the popover
+  // always starts collapsed.
+  const [expandedSettings, setExpandedSettings] = useState<Set<string>>(new Set());
+  const toggleSettingsExpanded = (id: string) => {
+    setExpandedSettings((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem('calendar-brightness');
     return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
@@ -360,42 +521,87 @@ export function SettingsMenu({
                   <div className="space-y-1">
                     {widgetPickerEntries.map((entry, index) => {
                       const Icon = entry.icon;
-                      const lastEnabled = entry.enabled && enabledWidgetCount <= 1;
+                      const isCrashed = !!entry.crashed;
+                      // A crashed widget's own switch is force-disabled
+                      // (see WidgetPickerEntry's `crashed` doc) and never
+                      // counts toward the guard (enabledWidgetCount above
+                      // already excludes it) — so it can't itself be the
+                      // reason another row's switch is guard-locked.
+                      const lastEnabled = !isCrashed && entry.enabled && enabledWidgetCount <= 1;
+                      // Phase 4 Task 5: the settings expander is available
+                      // regardless of enabled/crashed state — settings are
+                      // just config data, editable whether or not the
+                      // widget is currently rendering (deliverable #2).
+                      const hasSettings = !!entry.settings && entry.settings.length > 0;
+                      const settingsOpen = hasSettings && expandedSettings.has(entry.id);
                       return (
-                        <div key={entry.id} className="flex items-center gap-1">
-                          <Icon className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
-                          <span className="text-sm flex-1 truncate">{entry.label}</span>
-                          <button
-                            type="button"
-                            className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
-                            onClick={() => onMoveWidget?.(entry.id, -1)}
-                            disabled={index === 0}
-                            title="Move up"
-                            data-testid={`widget-move-up-${entry.id}`}
-                          >
-                            <ChevronUp className="h-5 w-5" />
-                          </button>
-                          <button
-                            type="button"
-                            className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
-                            onClick={() => onMoveWidget?.(entry.id, 1)}
-                            disabled={index === widgetPickerEntries.length - 1}
-                            title="Move down"
-                            data-testid={`widget-move-down-${entry.id}`}
-                          >
-                            <ChevronDown className="h-5 w-5" />
-                          </button>
-                          <label
-                            className="touch-button flex items-center justify-center flex-shrink-0"
-                            title={lastEnabled ? "At least one widget must stay enabled" : undefined}
-                          >
-                            <Switch
-                              checked={entry.enabled}
-                              disabled={lastEnabled}
-                              onCheckedChange={(checked) => onToggleWidget?.(entry.id, checked)}
-                              data-testid={`widget-toggle-${entry.id}`}
+                        <div key={entry.id} className="space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            <Icon className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
+                            <span className="text-sm flex-1 truncate">{entry.label}</span>
+                            <button
+                              type="button"
+                              className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                              onClick={() => onMoveWidget?.(entry.id, -1)}
+                              disabled={index === 0}
+                              title="Move up"
+                              data-testid={`widget-move-up-${entry.id}`}
+                            >
+                              <ChevronUp className="h-5 w-5" />
+                            </button>
+                            <button
+                              type="button"
+                              className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                              onClick={() => onMoveWidget?.(entry.id, 1)}
+                              disabled={index === widgetPickerEntries.length - 1}
+                              title="Move down"
+                              data-testid={`widget-move-down-${entry.id}`}
+                            >
+                              <ChevronDown className="h-5 w-5" />
+                            </button>
+                            {hasSettings && (
+                              <button
+                                type="button"
+                                className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip flex-shrink-0"
+                                onClick={() => toggleSettingsExpanded(entry.id)}
+                                title="Widget settings"
+                                aria-expanded={settingsOpen}
+                                data-testid={`widget-settings-toggle-${entry.id}`}
+                              >
+                                <SlidersHorizontal className="h-5 w-5" />
+                              </button>
+                            )}
+                            <label
+                              className="touch-button flex items-center justify-center flex-shrink-0"
+                              title={
+                                isCrashed
+                                  ? entry.crashed
+                                  : lastEnabled
+                                    ? "At least one widget must stay enabled"
+                                    : undefined
+                              }
+                            >
+                              <Switch
+                                checked={entry.enabled}
+                                disabled={isCrashed || lastEnabled}
+                                onCheckedChange={(checked) => onToggleWidget?.(entry.id, checked)}
+                                data-testid={`widget-toggle-${entry.id}`}
+                              />
+                            </label>
+                          </div>
+                          {isCrashed && (
+                            <p className="text-xs text-rb-danger leading-snug truncate pl-5">
+                              crashed: {entry.crashed}
+                            </p>
+                          )}
+                          {settingsOpen && (
+                            <WidgetSettingsFields
+                              widgetId={entry.id}
+                              fields={entry.settings!}
+                              values={entry.settingsValues ?? {}}
+                              onPatch={(key, value) => onPatchWidgetSetting?.(entry.id, key, value)}
                             />
-                          </label>
+                          )}
                         </div>
                       );
                     })}
@@ -405,6 +611,186 @@ export function SettingsMenu({
                       At least one widget must stay enabled.
                     </p>
                   )}
+                </div>
+
+                <Separator />
+              </>
+            )}
+
+            {/* Community Widgets — folder-drop picker (Phase 4): every
+                widget discovered under /widgets/, whether or not it's
+                already in config. Reorder is scoped to this pool only
+                (see onMoveCommunityWidget's doc comment above) — a
+                not-yet-installed entry has no position, so it gets no
+                arrows at all. */}
+            {communityWidgetPickerEntries.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Puzzle className="h-4 w-4" />
+                    <Label className="text-sm font-medium">Community Widgets</Label>
+                  </div>
+                  <div className="space-y-1.5">
+                    {communityWidgetPickerEntries.map((entry) => {
+                      const ready = entry.status === "ready";
+                      const isCrashed = entry.status === "crashed";
+                      const isGhost = entry.status === "ghost";
+                      // "Turn ON" is blocked for newer-api/crashed/ghost —
+                      // none of them can be helped by flipping the switch
+                      // while off. "Turn OFF" is ALWAYS allowed whenever
+                      // currently enabled (crashed/ghost/newer-api/error/
+                      // loading alike) so a misbehaving or broken widget
+                      // can never trap the user out of disabling it — this
+                      // mirrors "error"'s pre-existing disable-only rule
+                      // (ghost/crashed are new instances of the same
+                      // pattern, not a new rule).
+                      const canToggleOn = entry.status !== "newer-api" && !isCrashed && !isGhost;
+                      const switchDisabled = !canToggleOn && !entry.enabled;
+                      const iconSrc = entry.icon?.src;
+                      const iconFailed = iconSrc !== undefined && failedIconSrc.get(entry.id) === iconSrc;
+                      const installedIndex = installedCommunityEntries.findIndex((e) => e.id === entry.id);
+                      // Only a "ready" (actually rendering) entry counts
+                      // toward the last-enabled guard — see
+                      // enabledWidgetCount's doc comment above for why.
+                      const guardBlocksDisable = ready && entry.enabled && enabledWidgetCount <= 1;
+                      // Phase 4 Task 5: available for any status except
+                      // "ghost" (a ghost row's `entry.settings` is never
+                      // populated — no discovered manifest to read
+                      // descriptors from — so `hasSettings` is naturally
+                      // false there without a separate isGhost check).
+                      const hasSettings = !!entry.settings && entry.settings.length > 0;
+                      const settingsOpen = hasSettings && expandedSettings.has(entry.id);
+                      return (
+                        <div key={entry.id} className="space-y-0.5">
+                          <div className="flex items-center gap-1">
+                            {entry.icon && !iconFailed ? (
+                              <img
+                                src={entry.icon.src}
+                                alt=""
+                                className="h-4 w-4 flex-shrink-0"
+                                style={{ objectFit: "contain" }}
+                                onError={() =>
+                                  setFailedIconSrc((prev) => {
+                                    if (prev.get(entry.id) === iconSrc) return prev;
+                                    const next = new Map(prev);
+                                    next.set(entry.id, iconSrc!);
+                                    return next;
+                                  })
+                                }
+                              />
+                            ) : (
+                              <Puzzle className="h-4 w-4 text-rb-ink-secondary flex-shrink-0" />
+                            )}
+                            <span className="text-sm flex-1 truncate">{entry.label}</span>
+                            {entry.installed && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                                  onClick={() => onMoveCommunityWidget?.(entry.id, -1)}
+                                  disabled={installedIndex <= 0}
+                                  title="Move up"
+                                  data-testid={`community-widget-move-up-${entry.id}`}
+                                >
+                                  <ChevronUp className="h-5 w-5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip disabled:opacity-30 disabled:pointer-events-none"
+                                  onClick={() => onMoveCommunityWidget?.(entry.id, 1)}
+                                  disabled={installedIndex === installedCommunityEntries.length - 1}
+                                  title="Move down"
+                                  data-testid={`community-widget-move-down-${entry.id}`}
+                                >
+                                  <ChevronDown className="h-5 w-5" />
+                                </button>
+                              </>
+                            )}
+                            {hasSettings && (
+                              <button
+                                type="button"
+                                className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip flex-shrink-0"
+                                onClick={() => toggleSettingsExpanded(entry.id)}
+                                title="Widget settings"
+                                aria-expanded={settingsOpen}
+                                data-testid={`community-widget-settings-toggle-${entry.id}`}
+                              >
+                                <SlidersHorizontal className="h-5 w-5" />
+                              </button>
+                            )}
+                            <label
+                              className="touch-button flex items-center justify-center flex-shrink-0"
+                              title={
+                                guardBlocksDisable
+                                  ? "At least one widget must stay enabled"
+                                  : switchDisabled
+                                    ? (entry.statusMessage ?? "Not loadable")
+                                    : undefined
+                              }
+                            >
+                              <Switch
+                                checked={entry.enabled}
+                                disabled={switchDisabled || guardBlocksDisable}
+                                onCheckedChange={(checked) => onToggleCommunityWidget?.(entry.id, checked)}
+                                data-testid={`community-widget-toggle-${entry.id}`}
+                              />
+                            </label>
+                          </div>
+                          {/* Description is manifest data — shown for a
+                              disabled/not-loaded row too (discovery-
+                              derived info, no import required), not just
+                              a ready one. */}
+                          {entry.description && (
+                            <p className="text-xs text-rb-faint leading-snug truncate pl-5">{entry.description}</p>
+                          )}
+                          {!ready && (
+                            <p
+                              className={`text-xs leading-snug truncate pl-5 ${
+                                isCrashed ? "text-rb-danger" : "text-rb-warn"
+                              }`}
+                            >
+                              {entry.status === "loading"
+                                ? "Loading…"
+                                : isCrashed
+                                  ? `crashed: ${entry.statusMessage}`
+                                  : entry.statusMessage}
+                            </p>
+                          )}
+                          {settingsOpen && (
+                            <WidgetSettingsFields
+                              widgetId={entry.id}
+                              fields={entry.settings!}
+                              values={entry.settingsValues ?? {}}
+                              onPatch={(key, value) => onPatchWidgetSetting?.(entry.id, key, value)}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Separator />
+              </>
+            )}
+
+            {/* Widget Folder Errors — folders under /widgets/ that failed
+                manifest validation (Phase 4). No controls: nothing to
+                install until the folder itself is fixed. */}
+            {invalidWidgetPickerEntries.length > 0 && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-rb-warn" />
+                    <Label className="text-sm font-medium">Widget Folder Errors</Label>
+                  </div>
+                  <div className="space-y-1">
+                    {invalidWidgetPickerEntries.map((entry) => (
+                      <p key={entry.folder} className="text-xs text-rb-warn-ink leading-snug">
+                        <span className="font-mono">{entry.folder}</span>: {entry.error}
+                      </p>
+                    ))}
+                  </div>
                 </div>
 
                 <Separator />

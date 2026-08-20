@@ -69,6 +69,8 @@ retention sweep, which runs inside each sync.
 | PUT | `/api/state/:key` | Write app-state blob | key whitelist + 64,000-char cap |
 | GET | `/api/config/dashboard` | Re-reads config from disk every call; `{config, source}` | none |
 | PUT | `/api/config/dashboard` | Zod-validate + atomic write of the whole config | none |
+| GET | `/api/widgets` | Discover `widgets/*/widget.json`; `{widgets, invalid}`, no-store | none |
+| GET | `/widgets/*` | Static community-widget assets (`express.static`) | realpath containment |
 
 - **Localhost guard:** `isLocalRequest` compares `req.ip`/socket address to
   `127.0.0.1`, `::1`, `::ffff:127.0.0.1`, `localhost`; violations get 403.
@@ -87,6 +89,19 @@ retention sweep, which runs inside each sync.
   to read it; an invalid body → 400 with flattened Zod errors.
 - **Apply/rollback respond `{status:"in-progress"}` immediately**; progress
   is observable only by polling `GET /api/update/status`.
+- **Widget discovery** (`server/services/widgetDiscovery.ts`):
+  `GET /api/widgets` re-scans `widgets/*/widget.json` on every call (no
+  caching, no restart needed after a sideload) and never throws — a
+  missing `widgets/` dir returns an empty result, and a folder that
+  fails to read/parse/validate becomes an `invalid` entry instead of
+  aborting the scan. Each `widget.json` read is capped at 65,536 bytes (64 KiB)
+  (`MAX_MANIFEST_BYTES`) so an oversized manifest can't stall a request.
+  `/widgets/*` static serving sits behind a realpath containment guard
+  ahead of `express.static`: the request path is resolved with symlinks
+  followed and rejected unless it lands strictly inside the real
+  `widgets/` root — this closes a symlink-escape route (e.g.
+  `widgets/evil/x -> ../../service-account.json`) that a literal
+  `..`-segment check alone would miss.
 
 ### 2.3 Google Calendar service (`server/services/googleCalendar.ts`)
 
@@ -212,6 +227,58 @@ from Open-Meteo and cached server-side.
   hoisted by hand. A widget's `unmount()` is called only when it leaves
   the enabled set (disabled in settings, or its folder removed — Phase
   4) or the app shuts down — never on a mere section switch.
+- **Community widget loading** (folder-drop, Phase 4;
+  `lib/community-widgets.ts`, `server/services/widgetDiscovery.ts`): the
+  shell polls `GET /api/widgets` every 60 s (same cadence as the
+  dashboard-config poll, 3.1 above) and the server re-scans
+  `widgets/*/widget.json` on every call, so a folder sideloaded via SD
+  card/SSH appears in the layout picker without a restart. Only
+  **enabled** manifests are ever imported (`filterEnabledManifests`) —
+  a discovered-but-disabled widget's entry module never executes.
+  Before any import is attempted, `apiVersion` is checked against
+  `WIDGET_API_VERSION`; a widget built for a newer contract is listed
+  but never fetched, shown as "built for a newer Rootboard"
+  (`loadCommunityWidget`). An imported module is validated against the
+  contract's shape (`{ default: { mount(container, host) } }`,
+  `extractWidgetFromModule`) before it counts as loaded — a mismatch
+  surfaces as a load error, not a crash. Imports are cached by
+  `id`+`version`: toggling a widget off then back on without a manifest
+  version bump reuses the cached module rather than re-importing, so
+  its top-level (module-scope) code runs once per version, at first
+  enable, and does not re-run on re-enable — only `mount()`/`unmount()`
+  replay. Bumping the manifest `version` (an SSH-side edit) invalidates
+  the cache and remounts the widget in place on the next poll, no page
+  reload needed; built-ins never change identity, so this path is a
+  no-op for them (`widget-host-mount.tsx`).
+- **Crash isolation:** every widget lifecycle call — `mount()`,
+  `unmount()`, `refresh()`, `onVisibilityChange()` — is wrapped so a
+  throw is caught and logged, never left to propagate
+  (`widget-host-mount.tsx`'s `safeMount`/`safeUnmount`/
+  `safeVisibilityChange`). A `mount()` throw (or a return that isn't
+  `{unmount(): void, ...}`) is reported via `onWidgetCrash`, which drops
+  the widget from the renderable set and surfaces the crash in the
+  picker instead of ever blanking the app; a `WidgetHostErrorBoundary`
+  around the render tree is the belt to this guarded-call-sites
+  suspenders. This applies uniformly to built-in and community widgets
+  — CONTRACT.md's "no privileged internals" extends to fault
+  handling.
+- **Icons render `<img src>` only** — never inline/innerHTML SVG. This
+  is what makes an embedded `<script>` in a malicious icon inert without
+  a separate sanitization pass, and is how CONTRACT.md §2's "sanitized
+  before render" is satisfied in v1, for built-in and community icons
+  alike.
+- **Layout picker — per-pool reorder:** built-in and community widgets
+  are two separate ordering pools over the one `config.widgets` array
+  (`app-shell.tsx`'s `moveWidget`/`moveCommunityWidget`). Reordering
+  resolves "the next widget" among same-pool ids only, then swaps those
+  two ids' actual array positions — a community widget's move can land
+  it past one or more built-in entries in the underlying array if
+  they're interleaved, since only same-pool adjacency is guaranteed, not
+  raw array adjacency. A `config.widgets` entry whose folder is no
+  longer present renders as a **ghost row** ("not installed — folder
+  missing") in the picker — kept so its settings aren't silently
+  discarded, but with no reorder arrows, since a ghost has no discovered
+  position to reorder among.
 - **Host services** (`WidgetHost`, `client/src/widgets/types.ts`, per
   CONTRACT.md §4): `storage.get()/set()` — backed by `AppStateClient`
   (`lib/app-state-client.ts`), the same hardened debounce/retry
@@ -582,6 +649,11 @@ identifies the restored version, then `npm install` + `npm run build`
   schema-invalid file degrades to `defaultDashboardConfig()` on read
   rather than ever failing to boot. Gitignored — never tracked, and on
   both updater preserve lists.
+- `widgets/`: sideloaded folder-drop community widgets (SD card/SSH).
+  Gitignored — never tracked, never in the release tarball — and on
+  both updater preserve lists (`PRESERVE_PATHS` in `updateService.ts`,
+  the `case` list in `start.sh`), so installed widgets survive
+  auto-updates.
 - `APP_VERSION` (`shared/version.ts`) is the single version source; update
   eligibility is `latest > current` numerically per dotted segment.
 
@@ -631,3 +703,15 @@ identifies the restored version, then `npm install` + `npm run build`
   synchronously unmount a root while React was already rendering"
   warning; cosmetic, reproduces on cold boot in dev, not yet
   root-caused (tracked in TASKS.md).
+- A community widget's module is cached by `id`+`version` once
+  imported: disabling then re-enabling it (no manifest version bump in
+  between) reuses the cached module rather than re-importing, so its
+  top-level module-scope code only ever ran once, at first enable, and
+  stays run — it does not re-execute on re-enable, only `mount()`/
+  `unmount()` replay. A version bump or full page reload is what
+  actually re-runs it (3.1).
+- Layout picker reorder is per-pool (built-in vs. community) over one
+  shared `config.widgets` array: moving a community widget swaps it
+  with the next community-owned array entry, which can be several
+  positions away — not necessarily physically adjacent — if built-in
+  entries sit between them (3.1).

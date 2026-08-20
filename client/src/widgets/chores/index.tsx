@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import ChoresPage from "@/pages/chores";
 import { useChoresWithHost } from "@/hooks/use-chores";
-import { validateBuiltinManifest } from "@/widgets/registry";
+import { validateBuiltinManifest } from "@/widgets/validate-manifest";
 import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/types";
 import rawManifest from "./manifest.json";
 
