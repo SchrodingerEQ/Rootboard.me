@@ -87,6 +87,17 @@ npm start
 
 Your `.env` file, `service-account.json`, and calendar data are preserved across updates.
 
+## Widgets
+
+Rootboard supports community widgets. Drop a folder into `widgets/` and it appears in **Settings → Community Widgets** — no rebuild required.
+
+- **The contract:** [docs/plans/widget-system/CONTRACT.md](docs/plans/widget-system/CONTRACT.md) — manifest schema, lifecycle, and host services.
+- **Start building:** [rootboard-widget-template](https://github.com/SchrodingerEQ/rootboard-widget-template) — a working hello-world widget and a [30-minute tutorial](https://github.com/SchrodingerEQ/rootboard-widget-template/blob/main/TUTORIAL.md) that takes you from an empty folder to a mounted widget. Want to share what you build? See the template's [CONTRIBUTING.md](https://github.com/SchrodingerEQ/rootboard-widget-template/blob/main/CONTRIBUTING.md).
+- **Reference widget:** [rootboard-widget-grocery-list](https://github.com/SchrodingerEQ/rootboard-widget-grocery-list) — a real, family-useful widget built entirely on the public contract, nothing internal.
+- **Browse widgets and themes:** [awesome-rootboard](https://github.com/SchrodingerEQ/awesome-rootboard).
+
+Trust model, plainly: there is no sandbox — a widget runs with the same access as the app itself, so only install widgets you trust ([CONTRACT §7](docs/plans/widget-system/CONTRACT.md#7-trust-model-v1--stated-plainly)).
+
 ## Before Your First Push to a Public GitHub Repo
 
 If you are forking or republishing this project, complete these one-time security steps **before** running `git push`:

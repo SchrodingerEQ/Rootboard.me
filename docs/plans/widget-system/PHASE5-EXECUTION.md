@@ -2,11 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 
-**Status:** planned 2026-08-20; runs under a founder-ratified autonomy
-charter (pushes to the three ecosystem repos pre-authorized with
-security review per push; main-repo merge auto on green final review;
-surprises are parked in TASKS.md, never block; only destructive/
-irreversible situations interrupt).
+**Status:** implemented 2026-08-20 (all six tasks; per-task reviews +
+fix loops; tutorial verbatim-follow gate PASSED). Ran under a
+founder-ratified autonomy charter (pushes to the three ecosystem repos
+pre-authorized with security review per push; main-repo merge auto on
+green final review; surprises are parked in TASKS.md, never block;
+only destructive/irreversible situations interrupt).
 
 **Goal:** Ship the package that proves Rootboard's widget system is
 genuinely open even with zero community members yet: a template repo
