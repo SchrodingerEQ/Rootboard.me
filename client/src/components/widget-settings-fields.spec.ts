@@ -85,6 +85,14 @@ describe("resolveFieldValue", () => {
     expect(resolveFieldValue(selectField({ default: "light" }), { theme: 1 })).toBe("light");
   });
 
+  test("select: a string config value not among the declared options falls through to the default", () => {
+    expect(resolveFieldValue(selectField({ default: "light" }), { theme: "sepia" })).toBe("light");
+  });
+
+  test("select: a string config value that IS among the declared options is used", () => {
+    expect(resolveFieldValue(selectField({ default: "light" }), { theme: "dark" })).toBe("dark");
+  });
+
   test("select: falls back to empty when neither config nor default is present", () => {
     expect(resolveFieldValue(selectField(), {})).toBe("");
   });

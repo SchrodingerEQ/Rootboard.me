@@ -596,6 +596,7 @@ export function SettingsMenu({
                           )}
                           {settingsOpen && (
                             <WidgetSettingsFields
+                              widgetId={entry.id}
                               fields={entry.settings!}
                               values={entry.settingsValues ?? {}}
                               onPatch={(key, value) => onPatchWidgetSetting?.(entry.id, key, value)}
@@ -757,6 +758,7 @@ export function SettingsMenu({
                           )}
                           {settingsOpen && (
                             <WidgetSettingsFields
+                              widgetId={entry.id}
                               fields={entry.settings!}
                               values={entry.settingsValues ?? {}}
                               onPatch={(key, value) => onPatchWidgetSetting?.(entry.id, key, value)}

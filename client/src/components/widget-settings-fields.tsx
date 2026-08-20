@@ -6,6 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import type { WidgetSettingField } from "@shared/widget-manifest";
 
 export interface WidgetSettingsFieldsProps {
+  /** The owning widget's id (dashboard.json widgets[].id / manifest id) —
+   *  namespaces every field's DOM id/data-testid so two widgets that both
+   *  declare a setting with the same `key` (e.g. two instances of the same
+   *  community widget, or two different widgets that happen to both use
+   *  "label") never collide on a duplicate DOM id. */
+  widgetId: string;
   /** A manifest's `settings` descriptors (shared/widget-manifest.ts) — the
    *  CONTRACT §2 promise this component closes: "the host renders these in
    *  its settings UI." */
@@ -55,7 +61,16 @@ export function resolveFieldValue(
   values: Record<string, unknown>,
 ): string | number | boolean {
   const raw = values[field.key];
-  if (isTypeMatch(field.type, raw)) return raw;
+  if (isTypeMatch(field.type, raw)) {
+    // A "select" field's config value must also be one of the descriptor's
+    // declared options — a hand-edited config with a value the manifest no
+    // longer offers (or never did) is exactly as unsafe to surface as a
+    // type-mismatched value, and falls through to the default/empty branch
+    // the same way.
+    if (field.type !== "select" || (field.options ?? []).some((opt) => opt.value === raw)) {
+      return raw;
+    }
+  }
   if (isTypeMatch(field.type, field.default)) return field.default;
   return field.type === "boolean" ? false : "";
 }
@@ -63,12 +78,13 @@ export function resolveFieldValue(
 /** Renders every declared setting field for one widget, in manifest order.
  *  Caller (settings-menu.tsx) is responsible for gating this behind an
  *  expander and for only rendering it when `fields` is non-empty. */
-export function WidgetSettingsFields({ fields, values, onPatch }: WidgetSettingsFieldsProps) {
+export function WidgetSettingsFields({ widgetId, fields, values, onPatch }: WidgetSettingsFieldsProps) {
   return (
     <div className="space-y-2 pl-5 pt-1">
       {fields.map((field) => (
         <WidgetSettingRow
           key={field.key}
+          widgetId={widgetId}
           field={field}
           value={resolveFieldValue(field, values)}
           onPatch={(value) => onPatch(field.key, value)}
@@ -79,15 +95,17 @@ export function WidgetSettingsFields({ fields, values, onPatch }: WidgetSettings
 }
 
 function WidgetSettingRow({
+  widgetId,
   field,
   value,
   onPatch,
 }: {
+  widgetId: string;
   field: WidgetSettingField;
   value: string | number | boolean;
   onPatch: (value: string | number | boolean) => void;
 }) {
-  const inputId = `widget-setting-${field.key}`;
+  const inputId = `widget-setting-${widgetId}-${field.key}`;
 
   if (field.type === "boolean") {
     return (
@@ -115,7 +133,7 @@ function WidgetSettingRow({
           {field.label}
         </Label>
         <Select value={selected} onValueChange={(next) => onPatch(next)}>
-          <SelectTrigger id={inputId} className="h-11 text-sm" data-testid={inputId}>
+          <SelectTrigger id={inputId} className="h-12 text-sm" data-testid={inputId}>
             <SelectValue placeholder={field.label} />
           </SelectTrigger>
           <SelectContent>
@@ -176,7 +194,7 @@ function StringSettingField({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className="h-11 text-sm"
+        className="h-12 text-sm"
         data-testid={inputId}
       />
     </div>
@@ -232,7 +250,7 @@ function NumberSettingField({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
-        className="h-11 text-sm"
+        className="h-12 text-sm"
         data-testid={inputId}
       />
     </div>
