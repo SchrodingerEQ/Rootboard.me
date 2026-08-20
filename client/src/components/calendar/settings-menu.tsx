@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, Puzzle, type LucideIcon } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, Puzzle, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
+import { WidgetSettingsFields } from "@/components/widget-settings-fields";
+import type { WidgetSettingField } from "@shared/widget-manifest";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +60,16 @@ export interface WidgetPickerEntry {
    *  the widget's manifest `version` changes (app-shell.tsx's re-attempt
    *  path), not from anything in this component. */
   crashed?: string;
+  /** This widget's manifest `settings` descriptors (Phase 4 Task 5) —
+   *  absent/empty hides the row's settings expander entirely. Builtins
+   *  currently declare none (their manifests have no `settings` array), so
+   *  in practice this only ever populates for a community entry, but the
+   *  editor applies to ANY widget whose manifest declares settings. */
+  settings?: WidgetSettingField[];
+  /** This widget's current persisted settings blob
+   *  (data/config/dashboard.json widgets[].settings), handed straight to
+   *  WidgetSettingsFields for display — never written here, only read. */
+  settingsValues?: Record<string, unknown>;
 }
 
 /** One row of the layout picker's "Community Widgets" section (Phase 4) —
@@ -106,6 +118,17 @@ export interface CommunityWidgetPickerEntry {
   /** Present for every status except "loading"/"ready" — the reason
    *  string shown under the row. */
   statusMessage?: string;
+  /** This widget's manifest `settings` descriptors (Phase 4 Task 5) —
+   *  absent/empty (always the case for a "ghost" row, which has no
+   *  discovered manifest at all) hides the row's settings expander. Applies
+   *  regardless of `status` otherwise — a disabled/not-loaded/crashed/
+   *  newer-api/error community widget's settings are still just config
+   *  data, editable without the widget itself ever running. */
+  settings?: WidgetSettingField[];
+  /** This widget's current persisted settings blob
+   *  (data/config/dashboard.json widgets[].settings), handed straight to
+   *  WidgetSettingsFields for display — never written here, only read. */
+  settingsValues?: Record<string, unknown>;
 }
 
 /** One row of the layout picker's "Widget Folder Errors" section (Phase 4)
@@ -169,6 +192,14 @@ interface SettingsMenuProps {
   /** `/widgets/<folder>` directories that failed manifest validation
    *  (Phase 4). Absent/empty hides the section. */
   invalidWidgetPickerEntries?: InvalidWidgetPickerEntry[];
+  /** Commits one settings-field edit for one widget (Phase 4 Task 5) —
+   *  wired to the shell's `updateWidgetSettings(widgetId, builder)` merge
+   *  pipeline via a single-key builder, so every OTHER key already in that
+   *  widget's settings (including ones this editor doesn't know about) is
+   *  preserved untouched. Shared by both the "Widgets" and "Community
+   *  Widgets" sections — settings storage doesn't distinguish builtin from
+   *  community. */
+  onPatchWidgetSetting?: (id: string, key: string, value: string | number | boolean) => void;
 }
 
 export function SettingsMenu({
@@ -188,6 +219,7 @@ export function SettingsMenu({
   onToggleCommunityWidget,
   onMoveCommunityWidget,
   invalidWidgetPickerEntries = [],
+  onPatchWidgetSetting,
 }: SettingsMenuProps) {
   // IMPORTANT #1: only count widgets that actually RENDER a pane toward
   // the "at least one widget must stay enabled" guard — a builtin always
@@ -213,6 +245,21 @@ export function SettingsMenu({
   // later manifest update with a fixed path automatically retries instead
   // of staying stuck on the fallback.
   const [failedIconSrc, setFailedIconSrc] = useState<Map<string, string>>(new Map());
+  // Phase 4 Task 5: which widget rows have their settings expander open,
+  // by id. Shared across both "Widgets" and "Community Widgets" sections —
+  // an id collision between a builtin and a community widget can't happen
+  // (widgetIdSchema-validated ids are globally unique in config), so one
+  // Set is enough. Local-only (not persisted) — a reopen of the popover
+  // always starts collapsed.
+  const [expandedSettings, setExpandedSettings] = useState<Set<string>>(new Set());
+  const toggleSettingsExpanded = (id: string) => {
+    setExpandedSettings((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem('calendar-brightness');
     return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
@@ -481,6 +528,12 @@ export function SettingsMenu({
                       // already excludes it) — so it can't itself be the
                       // reason another row's switch is guard-locked.
                       const lastEnabled = !isCrashed && entry.enabled && enabledWidgetCount <= 1;
+                      // Phase 4 Task 5: the settings expander is available
+                      // regardless of enabled/crashed state — settings are
+                      // just config data, editable whether or not the
+                      // widget is currently rendering (deliverable #2).
+                      const hasSettings = !!entry.settings && entry.settings.length > 0;
+                      const settingsOpen = hasSettings && expandedSettings.has(entry.id);
                       return (
                         <div key={entry.id} className="space-y-0.5">
                           <div className="flex items-center gap-1">
@@ -506,6 +559,18 @@ export function SettingsMenu({
                             >
                               <ChevronDown className="h-5 w-5" />
                             </button>
+                            {hasSettings && (
+                              <button
+                                type="button"
+                                className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip flex-shrink-0"
+                                onClick={() => toggleSettingsExpanded(entry.id)}
+                                title="Widget settings"
+                                aria-expanded={settingsOpen}
+                                data-testid={`widget-settings-toggle-${entry.id}`}
+                              >
+                                <SlidersHorizontal className="h-5 w-5" />
+                              </button>
+                            )}
                             <label
                               className="touch-button flex items-center justify-center flex-shrink-0"
                               title={
@@ -528,6 +593,13 @@ export function SettingsMenu({
                             <p className="text-xs text-rb-danger leading-snug truncate pl-5">
                               crashed: {entry.crashed}
                             </p>
+                          )}
+                          {settingsOpen && (
+                            <WidgetSettingsFields
+                              fields={entry.settings!}
+                              values={entry.settingsValues ?? {}}
+                              onPatch={(key, value) => onPatchWidgetSetting?.(entry.id, key, value)}
+                            />
                           )}
                         </div>
                       );
@@ -580,6 +652,13 @@ export function SettingsMenu({
                       // toward the last-enabled guard — see
                       // enabledWidgetCount's doc comment above for why.
                       const guardBlocksDisable = ready && entry.enabled && enabledWidgetCount <= 1;
+                      // Phase 4 Task 5: available for any status except
+                      // "ghost" (a ghost row's `entry.settings` is never
+                      // populated — no discovered manifest to read
+                      // descriptors from — so `hasSettings` is naturally
+                      // false there without a separate isGhost check).
+                      const hasSettings = !!entry.settings && entry.settings.length > 0;
+                      const settingsOpen = hasSettings && expandedSettings.has(entry.id);
                       return (
                         <div key={entry.id} className="space-y-0.5">
                           <div className="flex items-center gap-1">
@@ -626,6 +705,18 @@ export function SettingsMenu({
                                 </button>
                               </>
                             )}
+                            {hasSettings && (
+                              <button
+                                type="button"
+                                className="touch-button flex items-center justify-center rounded-md text-rb-ink-secondary hover:bg-rb-chip flex-shrink-0"
+                                onClick={() => toggleSettingsExpanded(entry.id)}
+                                title="Widget settings"
+                                aria-expanded={settingsOpen}
+                                data-testid={`community-widget-settings-toggle-${entry.id}`}
+                              >
+                                <SlidersHorizontal className="h-5 w-5" />
+                              </button>
+                            )}
                             <label
                               className="touch-button flex items-center justify-center flex-shrink-0"
                               title={
@@ -663,6 +754,13 @@ export function SettingsMenu({
                                   ? `crashed: ${entry.statusMessage}`
                                   : entry.statusMessage}
                             </p>
+                          )}
+                          {settingsOpen && (
+                            <WidgetSettingsFields
+                              fields={entry.settings!}
+                              values={entry.settingsValues ?? {}}
+                              onPatch={(key, value) => onPatchWidgetSetting?.(entry.id, key, value)}
+                            />
                           )}
                         </div>
                       );

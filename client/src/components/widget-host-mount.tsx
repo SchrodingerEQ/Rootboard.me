@@ -175,6 +175,7 @@ export function WidgetHostMount({ entries, activeId, onWidgetCrash }: WidgetHost
 
     for (const entry of entries) {
       const existing = mountedRef.current.get(entry.manifest.id);
+      const container = containerRefs.current.get(entry.manifest.id);
       if (existing) {
         // Minor #2: a version-bumped community widget re-imports to a NEW
         // widget object (community-widgets.ts's id+version cache) — that
@@ -188,8 +189,18 @@ export function WidgetHostMount({ entries, activeId, onWidgetCrash }: WidgetHost
         if (existing.widget === entry.widget) continue;
         safeUnmount(entry.manifest.id, existing.instance);
         mountedRef.current.delete(entry.manifest.id);
+        // Rider fix: `safeUnmount` above swallows a throw from the OLD
+        // instance's unmount() (by design — a crashing unmount must not
+        // block the remount), but that means the old instance's DOM may
+        // never have gotten a chance to clean itself up — either because
+        // it threw partway through, or simply because it doesn't clear its
+        // own container on unmount. Defensively clear here regardless of
+        // which of those happened, so the fresh mount() below always
+        // starts from an empty container instead of inheriting leftover
+        // nodes (duplicated content, dangling event listeners) from the
+        // instance it's replacing.
+        if (container?.hasChildNodes()) container.replaceChildren();
       }
-      const container = containerRefs.current.get(entry.manifest.id);
       if (!container) continue;
 
       const mounted = safeMount(entry.manifest.id, entry.widget, container, entry.host);

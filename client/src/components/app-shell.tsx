@@ -23,7 +23,7 @@ import {
   type CrashRecord,
   type WidgetDiscoveryResponse,
 } from "@/lib/community-widgets";
-import { WIDGET_API_VERSION, type WidgetManifest } from "@shared/widget-manifest";
+import { WIDGET_API_VERSION, type WidgetManifest, type WidgetSettingField } from "@shared/widget-manifest";
 import {
   CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
   CALENDAR_WIDGET_ID,
@@ -269,7 +269,15 @@ export default function AppShell() {
   // nothing to show a name/icon for (folder-drop widgets, and therefore
   // "uninstalled but configured" entries, arrive in Phase 4).
   const widgetPickerEntries = useMemo(() => {
-    const entries: Array<{ id: string; label: string; icon: LucideIcon; enabled: boolean; crashed?: string }> = [];
+    const entries: Array<{
+      id: string;
+      label: string;
+      icon: LucideIcon;
+      enabled: boolean;
+      crashed?: string;
+      settings?: WidgetSettingField[];
+      settingsValues?: Record<string, unknown>;
+    }> = [];
     for (const w of dashboardConfig.widgets) {
       const builtin = builtinById.get(w.id);
       if (!builtin) continue;
@@ -279,6 +287,12 @@ export default function AppShell() {
         icon: builtin.navIcon ?? DEFAULT_NAV_ICON,
         enabled: w.enabled,
         crashed: crashedWidgets.get(w.id)?.message,
+        // Phase 4 Task 5: closes CONTRACT §2's "the host renders these in
+        // its settings UI" — applies to ANY widget whose manifest declares
+        // `settings`, builtin or community alike (today only community
+        // manifests do, but nothing here assumes that).
+        settings: builtin.manifest.settings,
+        settingsValues: w.settings,
       });
     }
     return entries;
@@ -333,6 +347,12 @@ export default function AppShell() {
         installed,
         status,
         statusMessage,
+        // Phase 4 Task 5: settings are manifest+config data only, available
+        // regardless of load `status` (a disabled/crashed/newer-api/error
+        // community widget's settings are still editable — see
+        // CommunityWidgetPickerEntry's doc comment).
+        settings: manifest.settings,
+        settingsValues: configIndex.get(manifest.id)?.settings,
       };
     };
     // Minor #3: a config entry whose id has no matching discovered
@@ -627,6 +647,20 @@ export default function AppShell() {
         return applyWidgetSettingsPatch(current, widgetId, patch);
       }, "Couldn't save settings"),
     [writeDashboardConfig],
+  );
+
+  // Settings-editor writes (Phase 4 Task 5): commits ONE field's edit for
+  // ONE widget, builtin or community, through the SAME merge pipeline as
+  // every other settings write (updateWidgetSettings -> sanitizeSettingsPatch
+  // -> applyWidgetSettingsPatch). The builder here always returns a
+  // single-key object, so the merge preserves every other key already in
+  // that widget's settings — including keys this editor's manifest doesn't
+  // even know about (a hand-added extra key, or one written by the widget
+  // itself via host.settings.patch()).
+  const patchWidgetSetting = useCallback(
+    (widgetId: string, key: string, value: string | number | boolean) =>
+      void updateWidgetSettings(widgetId, () => ({ [key]: value })),
+    [updateWidgetSettings],
   );
 
   // Layout picker writes (Task 9): `mutateWidgets` receives the CURRENT
@@ -990,6 +1024,7 @@ export default function AppShell() {
             onToggleCommunityWidget={toggleCommunityWidgetEnabled}
             onMoveCommunityWidget={moveCommunityWidget}
             invalidWidgetPickerEntries={invalidWidgetPickerEntries}
+            onPatchWidgetSetting={patchWidgetSetting}
           />
         ) : undefined}
       />
@@ -1015,7 +1050,18 @@ export default function AppShell() {
           // those guards can't cover. Scoped to WidgetHostMount alone: it
           // is <NavRail>'s SIBLING here, not its parent, so a catch can
           // only blank the content pane, never the nav rail or settings.
-          <WidgetHostErrorBoundary>
+          // `resetKey` is the reset path documented on
+          // WidgetHostErrorBoundary itself: a render-phase throw sets
+          // `hasError` for this instance, and the boundary clears it again
+          // once this string changes WHILE tripped. Joining `renderableIds`
+          // means any change to the mounted-widget set (most relevantly:
+          // disabling the widget that tripped the boundary, via the picker
+          // switch, which is still interactive — the boundary only blanks
+          // its sibling content pane) un-blanks the pane — WITHOUT
+          // remounting every OTHER widget the way a `key` change would
+          // (see resetKey's doc comment for why that was tried and
+          // reverted).
+          <WidgetHostErrorBoundary resetKey={renderableIds.join(",")}>
             <WidgetHostMount entries={widgetEntries} activeId={section} onWidgetCrash={handleWidgetCrash} />
           </WidgetHostErrorBoundary>
         )}
