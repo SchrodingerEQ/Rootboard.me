@@ -1,6 +1,6 @@
 # Rootboard Widget System — Combined Refactor & Build Plan
 
-**Status:** Phases 1-4 complete; Phase 5 not started.
+**Status:** Phases 1-5 complete.
 **Decided:** 2026-08-19 (contract-shape choices founder-ratified this date)
 **Parent decision:** [0006 — Community-buildable widget system](../../decisions/0006-community-widget-system.md)
 **Contract spec:** [CONTRACT.md](CONTRACT.md)
@@ -145,15 +145,19 @@ The substantive build.
    machine and onto the Pi via SSH, appears in picker, survives an
    update cycle.
 
-### Phase 5 — Proof-of-openness package (mostly separate repos)
+### Phase 5 — Proof-of-openness package (mostly separate repos) ✅
 
-- `rootboard-widget-template` repo with the working hello-world.
-- "Build your first widget in 30 minutes" tutorial.
-- Contribution guide + the trust-model statement (CONTRACT.md §7)
-  verbatim.
-- `awesome-rootboard` list seeded with first-party entries.
-- One reference community widget on the public API only (candidate:
-  stock ticker or grocery list).
+Shipped: [rootboard-widget-template](https://github.com/SchrodingerEQ/rootboard-widget-template)
+(hello-world, TUTORIAL.md, CONTRIBUTING.md, MANIFEST-REFERENCE.md),
+[rootboard-widget-grocery-list](https://github.com/SchrodingerEQ/rootboard-widget-grocery-list)
+(the reference widget, public-contract-only), and
+[awesome-rootboard](https://github.com/SchrodingerEQ/awesome-rootboard).
+Provenance: the hello-world folder-drop E2E was Phase 4's proof
+([phase4-e2e-notes.md](phase4-e2e-notes.md)); Phase 5 repeated it for
+the grocery-list folder-drop and picker flow, plus a fresh subagent
+following the tutorial verbatim end-to-end (the tutorial-gate) — both
+verified in per-task review, no public write-up, per
+[PHASE5-EXECUTION.md](PHASE5-EXECUTION.md).
 
 **Deferred (unchanged from 0006):** registry / one-click install /
 widget auto-updates — only if a community materializes.
