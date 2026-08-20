@@ -94,7 +94,7 @@ retention sweep, which runs inside each sync.
   caching, no restart needed after a sideload) and never throws — a
   missing `widgets/` dir returns an empty result, and a folder that
   fails to read/parse/validate becomes an `invalid` entry instead of
-  aborting the scan. Each `widget.json` read is capped at 64,000 bytes
+  aborting the scan. Each `widget.json` read is capped at 65,536 bytes (64 KiB)
   (`MAX_MANIFEST_BYTES`) so an oversized manifest can't stall a request.
   `/widgets/*` static serving sits behind a realpath containment guard
   ahead of `express.static`: the request path is resolved with symlinks
@@ -254,13 +254,13 @@ from Open-Meteo and cached server-side.
   `unmount()`, `refresh()`, `onVisibilityChange()` — is wrapped so a
   throw is caught and logged, never left to propagate
   (`widget-host-mount.tsx`'s `safeMount`/`safeUnmount`/
-  `safeOnVisibilityChange`). A `mount()` throw (or a return that isn't
+  `safeVisibilityChange`). A `mount()` throw (or a return that isn't
   `{unmount(): void, ...}`) is reported via `onWidgetCrash`, which drops
   the widget from the renderable set and surfaces the crash in the
   picker instead of ever blanking the app; a `WidgetHostErrorBoundary`
   around the render tree is the belt to this guarded-call-sites
   suspenders. This applies uniformly to built-in and community widgets
-  — CONTRACT.md §7's "no privileged internals" extends to fault
+  — CONTRACT.md's "no privileged internals" extends to fault
   handling.
 - **Icons render `<img src>` only** — never inline/innerHTML SVG. This
   is what makes an embedded `<script>` in a malicious icon inert without
