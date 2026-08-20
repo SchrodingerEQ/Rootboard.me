@@ -120,6 +120,28 @@ export function discoverWidgets(): WidgetDiscoveryResult {
     try {
       const manifestPath = path.join(WIDGETS_DIR, folder, "widget.json");
 
+      // lstat (does NOT follow symlinks) before anything else touches this
+      // path: statSync/readFileSync below both follow symlinks, so
+      // `widgets/leak/widget.json -> ../../.env` (or any other
+      // server-readable file) would otherwise be stat'd and read straight
+      // through. Reject outright rather than resolving-and-containing —
+      // a widget folder has no legitimate reason to ship a symlinked
+      // manifest at all.
+      let lstat: fs.Stats;
+      try {
+        lstat = fs.lstatSync(manifestPath);
+      } catch (error) {
+        // No widget.json in this folder — silently ignore (not every
+        // subdirectory of widgets/ is necessarily a widget folder).
+        if ((error as NodeJS.ErrnoException)?.code === "ENOENT") continue;
+        invalid.push({ folder, errors: [`Failed to read widget.json: ${(error as Error).message}`] });
+        continue;
+      }
+      if (lstat.isSymbolicLink()) {
+        invalid.push({ folder, errors: ["widget.json must not be a symlink"] });
+        continue;
+      }
+
       let stat: fs.Stats;
       try {
         stat = fs.statSync(manifestPath);
@@ -153,8 +175,14 @@ export function discoverWidgets(): WidgetDiscoveryResult {
       let parsedJson: unknown;
       try {
         parsedJson = JSON.parse(raw);
-      } catch (error) {
-        invalid.push({ folder, errors: [`widget.json is not valid JSON: ${(error as Error).message}`] });
+      } catch {
+        // Deliberately generic — do NOT include the parser's message
+        // verbatim. V8's SyntaxError text embeds a short prefix of the
+        // offending content, which would otherwise leak via /api/widgets'
+        // invalid[] for any file reachable at this path (an existence/size
+        // oracle from the stat/lstat above is bad enough without also
+        // handing back a content-prefix read).
+        invalid.push({ folder, errors: ["widget.json is not valid JSON"] });
         continue;
       }
 

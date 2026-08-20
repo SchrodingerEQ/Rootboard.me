@@ -759,7 +759,21 @@ export default function AppShell() {
     if (!configQuery.data) return;
     Array.from(settingsListenersRef.current.entries()).forEach(([id, listeners]) => {
       const settings = dashboardConfig.widgets.find((w) => w.id === id)?.settings ?? {};
-      listeners.forEach((cb) => cb({ ...settings })); // Clone to prevent cache mutations
+      listeners.forEach((cb) => {
+        // Guarded per-callback (mirrors widget-host-mount.tsx's safe*
+        // helpers, CONTRACT §7): a widget's subscribeSettings callback is
+        // otherwise-untrusted, host-executed code. A bare throw here would
+        // both abort this forEach — starving every listener still to come
+        // in the iteration — AND propagate out of this useEffect, above
+        // WidgetHostErrorBoundary (which only wraps <WidgetHostMount>, not
+        // this effect's owner), unmounting the whole React root and
+        // white-screening the kiosk into a reload loop.
+        try {
+          cb({ ...settings }); // Clone to prevent cache mutations
+        } catch (error) {
+          console.error(`[widget-host] "${id}" settings.subscribe() callback threw`, error);
+        }
+      });
     });
   }, [configQuery.data, dashboardConfig]);
 

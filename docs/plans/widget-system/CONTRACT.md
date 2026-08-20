@@ -263,11 +263,19 @@ touchscreen UI is an editor over it. Location: `data/config/dashboard.json`
   `data/config/dashboard.json` are ever imported; a discovered but
   disabled widget's entry module is never fetched or executed.
 - **Crash handling:** every widget lifecycle call (`mount()`,
-  `unmount()`, `refresh()`, `onVisibilityChange()`) is guarded. A
+  `unmount()`, `refresh()`, `onVisibilityChange()`, and
+  `host.settings.subscribe()` notification callbacks) is guarded. A
   widget whose `mount()` throws (or returns something that isn't
   `{unmount(): void, ...}`) is isolated — dropped from the renderable
   set and surfaced as a crash in the picker — rather than treated as
   fatal to the app.
+- **Disabling stops future loading, not already-executed code:**
+  disabling a widget stops it from being imported/mounted again, but
+  any module top-level code that already ran (before it was disabled)
+  stays resident in the page until the next full reload — there is no
+  way to unload an already-evaluated JS module. A widget author must
+  not rely on `mount()`/`unmount()` as the only lifecycle boundary for
+  cleanup that matters (timers, listeners registered at module scope).
 - Built-in widgets ship in `client/src/widgets/<id>/` (manifest imported
   as JSON + a TS entry), registered through a static registry that runs
   the **same** Zod validation at startup. Same contract, different
