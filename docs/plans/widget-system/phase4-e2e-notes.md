@@ -84,6 +84,13 @@ not a live-hardware run. A full update cycle against a running Pi kiosk
 survived) is deferred to the next real release cycle, where it will be
 exercised as a matter of course rather than as a synthetic test.
 
+> **Update 2026-08-24:** the deferred live-hardware proof is done. The
+> v1.5.0 release (the first real release cycle after phase 4) was
+> applied to a production kiosk through the normal update flow —
+> download → apply → restart → reboot — and verified on-device:
+> `widgets/` and its enabled state survived the cycle, and all
+> first-party widgets behaved normally afterward.
+
 ## Widget-authoring note: no import map, bundle your own framework
 
 Per CONTRACT §3, the host exposes **no shared runtime and no import map**
