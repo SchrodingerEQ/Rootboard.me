@@ -5,7 +5,7 @@
 **Status:** implemented 2026-08-20; Tasks 1-5 shipped to the ecosystem
 repos with per-task reviews + fix loops (tutorial verbatim-follow gate
 PASSED); Task 6 tie-in merged after final review; TASKS.md check-offs
-pending founder confirmation. Ran under a founder-ratified autonomy
+founder-confirmed 2026-08-20. Phase complete. Ran under a founder-ratified autonomy
 charter (pushes to the three ecosystem repos pre-authorized with
 security review per push; main-repo merge auto on green final review;
 surprises are parked in TASKS.md, never block; only
