@@ -1,7 +1,9 @@
 # Rootboard.me — As-Built Specification
 
-Regenerated from the code at v1.4.1 (2026-07-23). This documents what the
-app **actually does**, including quirks. Update it when behavior changes.
+Regenerated from the code at v1.4.1 (2026-07-23); maintained
+incrementally through the widget-system phases and current as of v1.5.0
+(2026-08-24). This documents what the app **actually does**, including
+quirks. Update it when behavior changes.
 Public document — no deployment specifics (hostnames, IPs, real names).
 
 - [1. System overview](#1-system-overview)
