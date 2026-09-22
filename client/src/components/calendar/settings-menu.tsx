@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, Puzzle, SlidersHorizontal, type LucideIcon } from "lucide-react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, Puzzle, SlidersHorizontal, Palette, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { WidgetSettingsFields } from "@/components/widget-settings-fields";
 import type { WidgetSettingField } from "@shared/widget-manifest";
@@ -506,6 +506,73 @@ export function SettingsMenu({
               </div>
               <p className="text-xs text-rb-muted">{brightness}%</p>
             </div>
+
+            {/* Theme picker (theme engine slice 1). Rows are .touch-button
+                so they honour the kiosk's 48/44 px minimums. */}
+            {themePickerEntries.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-4 w-4" />
+                    <Label className="text-sm font-medium">Theme</Label>
+                  </div>
+                  <div className="space-y-1">
+                    {themePickerEntries.map((entry) => {
+                      const selected = entry.id === activeThemeId;
+                      return (
+                        <button
+                          type="button"
+                          key={entry.id}
+                          onClick={() => onSelectTheme?.(entry.id)}
+                          aria-pressed={selected}
+                          data-testid={`theme-select-${entry.id}`}
+                          className={`touch-button w-full flex items-center gap-2 rounded-md px-2 text-left ${
+                            selected ? "bg-rb-accent-wash" : "hover:bg-rb-chip"
+                          }`}
+                        >
+                          <span className="text-sm flex-1 truncate">{entry.name}</span>
+                          <span className="flex gap-1" aria-hidden="true">
+                            {entry.swatches.map((color, i) => (
+                              <span
+                                key={i}
+                                className="h-4 w-4 rounded-full border border-rb-border-strong"
+                                style={{ background: color }}
+                              />
+                            ))}
+                          </span>
+                          {selected ? (
+                            <Check className="h-4 w-4 text-rb-accent flex-shrink-0" />
+                          ) : (
+                            <span className="h-4 w-4 flex-shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Theme Errors — mirrors "Widget Folder Errors": reason only, no controls. */}
+            {themeErrorEntries.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-rb-warn" />
+                    <Label className="text-sm font-medium">Theme Errors</Label>
+                  </div>
+                  <div className="space-y-1">
+                    {themeErrorEntries.map((entry, i) => (
+                      <p key={`${entry.id}-${i}`} className="text-xs text-rb-warn-ink leading-snug" data-testid={`theme-error-${entry.id}`}>
+                        <span className="font-mono">{entry.id}</span>: {entry.message}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator />
 
