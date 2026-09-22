@@ -3,7 +3,7 @@
 ## Open
 
 - [ ] Theme system — plan at `docs/plans/theme-system/THEME-SYSTEM-PLAN.md` (Phase 0 = color sweep, prompt included; community themes deferred)
-- [ ] Resolve dead code vs. theme plan: `client/src/components/screensaver/screensaver-overlay.tsx` is defined but never mounted (the live overlay is `power-saving-overlay.tsx`) — however the theme plan's repo-facts section lists its rAF bounce loop as the screensaver base. Decide whether the theme work revives it or the plan should point at `power-saving-overlay.tsx`; don't delete before that's settled.
+- [x] Resolve dead code vs. theme plan: `client/src/components/screensaver/screensaver-overlay.tsx` is defined but never mounted (the live overlay is `power-saving-overlay.tsx`) — however the theme plan's repo-facts section lists its rAF bounce loop as the screensaver base. Decide whether the theme work revives it or the plan should point at `power-saving-overlay.tsx`; don't delete before that's settled. (done 2026-09-22)
 - [ ] Fix misleading storage selection: when `DATABASE_URL` is set, `server/storage.ts` logs "PostgreSQL" but actually uses non-persistent in-memory `MemStorage`. Either wire real Postgres app-data storage or correct the log and docs.
 - [x] Design widget contract spec: manifest schema (Zod), lifecycle, host services, apiVersion — see decision 0006 (added 2026-08-15) (done 2026-08-19)
 - [x] Audit existing built-in widgets for coupling to internal state; inventory what the public API must expose (only what first-party widgets need) (added 2026-08-15) (done 2026-08-19)
@@ -22,6 +22,8 @@
 - [x] Fix npm audit vulnerabilities pending since v1.4.0 (25 findings): path-to-regexp/Express request-path ReDoS first; plain `npm audit fix` only — never `npm audit fix --force` blindly (drizzle-orm/drizzle-kit majors are the --force holdouts: hosted-mode/dev-tooling only). Ship as its own small release and verify on the kiosk (added 2026-08-24) (done 2026-08-24)
 - [ ] Fix the 7 remaining npm audit findings (breaking majors, none affect a running kiosk): drizzle-orm 0.39→0.45.2 (~30 min, only shared/schema.ts uses it) and drizzle-kit 0.30→0.31 (~15 min, dev-only db:push) as quick wins; then vite 5→8 + @vitejs/plugin-react as its own release — server/vite.ts uses the middleware-mode API, and the Pi builds during auto-update so check the Pi's Node version first (vite 8 needs Node 20.19+/22.12+) (added 2026-08-24)
 - [ ] Investigate React warning "Attempted to synchronously unmount a root while React was already rendering" (stack rooted at WidgetHostMount), reproducing on cold boot in dev even at HEAD before Task 9 (differential-tested via `git stash` + fresh dev-server restart) — predates the widget-picker work, not yet root-caused; leading suspect is the nested `createRoot()` roots inside widget `mount()` interacting with Vite dev-mode module updates, unconfirmed (added 2026-08-19)
+- [ ] Bundle fonts locally: client/index.html links Google Sans and client/src/index.css @imports Nunito from Google Fonts at runtime, contradicting the theme plan's local-fonts rule (kiosk must not depend on font reachability) — ship woff2 files in the theme fonts slice (added 2026-09-22)
+- [ ] After the theme engine ships, update the widget-contract theme.subscribe wording in the three companion repos (rootboard-widget-template, rootboard-widget-grocery-list, awesome-rootboard): it now fires on every theme switch; callbacks must stay idempotent (added 2026-09-22)
 
 ## Deferred (recorded, not scheduled)
 
