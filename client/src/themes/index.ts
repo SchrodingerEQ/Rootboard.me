@@ -1,4 +1,5 @@
 import { defaultTheme } from "./default";
+import { deepSpaceTheme } from "./deep-space";
 
 /**
  * Built-in theme manifests, RAW. Typed as unknown on purpose: validation
@@ -6,4 +7,4 @@ import { defaultTheme } from "./default";
  * malformed module is reported in the settings menu ("Theme Errors")
  * instead of throwing at import time and taking the kiosk down.
  */
-export const BUILTIN_THEMES: readonly unknown[] = [defaultTheme];
+export const BUILTIN_THEMES: readonly unknown[] = [defaultTheme, deepSpaceTheme];

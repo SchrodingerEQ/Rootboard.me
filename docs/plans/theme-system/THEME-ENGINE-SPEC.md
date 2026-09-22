@@ -229,7 +229,7 @@ the menu today.
 ### 8. Contrast guard
 
 `client/src/lib/color-utils.ts` gains `contrastRatio(hexA, hexB)` (WCAG
-relative luminance). A test asserts ≥ 4.5 for every theme on:
+relative luminance). A test asserts a floor for every theme on the pairs below. **New themes: ≥ 4.5 (WCAG AA).** **Default is grandfathered** — it is shipped and must not change, and it measures below 4.5 on eight pairs (white on coral 3.1, white on amber 2.5, ink-tertiary on canvas 3.7, …), so it is pinned at its measured ratios in `client/src/themes/contrast.spec.ts` with a no-regression rule.
 
 | ink | on |
 |---|---|
