@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { widgetIdSchema } from "./widget-manifest";
+import { themeIdSchema } from "./theme-manifest";
 
 const dashboardWidgetEntrySchema = z.object({
   id: widgetIdSchema,
@@ -13,6 +14,14 @@ export const dashboardConfigSchema = z
   .object({
     configVersion: z.literal(1),
     defaultWidget: widgetIdSchema,
+    /**
+     * Active theme id (client/src/themes). LENIENT on purpose: a malformed
+     * value becomes undefined (→ Default) instead of invalidating the whole
+     * file — otherwise a typo here would reset the widget layout too.
+     * An unknown-but-well-formed id also resolves to Default at apply time
+     * (client/src/lib/theme-engine.ts resolveTheme). Decision 0009.
+     */
+    theme: themeIdSchema.optional().catch(undefined),
     widgets: z
       .array(dashboardWidgetEntrySchema)
       .min(1)
