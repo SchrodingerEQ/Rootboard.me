@@ -4,25 +4,30 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(40, 17%, 96%);        /* warm canvas #f7f6f3 */
-  --foreground: hsl(216, 11%, 19%);       /* ink #2b3038 */
-  --muted: hsl(40, 13%, 93%);
-  --muted-foreground: hsl(218, 8%, 51%);  /* #8b919b */
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(216, 11%, 19%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(216, 11%, 19%);
-  --border: hsl(40, 12%, 88%);
-  --input: hsl(40, 12%, 88%);
-  --primary: hsl(217, 89%, 56%);
-  --primary-foreground: hsl(211, 100%, 99%);
-  --secondary: hsl(40, 13%, 93%);
-  --secondary-foreground: hsl(216, 11%, 19%);
-  --accent: hsl(40, 13%, 93%);
-  --accent-foreground: hsl(216, 11%, 19%);
-  --destructive: hsl(347, 77%, 50%);
-  --destructive-foreground: hsl(0, 0%, 100%);
-  --ring: hsl(216, 11%, 19%);
+  /* shadcn tokens are ALIASES of the Rootboard palette below. The theme
+     engine sets only --rb-* (docs/plans/theme-system/THEME-ENGINE-SPEC.md
+     §1); these follow automatically. Never put a literal color here —
+     it would be invisible to themes. Former literal values are recorded
+     in the spec's "Fidelity" table. */
+  --background: var(--rb-canvas);
+  --foreground: var(--rb-ink);
+  --muted: var(--rb-chip);
+  --muted-foreground: var(--rb-ink-tertiary);
+  --popover: var(--rb-surface);
+  --popover-foreground: var(--rb-ink);
+  --card: var(--rb-surface);
+  --card-foreground: var(--rb-ink);
+  --border: var(--rb-field-border);
+  --input: var(--rb-field-border);
+  --primary: var(--rb-info);
+  --primary-foreground: var(--rb-on-color-ink);
+  --secondary: var(--rb-chip);
+  --secondary-foreground: var(--rb-ink);
+  --accent: var(--rb-chip);
+  --accent-foreground: var(--rb-ink);
+  --destructive: var(--rb-danger);
+  --destructive-foreground: var(--rb-on-color-ink);
+  --ring: var(--rb-ink);
   --radius: 0.9rem;
 
   /* Rootboard palette */
@@ -67,6 +72,7 @@
 
   /* ===== Ink ===== */
   --rb-ink-secondary: #5b626d;   /* control + label ink (Q2) */
+  --rb-ink-tertiary: #787f8c;    /* former shadcn --muted-foreground; quieter than ink-secondary */
   --rb-ink-soft: #3a4049;        /* softer than --rb-ink: names, chips, status */
   --rb-ink-disabled: #b8bcc4;    /* past / out-of-month / disabled (Q9) */
   --rb-on-color-ink: #ffffff;    /* text + icons on any colored fill (Q5) */
@@ -135,6 +141,10 @@
   --rb-power-saving-bg: #000000;   /* (Q15) */
 }
 
+/* DEAD BLOCK — `darkMode: ["class"]` is configured in tailwind.config.ts but
+   nothing ever adds the `dark` class, so these never apply. Dark looks are
+   themes now (Deep Space). Left in place deliberately; do not extend and do
+   not rely on it. */
 .dark {
   --background: hsl(240, 10%, 4%);
   --foreground: hsl(0, 0%, 98%);
