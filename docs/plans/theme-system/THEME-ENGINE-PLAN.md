@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** executed 2026-09-22 via subagent-driven development; merged to `main` (unreleased). Per-task reviews changed two things from the text below: `DEFAULT_FLOORS` are 3.0/3.2 (true measured), and `accent-wash`/`border-strong` were registered in `tailwind.config.ts`. The final review added a config-data gate in `useTheme`, theme-subscription teardown on host `dispose()`, and softer contract wording about boot fires.
+
 **Goal:** Ship a validated theme engine with a settings-menu picker, config-file persistence, a no-flash boot cache, and two built-in themes (Default, Deep Space), without changing the Default look.
 
 **Architecture:** The shadcn tokens in `:root` become aliases of the `--rb-*` palette, so a theme is one flat map of 76 color tokens validated by a Zod schema in `shared/`. A pure engine module applies a manifest via `setProperty` on `<html>`, notifies subscribers, and mirrors the result to `localStorage` so an inline boot script can repaint before React mounts. The active theme id lives in `data/config/dashboard.json` as a lenient optional field written through the shell's existing optimistic config writer.

@@ -11,6 +11,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 - **Auto-Updates** — Daily check for new GitHub releases with one-tap install
 - **Safe Rollback** — Automatic backup before every update with manual rollback option
 - **Brightness Control** — Adjustable from the in-app settings menu
+- **Themes** — Built-in Default and Deep Space looks, switchable from the settings menu; the Default manifest is written to be copied as the starting point for new themes
 
 ## Tech Stack
 

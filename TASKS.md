@@ -25,6 +25,7 @@
 - [ ] Bundle fonts locally: client/index.html links Google Sans and client/src/index.css @imports Nunito from Google Fonts at runtime, contradicting the theme plan's local-fonts rule (kiosk must not depend on font reachability) — ship woff2 files in the theme fonts slice (added 2026-09-22)
 - [ ] After the theme engine ships, update the widget-contract theme.subscribe wording in the three companion repos (rootboard-widget-template, rootboard-widget-grocery-list, awesome-rootboard): it now fires on every theme switch; callbacks must stay idempotent (added 2026-09-22)
 - [ ] Theme authoring user guide (with community-theme install, plan Phase 2): include Default's complete token map and later its assets (fonts, logo, screensaver image, confetti shapes) as copyable starting material so authors can port Default elements into their theme verbatim; keep client/src/themes/default.ts copy-friendly (grouped, commented, plain literals) (added 2026-09-22)
+- [ ] Release theme engine slice 1 as its own small release (bump shared/version.ts, npm audit, pre-push security review, tag) and run the spec's kiosk rollout: update, reboot, set Deep Space, reboot again and confirm no light flash, then hand-edit dashboard.json to `"theme": "nope"` and confirm Default within a minute with the widget layout intact; flip SPEC.md's current-as-of stamp and the theme spec's status to the version (added 2026-09-22)
 
 ## Deferred (recorded, not scheduled)
 
