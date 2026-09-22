@@ -2,6 +2,7 @@ import { APP_VERSION } from "@shared/version";
 import { WIDGET_API_VERSION } from "@shared/widget-manifest";
 import type { WidgetHost } from "@/widgets/types";
 import { AppStateClient } from "./app-state-client";
+import { subscribeTheme } from "./theme-engine";
 
 /**
  * Built-in widgets keep their legacy app_state keys so existing kiosk data
@@ -69,9 +70,9 @@ export function createWidgetHost(opts: CreateWidgetHostOptions): WidgetHostHandl
     theme: {
       getToken: (name: string) =>
         getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
-      // Stub until the theme engine exists (tracked separately) — themes
-      // are static for now, so there's nothing to subscribe to yet.
-      subscribe: () => () => {},
+      // Fires after every applyTheme (theme switch, and once at boot once
+      // the config resolves). Callbacks are guarded inside the engine.
+      subscribe: subscribeTheme,
     },
 
     fetch: window.fetch.bind(window),

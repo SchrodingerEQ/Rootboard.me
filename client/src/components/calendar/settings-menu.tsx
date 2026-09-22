@@ -143,6 +143,22 @@ export interface InvalidWidgetPickerEntry {
   error: string;
 }
 
+/** One row of the "Theme" section — a validated built-in theme. */
+export interface ThemePickerEntry {
+  id: string;
+  name: string;
+  /** Five preview colors: canvas, surface, ink, accent, badge. */
+  swatches: string[];
+}
+
+/** One row of the "Theme Errors" section — a built-in that failed
+ *  validation (client/src/lib/theme-engine.ts loadBuiltinThemes). No
+ *  controls: nothing is selectable until the manifest is fixed. */
+export interface ThemeErrorEntry {
+  id: string;
+  message: string;
+}
+
 interface SettingsMenuProps {
   /** Persisted calendar-widget setting `hiddenCalendars` (see
    *  client/src/widgets/calendar/shell-bridge.ts). A calendar is shown iff
@@ -200,6 +216,15 @@ interface SettingsMenuProps {
    *  Widgets" sections — settings storage doesn't distinguish builtin from
    *  community. */
   onPatchWidgetSetting?: (id: string, key: string, value: string | number | boolean) => void;
+  /** Validated built-in themes, registry order. Absent/empty hides the
+   *  "Theme" section (defensive — Default always validates). */
+  themePickerEntries?: ThemePickerEntry[];
+  activeThemeId?: string;
+  /** Persists the choice through the shell's dashboard-config writer;
+   *  the switch itself happens when the config re-renders (use-theme.ts). */
+  onSelectTheme?: (id: string) => void;
+  /** Built-ins that failed validation. Absent/empty hides the section. */
+  themeErrorEntries?: ThemeErrorEntry[];
 }
 
 export function SettingsMenu({
@@ -220,6 +245,10 @@ export function SettingsMenu({
   onMoveCommunityWidget,
   invalidWidgetPickerEntries = [],
   onPatchWidgetSetting,
+  themePickerEntries = [],
+  activeThemeId,
+  onSelectTheme,
+  themeErrorEntries = [],
 }: SettingsMenuProps) {
   // IMPORTANT #1: only count widgets that actually RENDER a pane toward
   // the "at least one widget must stay enabled" guard — a builtin always

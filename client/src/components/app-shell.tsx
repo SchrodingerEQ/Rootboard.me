@@ -8,6 +8,7 @@ import { WidgetHostMount, type WidgetHostMountEntry } from "@/components/widget-
 import { WidgetHostErrorBoundary } from "@/components/widget-host-error-boundary";
 import { useScreensaver } from "@/hooks/useScreensaver";
 import { useVersionCheck } from "@/hooks/use-version-check";
+import { useTheme } from "@/hooks/use-theme";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { useScreensaverState } from "@/hooks/useScreensaverState";
@@ -618,6 +619,25 @@ export default function AppShell() {
     [queryClient, toast],
   );
 
+  // Theme engine (docs/plans/theme-system/THEME-ENGINE-SPEC.md). Gated on
+  // the config having loaded so the boot cache isn't clobbered by Default.
+  const theme = useTheme(dashboardConfig, !configQuery.isPending, writeDashboardConfig);
+  const themePickerEntries = useMemo(
+    () =>
+      theme.themes.map((t) => ({
+        id: t.id,
+        name: t.name,
+        swatches: [
+          t.tokens["--rb-canvas"],
+          t.tokens["--rb-surface"],
+          t.tokens["--rb-ink"],
+          t.tokens["--rb-accent"],
+          t.tokens["--rb-badge"],
+        ],
+      })),
+    [theme.themes],
+  );
+
   const updateWidgetSettings = useCallback(
     (
       widgetId: string,
@@ -1039,6 +1059,10 @@ export default function AppShell() {
             onMoveCommunityWidget={moveCommunityWidget}
             invalidWidgetPickerEntries={invalidWidgetPickerEntries}
             onPatchWidgetSetting={patchWidgetSetting}
+            themePickerEntries={themePickerEntries}
+            activeThemeId={theme.activeId}
+            onSelectTheme={theme.setTheme}
+            themeErrorEntries={[...theme.failed]}
           />
         ) : undefined}
       />
