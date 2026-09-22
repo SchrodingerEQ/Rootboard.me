@@ -22,3 +22,24 @@ export function eventTextColor(hex: string, factor = 0.55): string {
   const { r, g, b } = hexToRgb(hex);
   return `rgb(${Math.round(r * factor)}, ${Math.round(g * factor)}, ${Math.round(b * factor)})`;
 }
+
+// --- WCAG contrast (theme engine contrast guard) -------------------------
+
+function channelLuminance(channel: number): number {
+  const s = channel / 255;
+  return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+}
+
+/** WCAG 2.x relative luminance of a `#rrggbb` color, 0 (black) .. 1 (white). */
+export function relativeLuminance(hex: string): number {
+  const { r, g, b } = hexToRgb(hex);
+  return 0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
+}
+
+/** WCAG 2.x contrast ratio between two `#rrggbb` colors, 1 .. 21. Symmetric. */
+export function contrastRatio(hexA: string, hexB: string): number {
+  const a = relativeLuminance(hexA);
+  const b = relativeLuminance(hexB);
+  const [hi, lo] = a > b ? [a, b] : [b, a];
+  return (hi + 0.05) / (lo + 0.05);
+}
