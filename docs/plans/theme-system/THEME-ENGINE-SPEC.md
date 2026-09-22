@@ -128,6 +128,18 @@ client/src/themes/
 `index.ts` exports the raw list; validation happens in the engine so an
 invalid module is *reported*, not thrown at import time.
 
+**Default is the authoring reference.** Because every token is required,
+a theme author must be able to start from a complete, correct palette
+and change only what they want. So `default.ts` is written to be copied:
+tokens grouped and commented by role (the same grouping as `:root` —
+canvas/ink, status colors, keyboard panel, screensaver, …), no clever
+helpers, plain literals only. The future theme user guide (plan Phase 2)
+must reproduce Default's complete token map — and, once later slices add
+them, its assets (fonts, logo, screensaver image, confetti shapes) — as
+copyable starting material, so an author can port any Default element
+into their own theme verbatim. Deep Space follows the same file shape so
+the two diff cleanly.
+
 **Deep Space authoring constraints** (values are written during
 implementation, not in this spec): dark navy / near-black canvas, slightly
 lighter surface, cyan accent, amber badge/warn, cool muted inks. Original

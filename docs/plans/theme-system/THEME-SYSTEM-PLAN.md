@@ -93,6 +93,7 @@ Replace ~150 hardcoded hex colors across ~20 component files with named CSS vari
 
 ### Phase 2 — DEFERRED: local community install
 Zip upload via the setup page, or paste-a-GitHub-URL (reuse download/extract pattern from `server/services/updateService.ts`). Server-side validation: schema, size caps, contrast warnings, SVG sanitization.
+**User guide requirement (founder, 2026-09-22):** the theme authoring guide must include Default's complete token map and, once later slices add them, its assets (fonts, logo, screensaver image, confetti shapes) as copyable starting material, so an author can port any Default element into their theme verbatim. `client/src/themes/default.ts` is written as that reference (see THEME-ENGINE-SPEC.md §3).
 **Implementation landmine noted for later:** installed themes must live in a directory on the auto-updater's preserve list (`updateService.ts` keeps service-account keys etc. across updates) — otherwise every app update silently deletes installed themes.
 
 ### Phase 3 — DEFERRED: community website + in-app gallery

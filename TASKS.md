@@ -24,6 +24,7 @@
 - [ ] Investigate React warning "Attempted to synchronously unmount a root while React was already rendering" (stack rooted at WidgetHostMount), reproducing on cold boot in dev even at HEAD before Task 9 (differential-tested via `git stash` + fresh dev-server restart) — predates the widget-picker work, not yet root-caused; leading suspect is the nested `createRoot()` roots inside widget `mount()` interacting with Vite dev-mode module updates, unconfirmed (added 2026-08-19)
 - [ ] Bundle fonts locally: client/index.html links Google Sans and client/src/index.css @imports Nunito from Google Fonts at runtime, contradicting the theme plan's local-fonts rule (kiosk must not depend on font reachability) — ship woff2 files in the theme fonts slice (added 2026-09-22)
 - [ ] After the theme engine ships, update the widget-contract theme.subscribe wording in the three companion repos (rootboard-widget-template, rootboard-widget-grocery-list, awesome-rootboard): it now fires on every theme switch; callbacks must stay idempotent (added 2026-09-22)
+- [ ] Theme authoring user guide (with community-theme install, plan Phase 2): include Default's complete token map and later its assets (fonts, logo, screensaver image, confetti shapes) as copyable starting material so authors can port Default elements into their theme verbatim; keep client/src/themes/default.ts copy-friendly (grouped, commented, plain literals) (added 2026-09-22)
 
 ## Deferred (recorded, not scheduled)
 
