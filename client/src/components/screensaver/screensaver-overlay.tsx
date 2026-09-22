@@ -1,3 +1,10 @@
+/**
+ * UNMOUNTED — nothing imports this component. The live screensaver is
+ * power-saving-overlay.tsx (mounted from app-shell.tsx). Kept on purpose
+ * (2026-09-22, see docs/plans/theme-system/THEME-SYSTEM-PLAN.md "Repo
+ * facts"): the bounce loop may be revived by a later themed-screensaver
+ * slice. Do not treat it as the base for anything until then.
+ */
 import { useEffect, useState } from 'react';
 import logoImage from "@assets/image_1753142842256.png";
 

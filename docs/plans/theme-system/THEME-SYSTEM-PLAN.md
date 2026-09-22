@@ -1,6 +1,6 @@
 # Rootboard Theme System — Plan
 
-**Status:** TODO — not started. Parked for a future work session.
+**Status:** Phase 0 complete (via the widget-system plan). Phase 1 in progress — slice 1 (engine + Default + Deep Space) designed, see [THEME-ENGINE-SPEC.md](THEME-ENGINE-SPEC.md).
 **Decided:** July 18, 2026
 **Scope of initial rollout:** Built-in themes only. Community themes are explicitly deferred (see "Deferred" section).
 
@@ -17,6 +17,15 @@
 > across 29 files plus in-scope Tailwind palette classes, `setup.tsx`
 > exempt). Execute Phase 0 via that plan; this file's Phase 0 section and
 > hotspot counts (line "Repo facts") are superseded for scope purposes.
+>
+> **Update 2026-09-22:** Phase 1 slice 1 is designed in
+> [THEME-ENGINE-SPEC.md](THEME-ENGINE-SPEC.md). Two locked decisions are
+> superseded there, with rationale in
+> [decision 0009](../../decisions/0009-theme-engine-persistence-and-token-layer.md):
+> the active theme persists in `data/config/dashboard.json` (not `/api/state`,
+> decision 5), and built-in themes are bundled TypeScript modules (not a served
+> `/themes` folder). Slice 1 is colors only; fonts, assets, confetti shapes,
+> person palettes, Spooky and Winter Holiday follow in later slices.
 
 ---
 
@@ -98,7 +107,7 @@ Phase 0: 1–2 days of mechanical Claude Code work. Phase 1: the substantive bui
 - CSS variables defined in `client/src/index.css` (`--rb-*` + shadcn tokens); Tailwind maps tokens in `tailwind.config.ts`.
 - Hardcoded hex hotspots (counts): dinner voting-strip (17), meal-list-dialog (16), calendar-header (15), day-cell (14), settings-menu (13), meal-picker (9), edit-people (9), chores page (8), on-screen-keyboard (8), plus ~10 more files.
 - Confetti: pure particle math + 5 hardcoded colors in `client/src/components/chores/confetti-burst.tsx`.
-- Screensaver: rAF bounce loop in `client/src/components/screensaver/screensaver-overlay.tsx`; float keyframes in `index.css`.
+- Screensaver: the overlay that actually mounts is `client/src/components/screensaver/power-saving-overlay.tsx` (static dimmed logo on `--rb-power-saving-bg`, mounted from `app-shell.tsx`). `screensaver-overlay.tsx` (rAF bounce loop) is **unmounted dead code** — kept on purpose, not a base for anything (corrected 2026-09-22). Float keyframes in `index.css`.
 - State persistence: `client/src/hooks/use-app-state.ts` → GET/PUT `/api/state/:key` (`server/routes.ts` ~L328).
 - GitHub download pattern: `server/services/updateService.ts`.
 - Brightness currently uses localStorage — theme should NOT copy that pattern.
