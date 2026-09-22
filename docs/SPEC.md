@@ -302,8 +302,8 @@ from Open-Meteo and cached server-side.
   merging/persisting (the widget id is bound at host-creation time, so
   a widget cannot address another widget's settings entry).
   `theme.getToken(name)` reads a computed `--rb-*` custom property;
-  `theme.subscribe` is a stub (no-op unsubscribe) until the theme
-  engine exists. `fetch` is `window.fetch.bind(window)` — full network
+  `theme.subscribe` fires after every theme switch (see "Themes" below).
+  `fetch` is `window.fetch.bind(window)` — full network
   access, same-origin `/api/*` included. `ui.setBadge(count)` sets the
   nav-rail badge; `ui.sleep()` triggers the shell's power-saving
   overlay (the overlay itself stays shell-owned).
@@ -582,6 +582,35 @@ deliberate, accepted deviations —
   like every other event-color fallback site.
 
 Anything not on these two lists renders exactly as before the sweep.
+
+### Themes (engine slice 1)
+
+Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
+
+- **One token layer.** `:root` defines the shadcn tokens (`--background`,
+  `--muted-foreground`, …) as `var(--rb-*)` aliases; a theme is a flat map
+  of the 76 `--rb-*` tokens. `--rb-ink-tertiary` carries the former
+  `--muted-foreground` value. The `.dark` block is dead (never applied).
+- **Manifest** (`shared/theme-manifest.ts`): `{ engineVersion, id, name,
+  tokens }`, every token required, unknown keys rejected, literal colors
+  only. `engineVersion > THEME_ENGINE_VERSION` → "built for a newer
+  Rootboard".
+- **Built-ins** are bundled modules under `client/src/themes/` (`default`,
+  `deep-space`), validated at load by `lib/theme-engine.ts`; a failing one
+  is listed under Settings → "Theme Errors" instead of crashing.
+  `default.ts` is the copyable authoring reference.
+- **Persistence:** `data/config/dashboard.json` `theme` (optional,
+  lenient — a malformed value becomes undefined, never invalidating the
+  file). Unknown id → Default. Hand-edits land within the 60 s poll.
+- **Boot cache:** `applyTheme` mirrors the resolved tokens to
+  `localStorage["rootboard.theme-cache"]`; an inline script in
+  `client/index.html` (`#rb-theme-boot`) repaints `--rb-*` from it before
+  React mounts, so a dark theme does not flash light. The config remains
+  the source of truth and corrects the cache on load.
+- **Contrast guard** (`themes/contrast.spec.ts`): new themes ≥ 4.5:1 on
+  the text/fill pairs listed there; Default is grandfathered at its
+  measured ratios (no regression).
+- **Widgets:** `host.theme.subscribe` now fires on every switch.
 
 ## 4. Update system
 

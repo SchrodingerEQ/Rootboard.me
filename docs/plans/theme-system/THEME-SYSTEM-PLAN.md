@@ -1,6 +1,6 @@
 # Rootboard Theme System — Plan
 
-**Status:** Phase 0 complete (via the widget-system plan). Phase 1 in progress — slice 1 (engine + Default + Deep Space) designed, see [THEME-ENGINE-SPEC.md](THEME-ENGINE-SPEC.md).
+**Status:** Phase 0 complete. Phase 1 slice 1 (engine + Default + Deep Space) implemented — see [THEME-ENGINE-SPEC.md](THEME-ENGINE-SPEC.md); fonts/assets/confetti/person palettes/Spooky/Winter Holiday are later slices.
 **Decided:** July 18, 2026
 **Scope of initial rollout:** Built-in themes only. Community themes are explicitly deferred (see "Deferred" section).
 
