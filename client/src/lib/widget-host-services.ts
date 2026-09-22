@@ -51,6 +51,13 @@ export function createWidgetHost(opts: CreateWidgetHostOptions): WidgetHostHandl
     : `widget:${opts.widgetId}`;
   const storageClient = new AppStateClient(storageKey);
 
+  // Backstops subscribeTheme the same way app-shell backstops settings
+  // subscriptions on dispose: a widget that subscribes in mount() and
+  // forgets to unsubscribe would otherwise leak one closure per
+  // disable/enable cycle into theme-engine's module-level listener Set for
+  // the life of a 24/7 kiosk process.
+  const themeUnsubs = new Set<() => void>();
+
   const host: WidgetHost = {
     apiVersion: WIDGET_API_VERSION as 1,
     appVersion: opts.appVersion ?? APP_VERSION,
@@ -70,9 +77,21 @@ export function createWidgetHost(opts: CreateWidgetHostOptions): WidgetHostHandl
     theme: {
       getToken: (name: string) =>
         getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
-      // Fires after every applyTheme (theme switch, and once at boot once
-      // the config resolves). Callbacks are guarded inside the engine.
-      subscribe: subscribeTheme,
+      // Fires after every applyTheme (theme switch); do not rely on a boot
+      // fire — read getToken() at mount. Callbacks are guarded inside the
+      // engine. Wrapped (rather than handing out subscribeTheme's own
+      // unsubscribe) so dispose() below can always clear a listener the
+      // widget itself never unsubscribed; the wrapper is idempotent, same
+      // as the underlying one.
+      subscribe: (cb) => {
+        const off = subscribeTheme(cb);
+        const wrapped = () => {
+          off();
+          themeUnsubs.delete(wrapped);
+        };
+        themeUnsubs.add(wrapped);
+        return wrapped;
+      },
     },
 
     fetch: window.fetch.bind(window),
@@ -88,6 +107,8 @@ export function createWidgetHost(opts: CreateWidgetHostOptions): WidgetHostHandl
     dispose: () => {
       storageClient.flush();
       storageClient.dispose();
+      themeUnsubs.forEach((off) => off());
+      themeUnsubs.clear();
     },
   };
 }

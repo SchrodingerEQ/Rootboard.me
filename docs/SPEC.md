@@ -606,7 +606,8 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   `localStorage["rootboard.theme-cache"]`; an inline script in
   `client/index.html` (`#rb-theme-boot`) repaints `--rb-*` from it before
   React mounts, so a dark theme does not flash light. The config remains
-  the source of truth and corrects the cache on load.
+  the source of truth and corrects the cache on the first successful
+  config load.
 - **Contrast guard** (`themes/contrast.spec.ts`): new themes ≥ 4.5:1 on
   the text/fill pairs listed there; Default is grandfathered at its
   measured ratios (no regression).

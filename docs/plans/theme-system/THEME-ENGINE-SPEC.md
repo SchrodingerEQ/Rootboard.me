@@ -200,8 +200,9 @@ post-update restart.
   touches non-`--rb-` properties.
 - The config file remains the only source of truth. When it resolves,
   `applyTheme` runs and overwrites both the DOM and the cache. A stale
-  cache is corrected within one boot; a cleared cache means one flash,
-  then it is rebuilt.
+  cache is corrected on the first successful config load (a failed
+  request leaves the cached repaint in place); a cleared cache means one
+  flash, then it is rebuilt.
 - This is a **cache, not a store** — the plan's warning against
   localStorage persistence (brightness) is about source of truth and
   still holds.

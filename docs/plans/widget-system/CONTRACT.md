@@ -171,7 +171,7 @@ interface WidgetHost {
    *  getToken resolves a computed value for canvas/JS use. */
   theme: {
     getToken(name: string): string;   // e.g. getToken("--rb-accent")
-    subscribe(cb: () => void): () => void;  // fires after every theme switch (and once at boot when the config resolves); callbacks must be idempotent
+    subscribe(cb: () => void): () => void;  // fires after every theme switch; do not rely on a boot fire — read getToken() at mount. Callbacks must be idempotent.
   };
 
   /** Plain fetch — full network access per the v1 trust model. Also the

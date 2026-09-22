@@ -218,13 +218,13 @@ interface SettingsMenuProps {
   onPatchWidgetSetting?: (id: string, key: string, value: string | number | boolean) => void;
   /** Validated built-in themes, registry order. Absent/empty hides the
    *  "Theme" section (defensive — Default always validates). */
-  themePickerEntries?: ThemePickerEntry[];
+  themePickerEntries?: readonly ThemePickerEntry[];
   activeThemeId?: string;
   /** Persists the choice through the shell's dashboard-config writer;
    *  the switch itself happens when the config re-renders (use-theme.ts). */
   onSelectTheme?: (id: string) => void;
   /** Built-ins that failed validation. Absent/empty hides the section. */
-  themeErrorEntries?: ThemeErrorEntry[];
+  themeErrorEntries?: readonly ThemeErrorEntry[];
 }
 
 export function SettingsMenu({

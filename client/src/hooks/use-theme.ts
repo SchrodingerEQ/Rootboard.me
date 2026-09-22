@@ -31,6 +31,12 @@ type WriteConfig = (
  * boot cache (client/index.html) is not overwritten with Default while
  * the config request is still in flight — that would reintroduce the
  * flash the cache exists to prevent.
+ *
+ * `configLoaded` must mean "config data present", not merely "not
+ * pending": a failed config request (e.g. `retry: false` exhausted) also
+ * leaves `isPending` false, and gating on that alone would apply Default
+ * over a cached dark theme. The gate must stay false until the first
+ * successful load so the boot-script repaint is left in place instead.
  */
 export function useTheme(config: DashboardConfig, configLoaded: boolean, writeConfig: WriteConfig): UseThemeResult {
   const loaded = useMemo(() => loadBuiltinThemes(BUILTIN_THEMES), []);

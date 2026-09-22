@@ -621,7 +621,7 @@ export default function AppShell() {
 
   // Theme engine (docs/plans/theme-system/THEME-ENGINE-SPEC.md). Gated on
   // the config having loaded so the boot cache isn't clobbered by Default.
-  const theme = useTheme(dashboardConfig, !configQuery.isPending, writeDashboardConfig);
+  const theme = useTheme(dashboardConfig, configQuery.data !== undefined, writeDashboardConfig);
   const themePickerEntries = useMemo(
     () =>
       theme.themes.map((t) => ({
@@ -1062,7 +1062,7 @@ export default function AppShell() {
             themePickerEntries={themePickerEntries}
             activeThemeId={theme.activeId}
             onSelectTheme={theme.setTheme}
-            themeErrorEntries={[...theme.failed]}
+            themeErrorEntries={theme.failed}
           />
         ) : undefined}
       />

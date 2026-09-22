@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { LEGACY_KEY_ALIASES, createWidgetHost } from "./widget-host-services";
 import { validateBuiltinManifest } from "@/widgets/validate-manifest";
+import { applyTheme, type ThemeRoot } from "./theme-engine";
+import { THEME_ENGINE_VERSION, THEME_TOKEN_NAMES, type ThemeManifest } from "@shared/theme-manifest";
 
 describe("LEGACY_KEY_ALIASES", () => {
   test("maps chores and dinner to their unprefixed legacy app_state keys", () => {
@@ -82,6 +84,62 @@ describe("createWidgetHost — settings.patch", () => {
     void handle.host.storage.get();
     expect(fetchMock).toHaveBeenCalledWith(`/api/state/${expectedKey}`, expect.anything());
     handle.dispose();
+  });
+});
+
+describe("createWidgetHost — theme.subscribe", () => {
+  // Same rationale as the settings.patch describe above: createWidgetHost
+  // binds host.fetch to window.fetch at construction time, unrelated to
+  // what this test checks (theme subscription teardown on dispose).
+  beforeEach(() => {
+    vi.stubGlobal("window", globalThis);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function makeHost() {
+    return createWidgetHost({
+      widgetId: "chores",
+      getSettings: () => ({}),
+      subscribeSettings: () => () => {},
+      patchSettings: () => {},
+      setBadge: () => {},
+      sleep: () => {},
+    });
+  }
+
+  // Node's vitest environment has no `document` — applyTheme is called
+  // directly with a fake root/null storage (its own injectable params)
+  // rather than through the DOM, mirroring theme-engine.spec.ts's approach.
+  const fullManifest: ThemeManifest = {
+    engineVersion: THEME_ENGINE_VERSION,
+    id: "test-theme",
+    name: "Test Theme",
+    tokens: Object.fromEntries(THEME_TOKEN_NAMES.map((name) => [name, "#000000"])) as ThemeManifest["tokens"],
+  };
+  const fakeRoot: ThemeRoot = { style: { setProperty: vi.fn() } };
+
+  test("dispose() tears down a theme.subscribe listener the widget never unsubscribed", () => {
+    const { host, dispose } = makeHost();
+    const cb = vi.fn();
+    host.theme.subscribe(cb);
+
+    applyTheme(fullManifest, fakeRoot, null);
+    expect(cb).toHaveBeenCalledTimes(1);
+
+    dispose();
+
+    applyTheme(fullManifest, fakeRoot, null);
+    expect(cb).toHaveBeenCalledTimes(1); // unchanged — dispose already unsubscribed it
+  });
+
+  test("the unsubscribe returned by theme.subscribe is idempotent — calling it twice does not throw", () => {
+    const { host } = makeHost();
+    const off = host.theme.subscribe(vi.fn());
+    off();
+    expect(() => off()).not.toThrow();
   });
 });
 
