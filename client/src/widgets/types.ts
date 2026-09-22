@@ -72,7 +72,7 @@ export interface WidgetHost {
    *  getToken resolves a computed value for canvas/JS use. */
   theme: {
     getToken(name: string): string; // e.g. getToken("--rb-accent")
-    subscribe(cb: () => void): () => void; // fires after every theme switch; read getToken() at mount rather than relying on a boot fire
+    subscribe(cb: () => void): () => void; // fires after every theme switch; read getToken() at mount rather than relying on a boot fire. Callbacks must be idempotent.
   };
 
   /** Plain fetch — full network access per the v1 trust model. Also the
