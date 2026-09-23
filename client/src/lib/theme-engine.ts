@@ -145,6 +145,26 @@ export function writeThemeCache(manifest: ThemeManifest, storage: ThemeStorage |
   }
 }
 
+// --- Active token snapshot (first-party readers, e.g. useSurfaceHex) ------
+
+// `undefined` means "not yet initialized"; `null` is a valid initialized
+// value (no cached theme). Lazily seeded from the boot cache on first read
+// so a reader that runs before the first `applyTheme` in this session (or
+// in an SSR/test module instance) still sees the last-applied theme.
+let activeTokens: Record<string, string> | null | undefined;
+
+/** Snapshot of the currently-applied theme's tokens, or null if none yet. */
+export function getActiveThemeTokens(): Record<string, string> | null {
+  if (activeTokens === undefined) {
+    try {
+      activeTokens = readThemeCache()?.tokens ?? null;
+    } catch {
+      activeTokens = null;
+    }
+  }
+  return activeTokens;
+}
+
 // --- Apply ----------------------------------------------------------------
 
 function defaultRoot(): ThemeRoot {
@@ -164,6 +184,7 @@ export function applyTheme(
   for (const name of THEME_TOKEN_NAMES) {
     root.style.setProperty(name, manifest.tokens[name]);
   }
+  activeTokens = { ...manifest.tokens };
   notify();
   writeThemeCache(manifest, storage);
 }

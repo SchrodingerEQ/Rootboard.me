@@ -4,6 +4,7 @@ import {
   DEFAULT_THEME_ID,
   THEME_CACHE_KEY,
   applyTheme,
+  getActiveThemeTokens,
   loadBuiltinThemes,
   readThemeCache,
   resolveTheme,
@@ -83,6 +84,24 @@ describe("applyTheme", () => {
   test("a storage that throws does not break apply", () => {
     const storage: ThemeStorage = { getItem: () => null, setItem: () => { throw new Error("quota"); } };
     expect(() => applyTheme(manifest("x"), { style: { setProperty: vi.fn() } }, storage)).not.toThrow();
+  });
+});
+
+describe("getActiveThemeTokens", () => {
+  test("before any applyTheme, lazily reads from the cache without throwing", async () => {
+    vi.resetModules();
+    const fresh = await import("./theme-engine");
+    expect(() => fresh.getActiveThemeTokens()).not.toThrow();
+    // Node test environment has no localStorage, so the cache read resolves to null.
+    expect(fresh.getActiveThemeTokens()).toBeNull();
+  });
+
+  test("reflects the applied manifest's surface token, and updates on a later applyTheme", () => {
+    applyTheme(manifest("a", "#111111"), { style: { setProperty: vi.fn() } }, null);
+    expect(getActiveThemeTokens()?.["--rb-surface"]).toBe("#111111");
+
+    applyTheme(manifest("b", "#222222"), { style: { setProperty: vi.fn() } }, null);
+    expect(getActiveThemeTokens()?.["--rb-surface"]).toBe("#222222");
   });
 });
 
