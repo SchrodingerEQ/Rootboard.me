@@ -43,3 +43,91 @@ export function contrastRatio(hexA: string, hexB: string): number {
   const [hi, lo] = a > b ? [a, b] : [b, a];
   return (hi + 0.05) / (lo + 0.05);
 }
+
+// --- CIE Lab / ΔE76 (palette distinguishability checks) -------------------
+
+/** D65 reference white, normalized XYZ (Y = 1). */
+const D65_WHITE = { x: 0.95047, y: 1.0, z: 1.08883 };
+const LAB_EPSILON = 0.008856;
+const LAB_KAPPA = 7.787;
+
+function labF(t: number): number {
+  return t > LAB_EPSILON ? Math.cbrt(t) : (LAB_KAPPA * t + 16 / 116);
+}
+
+/**
+ * `#rrggbb` → CIE Lab (D65). Linearizes with the shared sRGB curve
+ * (`channelLuminance`), converts to XYZ with the standard sRGB/D65 matrix,
+ * normalizes by the D65 white point, then applies the CIE Lab piecewise
+ * f(t) (ε = 0.008856, κ = 7.787).
+ */
+export function hexToLab(hex: string): [number, number, number] {
+  const { r, g, b } = hexToRgb(hex);
+  const rl = channelLuminance(r);
+  const gl = channelLuminance(g);
+  const bl = channelLuminance(b);
+
+  const x = rl * 0.4124564 + gl * 0.3575761 + bl * 0.1804375;
+  const y = rl * 0.2126729 + gl * 0.7151522 + bl * 0.072175;
+  const z = rl * 0.0193339 + gl * 0.119192 + bl * 0.9503041;
+
+  const fx = labF(x / D65_WHITE.x);
+  const fy = labF(y / D65_WHITE.y);
+  const fz = labF(z / D65_WHITE.z);
+
+  const L = 116 * fy - 16;
+  const labA = 500 * (fx - fy);
+  const labB = 200 * (fy - fz);
+  return [L, labA, labB];
+}
+
+/** ΔE76 (Euclidean distance in CIE Lab, D65) between two `#rrggbb` colors. Symmetric. */
+export function deltaE76(hexA: string, hexB: string): number {
+  const [l1, a1, b1] = hexToLab(hexA);
+  const [l2, a2, b2] = hexToLab(hexB);
+  return Math.sqrt((l1 - l2) ** 2 + (a1 - a2) ** 2 + (b1 - b2) ** 2);
+}
+
+// --- rgba compositing (theme token resolution) -----------------------------
+
+const HEX6_RE = /^#[0-9a-f]{6}$/i;
+// Mirrors RGB_COLOR_RE in shared/theme-manifest.ts's cssColorSchema.
+const RGBA_RE = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(0|1|0?\.\d+)\s*)?\)$/i;
+
+function toHexByte(n: number): string {
+  const clamped = Math.max(0, Math.min(255, Math.round(n)));
+  return clamped.toString(16).padStart(2, "0");
+}
+
+/**
+ * Composites an `rgb()`/`rgba()`/`#rrggbb` foreground color over an opaque
+ * `#rrggbb` background, returning a lowercase `#rrggbb`. Accepts the same
+ * rgb/rgba grammar as `cssColorSchema` in `shared/theme-manifest.ts`; an
+ * opaque `#rrggbb` foreground is returned lowercased as-is. Throws on any
+ * other format.
+ */
+export function compositeOver(rgba: string, bgHex: string): string {
+  const v = (rgba || "").trim();
+
+  if (HEX6_RE.test(v)) {
+    return v.toLowerCase();
+  }
+
+  const m = RGBA_RE.exec(v);
+  if (!m) {
+    throw new Error(`compositeOver: unsupported color format: ${rgba}`);
+  }
+
+  const fgR = Number(m[1]);
+  const fgG = Number(m[2]);
+  const fgB = Number(m[3]);
+  const alpha = m[4] !== undefined ? Number(m[4]) : 1;
+
+  const { r: bgR, g: bgG, b: bgB } = hexToRgb(bgHex);
+
+  const r = fgR * alpha + bgR * (1 - alpha);
+  const g = fgG * alpha + bgG * (1 - alpha);
+  const b = fgB * alpha + bgB * (1 - alpha);
+
+  return `#${toHexByte(r)}${toHexByte(g)}${toHexByte(b)}`;
+}
