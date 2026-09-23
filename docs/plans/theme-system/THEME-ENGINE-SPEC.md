@@ -5,10 +5,10 @@
 **Parent plan:** [THEME-SYSTEM-PLAN.md](THEME-SYSTEM-PLAN.md) (Phase 1).
 **Decision record:** [0009](../../decisions/0009-theme-engine-persistence-and-token-layer.md).
 
-This slice builds the theme *engine* and proves it with one dark theme.
-It deliberately excludes fonts, imagery, confetti shapes, person palettes
-and the two remaining seasonal themes — those are later slices (see
-"Out of scope").
+Slice 1 built the theme *engine* and proved it with one dark theme.
+Slice 2 (§10–§11) added person palettes and dark-surface calendar ink.
+Fonts, imagery, confetti shapes and the two remaining seasonal themes
+remain later slices (see "Out of scope").
 
 ## Goals
 
@@ -327,6 +327,19 @@ roughly 1.2–2.0:1 to at least 6.1:1.
 - Contrast: §8 matrix for every built-in theme.
 - `applyTheme` notifies subscribers exactly once per call and
   `unsubscribe` stops delivery.
+- `client/src/themes/people-contrast.spec.ts`: the four per-slot
+  contrast rules, ΔE76 ≥ 20, and the Default floors, for every
+  built-in theme.
+- `client/src/lib/person-colors.spec.ts`: slot mapping (`personSlot`),
+  the `var()` strings emitted by `personColorVar` / `personPaletteVars`,
+  and the pinned `PERSON_PALETTE` fallback.
+- `client/src/components/chores/person-palette-usage.spec.ts`: source
+  guard — the person-color components read theme tokens, not
+  `PERSON_PALETTE`, directly.
+- `color-utils` / `theme-engine` additions: Lab conversion, ΔE, and
+  `compositeOver`; surface-aware `eventTextColor` is byte-identical to
+  today's output on a light surface and ≥ 4.5 contrast on `#141c2e`;
+  `getActiveThemeTokens()` tracks the applied manifest.
 
 No React renderer in the test setup (see `use-widget-state.spec.ts`), so
 hook/UI wiring is verified on the dev server and on the kiosk.
@@ -374,5 +387,10 @@ client/src/components/calendar/settings-menu.tsx  (Theme + Theme Errors sections
 client/src/lib/widget-host-services.ts    (real subscribe)
 docs/plans/widget-system/CONTRACT.md      (subscribe wording)
 docs/SPEC.md                              (new "Themes" section)
+client/src/lib/person-colors.ts           (new)
+client/src/hooks/use-surface-hex.ts       (new)
+client/src/components/chores/{person-column,edit-people,reset-confirm-dialog,chore-card-stack}.tsx
+client/src/components/calendar/{event-item,day-view,coming-up}.tsx
+docs/decisions/0010-person-palettes-are-theme-tokens.md  (new)
 + specs under client/src/**/*.spec.ts
 ```

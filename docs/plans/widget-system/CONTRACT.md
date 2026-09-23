@@ -315,8 +315,8 @@ stronger) in the contribution guide and the widget tutorial.
   host globals, CSS classes, or React internals — none are contract.
 - Style with `var(--rb-*)` tokens wherever possible so themes apply.
   Always write a fallback — widgets cannot require a minimum app
-  version — e.g. `var(--rb-person-3-tint, #ddf2ef)` or
-  `getToken(...) || "#ddf2ef"`.
+  version — e.g. `var(--rb-person-3-tint, #fdf0db)` or
+  `getToken(...) || "#fdf0db"`.
 - Respect the kiosk: minimum 48 px touch targets (56 px on ≥1920 px
   screens); no hover-only affordances; assume no physical keyboard —
   eligible text inputs get the app's on-screen keyboard automatically
