@@ -3,7 +3,8 @@ import { z } from "zod";
 /**
  * Theme engine version the app implements. A manifest with `engineVersion`
  * greater than this is rejected with NEWER_ENGINE_MESSAGE (same policy as
- * widgets' apiVersion). Bump when THEME_TOKEN_NAMES gains or loses a name.
+ * widgets' apiVersion). Bump when THEME_TOKEN_NAMES changes after first
+ * release; slices 1 and 2 ship together at 1.
  * See docs/plans/theme-system/THEME-ENGINE-SPEC.md §2.
  */
 export const THEME_ENGINE_VERSION = 1;
@@ -105,9 +106,51 @@ export const THEME_TOKEN_NAMES = [
   // Screensaver
   "--rb-screensaver-logo-glow",
   "--rb-power-saving-bg",
+  // People (8 identity slots, 1-based, slot order = identity, stable across themes)
+  "--rb-person-1-color",
+  "--rb-person-1-tint",
+  "--rb-person-1-text",
+  "--rb-person-2-color",
+  "--rb-person-2-tint",
+  "--rb-person-2-text",
+  "--rb-person-3-color",
+  "--rb-person-3-tint",
+  "--rb-person-3-text",
+  "--rb-person-4-color",
+  "--rb-person-4-tint",
+  "--rb-person-4-text",
+  "--rb-person-5-color",
+  "--rb-person-5-tint",
+  "--rb-person-5-text",
+  "--rb-person-6-color",
+  "--rb-person-6-tint",
+  "--rb-person-6-text",
+  "--rb-person-7-color",
+  "--rb-person-7-tint",
+  "--rb-person-7-text",
+  "--rb-person-8-color",
+  "--rb-person-8-tint",
+  "--rb-person-8-text",
 ] as const;
 
 export type ThemeTokenName = (typeof THEME_TOKEN_NAMES)[number];
+
+/** Number of person identity slots (1-based). Slot order = identity, same
+ *  across every theme: 1 purple, 2 green, 3 orange, 4 blue, 5 rose/red,
+ *  6 teal, 7 pink, 8 slate (see PERSON_PALETTE, client/src/lib/chores-state.ts). */
+export const PERSON_SLOT_COUNT = 8;
+
+export const PERSON_ROLES = ["color", "tint", "text"] as const;
+export type PersonRole = (typeof PERSON_ROLES)[number];
+
+/** Builds a `--rb-person-{slot}-{role}` token name. `slot` is 1-based
+ *  (1..PERSON_SLOT_COUNT); throws RangeError outside that range. */
+export function personTokenName(slot: number, role: PersonRole): ThemeTokenName {
+  if (!Number.isInteger(slot) || slot < 1 || slot > PERSON_SLOT_COUNT) {
+    throw new RangeError(`slot must be an integer in [1, ${PERSON_SLOT_COUNT}], got ${slot}`);
+  }
+  return `--rb-person-${slot}-${role}` as ThemeTokenName;
+}
 
 export const themeIdSchema = z
   .string()

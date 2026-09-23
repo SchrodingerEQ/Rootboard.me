@@ -1,8 +1,11 @@
 import { describe, expect, test } from "vitest";
 import {
   NEWER_ENGINE_MESSAGE,
+  PERSON_ROLES,
+  PERSON_SLOT_COUNT,
   THEME_ENGINE_VERSION,
   THEME_TOKEN_NAMES,
+  personTokenName,
   themeManifestSchema,
   validateThemeManifest,
 } from "@shared/theme-manifest";
@@ -15,12 +18,35 @@ function manifest(overrides: Record<string, unknown> = {}) {
   return { engineVersion: 1, id: "test-theme", name: "Test", tokens: fullTokens(), ...overrides };
 }
 
+function expectedPersonTokenNames(): string[] {
+  const out: string[] = [];
+  for (let slot = 1; slot <= PERSON_SLOT_COUNT; slot++) {
+    for (const role of PERSON_ROLES) out.push(`--rb-person-${slot}-${role}`);
+  }
+  return out;
+}
+
 describe("THEME_TOKEN_NAMES", () => {
-  test("has 76 unique --rb- names including --rb-ink-tertiary", () => {
-    expect(THEME_TOKEN_NAMES).toHaveLength(76);
-    expect(new Set(THEME_TOKEN_NAMES).size).toBe(76);
+  test("has 100 unique --rb- names including --rb-ink-tertiary", () => {
+    expect(THEME_TOKEN_NAMES).toHaveLength(100);
+    expect(new Set(THEME_TOKEN_NAMES).size).toBe(100);
     for (const n of THEME_TOKEN_NAMES) expect(n).toMatch(/^--rb-[a-z0-9-]+$/);
     expect(THEME_TOKEN_NAMES).toContain("--rb-ink-tertiary");
+  });
+
+  test("the last 24 names are the slot-major person tokens", () => {
+    expect(THEME_TOKEN_NAMES.slice(-24)).toEqual(expectedPersonTokenNames());
+  });
+});
+
+describe("personTokenName", () => {
+  test("builds the --rb-person-{slot}-{role} name", () => {
+    expect(personTokenName(3, "tint")).toBe("--rb-person-3-tint");
+  });
+
+  test("throws RangeError outside the 1..8 slot range", () => {
+    expect(() => personTokenName(0, "color")).toThrow(RangeError);
+    expect(() => personTokenName(9, "color")).toThrow(RangeError);
   });
 });
 

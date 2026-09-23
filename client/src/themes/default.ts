@@ -11,6 +11,10 @@ import type { ThemeManifest } from "@shared/theme-manifest";
  * Contrast: new themes must meet WCAG AA (4.5:1) on the pairs listed in
  * client/src/themes/contrast.spec.ts; Default is grandfathered at its
  * measured values there.
+ *
+ * The People group is where per-person colours come from for every widget
+ * (`--rb-person-N-color/-tint/-text`); keep slot order — it is a person's
+ * identity.
  */
 export const defaultTheme: ThemeManifest = {
   engineVersion: 1,
@@ -116,5 +120,31 @@ export const defaultTheme: ThemeManifest = {
     // ===== Screensaver =====
     "--rb-screensaver-logo-glow": "rgba(70, 130, 180, 0.3)",
     "--rb-power-saving-bg": "#000000",
+
+    // ===== People (8 identity slots) =====
+    "--rb-person-1-color": "#9333ea",  // purple
+    "--rb-person-1-tint": "#f3e8fd",   // purple
+    "--rb-person-1-text": "#6b21a8",   // purple
+    "--rb-person-2-color": "#16a34a",  // green
+    "--rb-person-2-tint": "#e3f5ea",   // green
+    "--rb-person-2-text": "#15803d",   // green
+    "--rb-person-3-color": "#ea8c00",  // orange
+    "--rb-person-3-tint": "#fdf0db",   // orange
+    "--rb-person-3-text": "#b45309",   // orange
+    "--rb-person-4-color": "#2563eb",  // blue
+    "--rb-person-4-tint": "#e8effd",   // blue
+    "--rb-person-4-text": "#1e40af",   // blue
+    "--rb-person-5-color": "#e11d48",  // rose/red
+    "--rb-person-5-tint": "#fce4ea",   // rose/red
+    "--rb-person-5-text": "#be123c",   // rose/red
+    "--rb-person-6-color": "#0d9488",  // teal
+    "--rb-person-6-tint": "#ddf2ef",   // teal
+    "--rb-person-6-text": "#0f766e",   // teal
+    "--rb-person-7-color": "#db2777",  // pink
+    "--rb-person-7-tint": "#fbe6f0",   // pink
+    "--rb-person-7-text": "#be185d",   // pink
+    "--rb-person-8-color": "#607d8b",  // slate
+    "--rb-person-8-tint": "#e8eef1",   // slate
+    "--rb-person-8-text": "#46606c",   // slate
   },
 };

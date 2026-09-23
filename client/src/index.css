@@ -44,13 +44,6 @@
   --rb-today-col-wash: #fff8f2;
   --rb-grid-line: #ededed;
 
-  /* Person/profile palette (Google calendars override these at runtime) */
-  --p-blue: #2563eb;
-  --p-purple: #9333ea;
-  --p-green: #16a34a;
-  --p-orange: #ea8c00;
-  --p-red: #e11d48;
-
   /* Phase 2 additions — roles extracted from hardcoded literals
      (Task 6b: full set land per docs/plans/widget-system/phase2-color-inventory.md §12,
      ratified 2026-08-19) */
@@ -139,6 +132,32 @@
   /* ===== Screensaver ===== */
   --rb-screensaver-logo-glow: rgba(70, 130, 180, 0.3);
   --rb-power-saving-bg: #000000;   /* (Q15) */
+
+  /* ===== People (8 identity slots; slot order = identity) ===== */
+  --rb-person-1-color: #9333ea;    /* 1 purple */
+  --rb-person-1-tint: #f3e8fd;     /* 1 purple */
+  --rb-person-1-text: #6b21a8;     /* 1 purple */
+  --rb-person-2-color: #16a34a;    /* 2 green */
+  --rb-person-2-tint: #e3f5ea;     /* 2 green */
+  --rb-person-2-text: #15803d;     /* 2 green */
+  --rb-person-3-color: #ea8c00;    /* 3 orange */
+  --rb-person-3-tint: #fdf0db;     /* 3 orange */
+  --rb-person-3-text: #b45309;     /* 3 orange */
+  --rb-person-4-color: #2563eb;    /* 4 blue */
+  --rb-person-4-tint: #e8effd;     /* 4 blue */
+  --rb-person-4-text: #1e40af;     /* 4 blue */
+  --rb-person-5-color: #e11d48;    /* 5 rose/red */
+  --rb-person-5-tint: #fce4ea;     /* 5 rose/red */
+  --rb-person-5-text: #be123c;     /* 5 rose/red */
+  --rb-person-6-color: #0d9488;    /* 6 teal */
+  --rb-person-6-tint: #ddf2ef;     /* 6 teal */
+  --rb-person-6-text: #0f766e;     /* 6 teal */
+  --rb-person-7-color: #db2777;    /* 7 pink */
+  --rb-person-7-tint: #fbe6f0;     /* 7 pink */
+  --rb-person-7-text: #be185d;     /* 7 pink */
+  --rb-person-8-color: #607d8b;    /* 8 slate */
+  --rb-person-8-tint: #e8eef1;     /* 8 slate */
+  --rb-person-8-text: #46606c;     /* 8 slate */
 }
 
 /* DEAD BLOCK — `darkMode: ["class"]` is configured in tailwind.config.ts but

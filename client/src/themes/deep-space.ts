@@ -113,5 +113,31 @@ export const deepSpaceTheme: ThemeManifest = {
     // ===== Screensaver =====
     "--rb-screensaver-logo-glow": "rgba(34, 211, 238, 0.3)",
     "--rb-power-saving-bg": "#000000",
+
+    // ===== People (8 identity slots) =====
+    "--rb-person-1-color": "#9333ea",  // purple
+    "--rb-person-1-tint": "#2a1540",   // purple
+    "--rb-person-1-text": "#d8b4fe",   // purple
+    "--rb-person-2-color": "#15803d",  // green
+    "--rb-person-2-tint": "#0b2e1a",   // green
+    "--rb-person-2-text": "#86efac",   // green
+    "--rb-person-3-color": "#b45309",  // orange
+    "--rb-person-3-tint": "#3a2205",   // orange
+    "--rb-person-3-text": "#fdba74",   // orange
+    "--rb-person-4-color": "#2563eb",  // blue
+    "--rb-person-4-tint": "#0f1f45",   // blue
+    "--rb-person-4-text": "#93c5fd",   // blue
+    "--rb-person-5-color": "#d4163f",  // rose/red
+    "--rb-person-5-tint": "#3b0d1a",   // rose/red
+    "--rb-person-5-text": "#fda4af",   // rose/red
+    "--rb-person-6-color": "#0f766e",  // teal
+    "--rb-person-6-tint": "#062a27",   // teal
+    "--rb-person-6-text": "#5eead4",   // teal
+    "--rb-person-7-color": "#c0266d",  // pink
+    "--rb-person-7-tint": "#3a0f25",   // pink
+    "--rb-person-7-text": "#f9a8d4",   // pink
+    "--rb-person-8-color": "#5b6b82",  // slate
+    "--rb-person-8-tint": "#1e2836",   // slate
+    "--rb-person-8-text": "#cbd5e1",   // slate
   },
 };
