@@ -58,12 +58,16 @@ describe("built-in theme person palette", () => {
         const textTintKey = `${slot}:text/tint`;
         const textTintFloor = theme.id === "default" ? (DEFAULT_PERSON_FLOORS[textTintKey] ?? AA) : AA;
         test(`slot ${slot} text/tint >= ${textTintFloor}`, () => {
+          expect(text, `person-${slot}-text must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
+          expect(tint, `person-${slot}-tint must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
           expect(contrastRatio(text, tint)).toBeGreaterThanOrEqual(textTintFloor);
         });
 
         const chipKey = `${slot}:text/chip`;
         const chipFloor = theme.id === "default" ? (DEFAULT_PERSON_FLOORS[chipKey] ?? AA) : AA;
         test(`slot ${slot} text/chip-over-tint >= ${chipFloor}`, () => {
+          expect(text, `person-${slot}-text must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
+          expect(tint, `person-${slot}-tint must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
           const chipOverTint = compositeOver(onTintChip, tint);
           expect(contrastRatio(text, chipOverTint)).toBeGreaterThanOrEqual(chipFloor);
         });
@@ -71,6 +75,8 @@ describe("built-in theme person palette", () => {
         const onColorKey = `${slot}:on-color/color`;
         const onColorFloor = theme.id === "default" ? (DEFAULT_PERSON_FLOORS[onColorKey] ?? AA) : AA;
         test(`slot ${slot} on-color-ink/color >= ${onColorFloor}`, () => {
+          expect(onColorInk, "--rb-on-color-ink must be #rrggbb for contrast checks").toMatch(/^#[0-9a-f]{6}$/i);
+          expect(color, `person-${slot}-color must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
           expect(contrastRatio(onColorInk, color)).toBeGreaterThanOrEqual(onColorFloor);
         });
 
@@ -78,6 +84,8 @@ describe("built-in theme person palette", () => {
         const colorSurfaceFloor =
           theme.id === "default" ? (DEFAULT_PERSON_FLOORS[colorSurfaceKey] ?? AA_LARGE) : AA_LARGE;
         test(`slot ${slot} color/surface >= ${colorSurfaceFloor}`, () => {
+          expect(color, `person-${slot}-color must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
+          expect(surface, "--rb-surface must be #rrggbb for contrast checks").toMatch(/^#[0-9a-f]{6}$/i);
           expect(contrastRatio(color, surface)).toBeGreaterThanOrEqual(colorSurfaceFloor);
         });
       }
@@ -86,6 +94,9 @@ describe("built-in theme person palette", () => {
         const colors = Array.from({ length: PERSON_SLOT_COUNT }, (_, i) =>
           theme.tokens[personTokenName(i + 1, "color")],
         );
+        colors.forEach((c, i) => {
+          expect(c, `person-${i + 1}-color must be #rrggbb for ΔE76 checks`).toMatch(/^#[0-9a-f]{6}$/i);
+        });
         let min = Infinity;
         for (let i = 0; i < colors.length; i++) {
           for (let j = i + 1; j < colors.length; j++) {
