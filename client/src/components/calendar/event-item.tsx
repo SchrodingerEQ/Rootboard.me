@@ -2,6 +2,7 @@ import type { CalendarEvent } from "@shared/schema";
 import { formatTime } from "@/lib/date-utils";
 import { eventTint, eventTextColor } from "@/lib/color-utils";
 import { EVENT_FALLBACK_COLOR } from "@/lib/calendar-meta";
+import { useSurfaceHex } from "@/hooks/use-surface-hex";
 
 interface EventItemProps {
   event: CalendarEvent;
@@ -33,9 +34,10 @@ export function EventItem({
 }: EventItemProps) {
   // Warm family-display treatment: soft tint background + colored accent + dark readable text,
   // derived from whatever hex the calendar/event carries.
+  const surface = useSurfaceHex();
   const color = event.color || EVENT_FALLBACK_COLOR;
   const tint = eventTint(color);
-  const ink = eventTextColor(color);
+  const ink = eventTextColor(color, { surface });
   const startTime = new Date(event.startTime);
   const endTime = new Date(event.endTime);
 

@@ -1,5 +1,35 @@
 import { describe, expect, test } from "vitest";
-import { compositeOver, contrastRatio, deltaE76, hexToLab, relativeLuminance } from "./color-utils";
+import {
+  DARK_INK_LIGHTEN,
+  compositeOver,
+  contrastRatio,
+  deltaE76,
+  eventTextColor,
+  eventTint,
+  hexToLab,
+  relativeLuminance,
+} from "./color-utils";
+
+// Copied from calendar-meta.ts FALLBACK_COLORS — keep in sync.
+const FALLBACK_COLORS = [
+  "#2563eb", "#16a34a", "#e11d48", "#ea8c00", "#9333ea",
+  "#795548", "#607d8b", "#e91e63", "#4caf50", "#ff5722", "#3f51b5", "#009688",
+];
+
+// A sample of colors Google Calendar assigns to events/calendars.
+const GOOGLE_PALETTE_SAMPLE = [
+  "#7986cb", "#33b679", "#8e24aa", "#e67c73", "#f6bf26", "#f4511e",
+  "#039be5", "#616161", "#3f51b5", "#0b8043", "#d50000", "#1a73e8",
+];
+
+const SURFACE_DEEP_SPACE = "#141c2e";
+
+function parseRgb(rgb: string): string {
+  const m = /^rgb\((\d{1,3}),\s*(\d{1,3}),\s*(\d{1,3})\)$/.exec(rgb);
+  if (!m) throw new Error(`parseRgb: unexpected format: ${rgb}`);
+  const toHex = (n: string) => Number(n).toString(16).padStart(2, "0");
+  return `#${toHex(m[1])}${toHex(m[2])}${toHex(m[3])}`;
+}
 
 describe("relativeLuminance", () => {
   test("black is 0, white is 1", () => {
@@ -57,6 +87,27 @@ describe("deltaE76", () => {
 
   test("red vs pink is about 28.1", () => {
     expect(deltaE76("#e11d48", "#db2777")).toBeCloseTo(28.1, 1);
+  });
+});
+
+describe("eventTextColor", () => {
+  const ALL_COLORS = [...FALLBACK_COLORS, ...GOOGLE_PALETTE_SAMPLE];
+
+  test.each(ALL_COLORS)("%s: no-surface and light-surface opts match the positional-factor default, byte-for-byte", (c) => {
+    const base = eventTextColor(c, 0.55);
+    expect(eventTextColor(c)).toBe(base);
+    expect(eventTextColor(c, { surface: "#ffffff" })).toBe(base);
+  });
+
+  test.each(ALL_COLORS)("%s: on Deep Space surface, ink reaches >= 4.5:1 against its own tint", (c) => {
+    const ink = eventTextColor(c, { surface: SURFACE_DEEP_SPACE });
+    const bg = compositeOver(eventTint(c), SURFACE_DEEP_SPACE);
+    expect(contrastRatio(parseRgb(ink), bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("DARK_INK_LIGHTEN is one of the candidate steps 0.5..0.9", () => {
+    expect(DARK_INK_LIGHTEN).toBeGreaterThanOrEqual(0.5);
+    expect(DARK_INK_LIGHTEN).toBeLessThanOrEqual(0.9);
   });
 });
 

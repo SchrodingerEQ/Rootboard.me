@@ -6,6 +6,7 @@ import { ComingUp, type CountdownItem } from "./coming-up";
 import { isToday, formatTime } from "@/lib/date-utils";
 import { eventTint, eventTextColor } from "@/lib/color-utils";
 import { getCalendarColor, getInitials, EVENT_FALLBACK_COLOR, type CalendarInfo } from "@/lib/calendar-meta";
+import { useSurfaceHex } from "@/hooks/use-surface-hex";
 import type { CalendarEvent } from "@shared/schema";
 
 interface DayViewProps {
@@ -34,6 +35,7 @@ function durationLabel(start: Date, end: Date): string {
 export function DayView({ currentDate, events, isLoading, onEventClick, monthEvents, calendars }: DayViewProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const upNextRef = useRef<HTMLDivElement>(null);
+  const surface = useSurfaceHex();
 
   // Live clock so past-dimming and "Up next" stay correct on the 24/7 kiosk.
   const [now, setNow] = useState(() => new Date());
@@ -182,7 +184,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
                     key={event.id}
                     onClick={() => onEventClick?.(event)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold truncate"
-                    style={{ background: eventTint(color), color: eventTextColor(color) }}
+                    style={{ background: eventTint(color), color: eventTextColor(color, { surface }) }}
                   >
                     <span className="rounded-full flex-shrink-0" style={{ width: 8, height: 8, background: color }} />
                     <span className="truncate">{event.title}</span>
@@ -252,7 +254,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
                         )}
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        <span className="text-sm font-bold" style={{ color: eventTextColor(color) }}>{durationLabel(start, end)}</span>
+                        <span className="text-sm font-bold" style={{ color: eventTextColor(color, { surface }) }}>{durationLabel(start, end)}</span>
                         <span
                           className="rounded-full flex items-center justify-center text-sm font-extrabold text-rb-on-color-ink"
                           style={{ width: 38, height: 38, background: avatarColor }}

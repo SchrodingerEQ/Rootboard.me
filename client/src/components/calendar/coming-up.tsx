@@ -1,4 +1,5 @@
 import { eventTint, eventTextColor } from "@/lib/color-utils";
+import { useSurfaceHex } from "@/hooks/use-surface-hex";
 
 export interface CountdownItem {
   days: number;
@@ -9,6 +10,7 @@ export interface CountdownItem {
 
 /** "Coming up" rail card: day-countdown tiles for the next few future events. */
 export function ComingUp({ items }: { items: CountdownItem[] }) {
+  const surface = useSurfaceHex();
   if (items.length === 0) return null;
 
   return (
@@ -22,7 +24,7 @@ export function ComingUp({ items }: { items: CountdownItem[] }) {
               style={{
                 width: 54, height: 54, borderRadius: 14,
                 background: eventTint(item.color),
-                color: eventTextColor(item.color),
+                color: eventTextColor(item.color, { surface }),
               }}
             >
               <span className="leading-none" style={{ fontWeight: 900, fontSize: 22 }}>{item.days}</span>

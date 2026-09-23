@@ -17,9 +17,41 @@ export function eventTint(hex: string, alpha = 0.14): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-/** A darkened version of the color that stays readable on top of its own tint. */
-export function eventTextColor(hex: string, factor = 0.55): string {
+/**
+ * How far (0..1) a dark-surface ink is blended toward white, per channel:
+ * `c' = c + (255 - c) * DARK_INK_LIGHTEN`. Smallest of 0.5, 0.55, … 0.9 that
+ * keeps every FALLBACK_COLORS/Google-palette-sample color's ink at >= 4.5:1
+ * against its own tint composited over the Deep Space surface (#141c2e) —
+ * see color-utils.spec.ts.
+ */
+export const DARK_INK_LIGHTEN = 0.5;
+
+export interface EventTextColorOpts {
+  /** Surface the ink will sit on. Luminance < 0.2 switches to the lightened dark-surface ink. */
+  surface?: string;
+  /** Darkening factor for the light-surface path. Defaults to 0.55 (today's behavior). */
+  factor?: number;
+}
+
+/**
+ * A readable ink color for text/icons drawn over an event's own tint.
+ * On a light-enough surface (the default, and the only behavior before
+ * `opts.surface` existed) this darkens the hex by `factor` — byte-identical
+ * to the original single-factor function. On a dark surface
+ * (`relativeLuminance(opts.surface) < 0.2`) it instead lightens the hex
+ * toward white by `DARK_INK_LIGHTEN`, since darkening further would sink
+ * into the dark surface instead of standing out from it.
+ */
+export function eventTextColor(hex: string, factorOrOpts: number | EventTextColorOpts = 0.55): string {
+  const opts: EventTextColorOpts = typeof factorOrOpts === "number" ? { factor: factorOrOpts } : factorOrOpts;
   const { r, g, b } = hexToRgb(hex);
+
+  if (opts.surface !== undefined && relativeLuminance(opts.surface) < 0.2) {
+    const lighten = (c: number) => Math.round(c + (255 - c) * DARK_INK_LIGHTEN);
+    return `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
+  }
+
+  const factor = opts.factor ?? 0.55;
   return `rgb(${Math.round(r * factor)}, ${Math.round(g * factor)}, ${Math.round(b * factor)})`;
 }
 
