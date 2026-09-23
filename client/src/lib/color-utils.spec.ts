@@ -93,6 +93,18 @@ describe("deltaE76", () => {
 describe("eventTextColor", () => {
   const ALL_COLORS = [...FALLBACK_COLORS, ...GOOGLE_PALETTE_SAMPLE];
 
+  // Pinned literals captured from the pre-change formula
+  // (`Math.round(channel * 0.55)`), computed independently of eventTextColor
+  // itself so this doesn't just compare the new function with itself:
+  //   #2563eb -> 37,99,235 * 0.55 -> round(20.35, 54.45, 129.25) = 20,54,129
+  //   #e11d48 -> 225,29,72 * 0.55 -> round(123.75, 15.95, 39.6) = 124,16,40
+  test("pinned byte-identity literals from the pre-change 0.55-darken formula", () => {
+    expect(eventTextColor("#2563eb")).toBe("rgb(20, 54, 129)");
+    expect(eventTextColor("#2563eb", { surface: "#ffffff" })).toBe("rgb(20, 54, 129)");
+    expect(eventTextColor("#e11d48")).toBe("rgb(124, 16, 40)");
+    expect(eventTextColor("#e11d48", { surface: "#ffffff" })).toBe("rgb(124, 16, 40)");
+  });
+
   test.each(ALL_COLORS)("%s: no-surface and light-surface opts match the positional-factor default, byte-for-byte", (c) => {
     const base = eventTextColor(c, 0.55);
     expect(eventTextColor(c)).toBe(base);
@@ -103,6 +115,12 @@ describe("eventTextColor", () => {
     const ink = eventTextColor(c, { surface: SURFACE_DEEP_SPACE });
     const bg = compositeOver(eventTint(c), SURFACE_DEEP_SPACE);
     expect(contrastRatio(parseRgb(ink), bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("a non-#rrggbb surface (rgb()/#rrggbbaa) never takes the dark path, even though it's schema-legal", () => {
+    const light = eventTextColor("#2563eb");
+    expect(eventTextColor("#2563eb", { surface: "rgb(255, 255, 255)" })).toBe(light);
+    expect(eventTextColor("#2563eb", { surface: "#ffffffaa" })).toBe(light);
   });
 
   test("DARK_INK_LIGHTEN is one of the candidate steps 0.5..0.9", () => {

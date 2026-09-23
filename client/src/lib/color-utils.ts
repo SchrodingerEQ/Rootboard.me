@@ -33,20 +33,30 @@ export interface EventTextColorOpts {
   factor?: number;
 }
 
+// Mirrors HEX6_RE below — only a strict #rrggbb surface is eligible for the
+// dark-surface path. Anything else (rgb()/rgba(), #rrggbbaa, etc. — all
+// schema-legal per cssColorSchema) falls back to hexToRgb's blue default if
+// we compute luminance on it, which would wrongly read as "dark" and
+// lighten ink that should stay darkened. Treat those as not-dark instead.
+const HEX6_ONLY_RE = /^#[0-9a-f]{6}$/i;
+
 /**
  * A readable ink color for text/icons drawn over an event's own tint.
  * On a light-enough surface (the default, and the only behavior before
  * `opts.surface` existed) this darkens the hex by `factor` — byte-identical
- * to the original single-factor function. On a dark surface
+ * to the original single-factor function. On a dark `#rrggbb` surface
  * (`relativeLuminance(opts.surface) < 0.2`) it instead lightens the hex
  * toward white by `DARK_INK_LIGHTEN`, since darkening further would sink
- * into the dark surface instead of standing out from it.
+ * into the dark surface instead of standing out from it. A surface that
+ * isn't a plain `#rrggbb` hex (e.g. `rgb(...)`, `#rrggbbaa`) always takes
+ * the light-surface (darkened) path, since luminance can't be computed on
+ * it without risking the `hexToRgb` fallback color.
  */
 export function eventTextColor(hex: string, factorOrOpts: number | EventTextColorOpts = 0.55): string {
   const opts: EventTextColorOpts = typeof factorOrOpts === "number" ? { factor: factorOrOpts } : factorOrOpts;
   const { r, g, b } = hexToRgb(hex);
 
-  if (opts.surface !== undefined && relativeLuminance(opts.surface) < 0.2) {
+  if (opts.surface !== undefined && HEX6_ONLY_RE.test(opts.surface) && relativeLuminance(opts.surface) < 0.2) {
     const lighten = (c: number) => Math.round(c + (255 - c) * DARK_INK_LIGHTEN);
     return `rgb(${lighten(r)}, ${lighten(g)}, ${lighten(b)})`;
   }

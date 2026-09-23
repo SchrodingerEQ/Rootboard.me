@@ -168,7 +168,9 @@ interface WidgetHost {
 
   /** Theme tokens are ambient CSS custom properties (--rb-*) inherited
    *  by the container; style with var(--rb-…) and theming is free.
-   *  getToken resolves a computed value for canvas/JS use. */
+   *  getToken resolves a computed value for canvas/JS use. Person
+   *  colours: see the person-colour token convention
+   *  (`--rb-person-{1..8}-{color,tint,text}`) below. */
   theme: {
     getToken(name: string): string;   // e.g. getToken("--rb-accent")
     subscribe(cb: () => void): () => void;  // fires after every theme switch; do not rely on a boot fire — read getToken() at mount. Callbacks must be idempotent.
