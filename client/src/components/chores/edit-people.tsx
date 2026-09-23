@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Check, Pencil, Plus, X } from "lucide-react";
-import { PERSON_PALETTE, type Person } from "@/lib/chores-state";
+import { type Person } from "@/lib/chores-state";
+import { personPaletteVars } from "@/lib/person-colors";
+import { PERSON_SLOT_COUNT } from "@shared/theme-manifest";
 
 interface EditPeopleProps {
   people: Person[];
@@ -54,7 +56,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
 
         <div className="flex flex-col gap-2.5" style={{ marginBottom: 22 }}>
           {people.map((p) => {
-            const pal = PERSON_PALETTE[p.colorIdx % PERSON_PALETTE.length];
+            const pal = personPaletteVars(p.colorIdx);
             const initials = p.name.slice(0, 2).toUpperCase();
             const isEditing = editingId === p.id;
             return (
@@ -120,7 +122,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
                 </div>
 
                 <div className="flex items-center gap-2.5" style={{ paddingLeft: 2 }}>
-                  {PERSON_PALETTE.map((sw, si) => {
+                  {Array.from({ length: PERSON_SLOT_COUNT }, (_, si) => personPaletteVars(si)).map((sw, si) => {
                     const selected = si === p.colorIdx;
                     return (
                       <button

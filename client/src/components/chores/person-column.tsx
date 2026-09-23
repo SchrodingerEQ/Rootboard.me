@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Plus } from "lucide-react";
-import { CHORE_CAP, PERSON_PALETTE, type Person } from "@/lib/chores-state";
+import { CHORE_CAP, type Person } from "@/lib/chores-state";
+import { personPaletteVars } from "@/lib/person-colors";
 import { ChoreCardStack } from "./chore-card-stack";
 
 interface PersonColumnProps {
@@ -13,7 +14,7 @@ export function PersonColumn({ person, onToggleChore, onAddChore }: PersonColumn
   const [isAdding, setIsAdding] = useState(false);
   const [draft, setDraft] = useState("");
 
-  const pal = PERSON_PALETTE[person.colorIdx % PERSON_PALETTE.length];
+  const pal = personPaletteVars(person.colorIdx);
   const initials = person.name.slice(0, 2).toUpperCase();
   const activeCount = person.chores.filter((c) => !c.done).length;
   const countLabel = activeCount === 0 ? "All done!" : `${activeCount} left`;

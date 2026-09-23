@@ -23,7 +23,7 @@ interface Burst {
 
 interface ChoreCardStackProps {
   chores: Chore[];
-  /** The person's saturated palette color — check-button border/fill. */
+  /** CSS colour value for the check button (usually `var(--rb-person-N-color, …)`). */
   color: string;
   onToggle: (choreId: string) => void;
 }

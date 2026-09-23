@@ -7,7 +7,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PERSON_PALETTE, type Person } from "@/lib/chores-state";
+import { type Person } from "@/lib/chores-state";
+import { personPaletteVars } from "@/lib/person-colors";
 
 interface ResetConfirmDialogProps {
   open: boolean;
@@ -54,7 +55,7 @@ export function ResetConfirmDialog({ open, onOpenChange, people, onConfirm }: Re
             </span>
           ) : (
             people.map((p) => {
-              const pal = PERSON_PALETTE[p.colorIdx % PERSON_PALETTE.length];
+              const pal = personPaletteVars(p.colorIdx);
               const initials = p.name.slice(0, 2).toUpperCase();
               const isSelected = p.id === selectedId;
               return (
