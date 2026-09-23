@@ -191,6 +191,13 @@ interface WidgetHost {
 }
 ```
 
+Person colours are theme tokens, `--rb-person-{1..8}-{color,tint,text}`
+— slots are 1-based and stable across every theme. A slot is "the
+theme's Nth identity colour", **not** "Chores person N": a widget that
+colours its own people should store a slot index per person, never the
+colour itself, so a theme switch repaints it correctly. Adding these
+tokens was additive — no `apiVersion` bump.
+
 **Traceability — why exactly these services** (from the coupling audit):
 chores/dinner need `storage` (today: `app_state` blobs) and `setBadge`
 (today: hoisted hook feeding the rail badge); calendar and any
@@ -307,6 +314,9 @@ stronger) in the contribution guide and the widget tutorial.
   reach into the host DOM outside your container; do not depend on
   host globals, CSS classes, or React internals — none are contract.
 - Style with `var(--rb-*)` tokens wherever possible so themes apply.
+  Always write a fallback — widgets cannot require a minimum app
+  version — e.g. `var(--rb-person-3-tint, #ddf2ef)` or
+  `getToken(...) || "#ddf2ef"`.
 - Respect the kiosk: minimum 48 px touch targets (56 px on ≥1920 px
   screens); no hover-only affordances; assume no physical keyboard —
   eligible text inputs get the app's on-screen keyboard automatically

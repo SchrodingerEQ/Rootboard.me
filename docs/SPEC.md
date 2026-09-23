@@ -589,7 +589,7 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
 
 - **One token layer.** `:root` defines the shadcn tokens (`--background`,
   `--muted-foreground`, …) as `var(--rb-*)` aliases; a theme is a flat map
-  of the 76 `--rb-*` tokens. `--rb-ink-tertiary` carries the former
+  of the 100 `--rb-*` tokens. `--rb-ink-tertiary` carries the former
   `--muted-foreground` value. The `.dark` block is dead (never applied).
 - **Manifest** (`shared/theme-manifest.ts`): `{ engineVersion, id, name,
   tokens }`, every token required, unknown keys rejected, literal colors
@@ -611,6 +611,17 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
 - **Contrast guard** (`themes/contrast.spec.ts`): new themes ≥ 4.5:1 on
   the text/fill pairs listed there; Default is grandfathered at its
   measured ratios (no regression).
+- **Person palette:** 24 of the 100 tokens are `--rb-person-{1..8}-
+  {color,tint,text}` (slot order = identity, stable across themes: 1
+  purple, 2 green, 3 orange, 4 blue, 5 rose/red, 6 teal, 7 pink, 8
+  slate). Chores maps each person's `colorIdx` to a slot instead of a
+  color literal (`client/src/lib/person-colors.ts`), so a theme switch
+  repaints person columns live; `people-contrast.spec.ts` enforces the
+  contrast/distinguishability floors per theme, per slot.
+- **Calendar ink on dark surfaces:** `eventTextColor` lightens toward
+  white on surfaces with relative luminance < 0.2 (via `useSurfaceHex`),
+  byte-identical on light surfaces; Deep Space event-chip contrast went
+  from ~1.2–2.0:1 to ≥ 6.1:1.
 - **Widgets:** `host.theme.subscribe` now fires on every switch.
 
 ## 4. Update system

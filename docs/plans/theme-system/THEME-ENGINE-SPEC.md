@@ -94,7 +94,7 @@ Mirrors `shared/widget-manifest.ts`.
 
 ```ts
 export const THEME_ENGINE_VERSION = 1;
-export const THEME_TOKEN_NAMES = [ "--rb-canvas", /* … */ "--rb-ink-tertiary" ] as const; // 76 names
+export const THEME_TOKEN_NAMES = [ "--rb-canvas", /* … */ "--rb-person-8-text" ] as const; // 100 names
 export const themeIdSchema = /* same rule as widgetIdSchema */;
 export const themeManifestSchema = z.object({
   engineVersion: z.number().int().positive(),
@@ -112,7 +112,11 @@ export const themeManifestSchema = z.object({
   named colors) — a manifest is data, never CSS.
 - `engineVersion > THEME_ENGINE_VERSION` → rejected with the message
   "built for a newer Rootboard" (same policy as widgets).
-- Adding a token later bumps `THEME_ENGINE_VERSION`.
+- After first release, adding a token bumps `THEME_ENGINE_VERSION` (slices
+  1 and 2 ship together, so both land at version 1 with nothing released
+  yet). **Phase 2 note:** community themes will need a backfill rule —
+  tokens newer than a manifest's `engineVersion` filled from Default —
+  or every future token addition breaks every existing community theme.
 
 ### 3. Built-in themes (`client/src/themes/`)
 
@@ -256,6 +260,53 @@ callbacks must still be idempotent. The three companion repos
 `awesome-rootboard`) carry the same sentence and need the same edit —
 tracked as a separate task, not part of this repo's change.
 
+### 10. Person palette tokens
+
+Each theme supplies an 8-slot person identity palette as 24 more
+required tokens, `--rb-person-{1..8}-{color,tint,text}` (slot-major in
+`THEME_TOKEN_NAMES`: `1-color, 1-tint, 1-text, 2-color, …`), bringing
+the total to 100. **Slot order is identity, fixed across every theme:**
+1 purple, 2 green, 3 orange, 4 blue, 5 rose/red, 6 teal, 7 pink, 8
+slate. Chores stores a `colorIdx` per person and maps it to a slot
+(`personSlot` in `client/src/lib/person-colors.ts`), never a color
+literal, so switching themes repaints person columns live —
+`personColorVar` / `personPaletteVars` emit `var(--rb-person-N-role,
+<Default hex>)` strings with the Default palette as the fallback.
+
+**Contrast rules, every theme, every slot:**
+
+- `text` / `tint` ≥ 4.5
+- `text` / (`--rb-on-tint-chip` composited over `tint`) ≥ 4.5
+- `--rb-on-color-ink` / `color` ≥ 4.5
+- `color` / `--rb-surface` ≥ 3.0
+
+**Default is grandfathered at measured floors** (never lower): text/tint
+slot 2 = 4.4, slot 3 = 4.4; on-color/color slot 2 = 3.2, slot 3 = 2.5,
+slot 6 = 3.7, slot 8 = 4.3; color/surface slot 3 = 2.5.
+
+**Distinguishability:** minimum pairwise ΔE76 (CIE Lab, D65) among the
+eight `-color` values ≥ 20 in every theme (Default measures 28.1, Deep
+Space 30.7). Tints are not checked.
+
+Enforced by `client/src/themes/people-contrast.spec.ts` for every
+built-in theme. `PERSON_PALETTE` in `client/src/lib/chores-state.ts`
+stays a pinned literal (not derived from the manifest) so that module
+stays dependency-free for its legacy test and can serve as the `var()`
+fallback described above.
+
+### 11. Calendar event ink on dark surfaces
+
+`eventTextColor(hex, { surface })` (`client/src/lib/color-utils.ts`)
+gained a `surface` option: when the active theme's `--rb-surface`
+relative luminance is below 0.2, it lightens the computed ink toward
+white by `DARK_INK_LIGHTEN` (0.5) instead of darkening further, which
+would sink into the dark chip. On a light surface the output stays
+byte-identical to before. The surface hex reaches the calendar via
+`useSurfaceHex()` (`client/src/hooks/use-surface-hex.ts`), which reads
+`getActiveThemeTokens()["--rb-surface"]` and updates live on theme
+switch. Effect on Deep Space: event chip text contrast went from
+roughly 1.2–2.0:1 to at least 6.1:1.
+
 ## Testing (vitest)
 
 - Schema: rejects a manifest missing any one token; rejects an unknown
@@ -298,8 +349,11 @@ One small release, per the project's release workflow:
   local-fonts rule — tracked in TASKS.md).
 - Logo, screensaver and background imagery; confetti shapes.
 - Confetti colors (`CONFETTI_COLORS` const still shadows the
-  `--rb-confetti-*` tokens) and person palettes (hex in
-  `calendar-meta.ts` / `chores-state.ts`).
+  `--rb-confetti-*` tokens).
+- Calendar `FALLBACK_COLORS` (`client/src/lib/calendar-meta.ts`) stays a
+  pinned literal list, not a theme token — the server hashes
+  calendar/event ids to the same list, so it can't move without breaking
+  that agreement.
 - Spooky and Winter Holiday.
 - Shape/depth tokens (`--radius`, shadow softness).
 - Community / folder-drop themes (plan Phases 2–3).
