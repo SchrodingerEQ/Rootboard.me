@@ -1122,6 +1122,7 @@ export default function AppShell() {
       {/* Power Saving Overlay (manual SLEEP button or auto after 2 min inactivity) */}
       <PowerSavingOverlay
         isActive={isPowerSavingActive}
+        pageDimmed={screensaver.isActive}
         onWake={handleWake}
       />
     </div>
