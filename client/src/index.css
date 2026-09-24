@@ -377,3 +377,14 @@ html[data-osk-open] [data-radix-popper-content-wrapper] [role="dialog"] {
   max-height: max(35vh, calc(92vh - 300px));
   overflow-y: auto;
 }
+
+/* The Settings panel opens upward from the bottom of the nav rail, and its
+   sub-menus (2026-09-24) are short — the Calendars sub-menu's "add calendar
+   ID" field would sit behind the keyboard with nothing to scroll. While the
+   keyboard is open, stretch the panel to the same height as the cap so it
+   grows upward and its top-aligned content lifts the field above the
+   keyboard. (The keyboard re-anchors popovers when it opens/closes — see
+   on-screen-keyboard.tsx.) */
+html[data-osk-open] [data-radix-popper-content-wrapper] [data-settings-panel] {
+  min-height: max(35vh, calc(92vh - 300px));
+}

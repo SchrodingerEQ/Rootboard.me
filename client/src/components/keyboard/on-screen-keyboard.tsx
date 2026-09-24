@@ -97,6 +97,11 @@ export function OnScreenKeyboard() {
     const root = document.documentElement;
     if (visible) root.setAttribute("data-osk-open", "true");
     else root.removeAttribute("data-osk-open");
+    // The attribute changes popover sizes via index.css (height cap, and the
+    // Settings panel's min-height). Radix/floating-ui re-anchors popovers only
+    // on window resize/scroll, not on a size change, so nudge it — otherwise
+    // an upward-opening panel keeps its old top and runs off the screen.
+    window.dispatchEvent(new Event("resize"));
     return () => root.removeAttribute("data-osk-open");
   }, [visible]);
 

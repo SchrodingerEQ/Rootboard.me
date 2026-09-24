@@ -197,10 +197,24 @@ from Open-Meteo and cached server-side.
   them, by design.
 - **AppShell** (`components/app-shell.tsx`) owns everything that is not
   widget content: the nav rail, screensaver/brightness/power-saving,
-  the update check/apply/rollback flow, and the Settings popover
-  (brightness, OSK mode, per-calendar visibility switches, add-calendar,
-  service-account display, update controls, and the layout picker —
-  enable/disable + reorder installed widgets). The single OSK stays
+  the update check/apply/rollback flow, and the Settings popover. The
+  popover is a main screen (Brightness, five category rows, version)
+  plus five sub-menus opened by tapping a row and closed with Back
+  (`components/calendar/settings-nav.ts`): **Display** (theme picker,
+  theme errors), **Calendars** (service-account display, per-calendar
+  visibility switches, remove, add-calendar), **Widgets** (layout
+  picker — enable/disable + reorder installed widgets and their
+  settings, community widgets, widget-folder errors), **Keyboard** (OSK
+  mode), **System** (update check, roll back). It always reopens on the
+  main screen; a category with a problem (theme error, widget-folder
+  error or crashed community widget, missing service-account key) shows
+  a warning dot on the main screen. The panel is height-capped to the
+  on-screen space and scrolls; because it opens upward from the rail and
+  floating-ui re-anchors only on window resize, a view switch and the
+  OSK opening/closing each dispatch a `resize` so it stays on its
+  trigger, and while the OSK is open the panel is stretched to the OSK
+  height cap so the Add Calendar field sits above the keyboard. The
+  single OSK stays
   global (mounted in `App.tsx`, not per-widget). Nav `section` is now a
   config-driven `string` (any enabled **and** installed widget id), not
   a fixed 3-way union — still persisted in localStorage

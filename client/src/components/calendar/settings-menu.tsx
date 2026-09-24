@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, Puzzle, SlidersHorizontal, Palette, type LucideIcon } from "lucide-react";
+import { useLayoutEffect, useState } from "react";
+import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { WidgetSettingsFields } from "@/components/widget-settings-fields";
 import type { WidgetSettingField } from "@shared/widget-manifest";
@@ -29,6 +29,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useOskMode } from "@/hooks/use-osk-mode";
+import { SETTINGS_CATEGORIES, categoryHasWarning, type SettingsView } from "./settings-nav";
 import type { OskMode } from "@/lib/osk";
 
 interface CalendarInfo {
@@ -267,6 +268,21 @@ export function SettingsMenu({
     communityWidgetPickerEntries.filter((e) => e.enabled && e.status === "ready").length;
   const installedCommunityEntries = communityWidgetPickerEntries.filter((e) => e.installed);
   const [isOpen, setIsOpen] = useState(false);
+  // Settings navigation (2026-09-24): a main screen plus five category
+  // sub-menus, so the panel always fits the kiosk screen. Always reopens
+  // on the main screen.
+  const [view, setView] = useState<SettingsView>("main");
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) setView("main");
+  };
+  // Sub-menus are shorter than the main screen, and Radix/floating-ui only
+  // re-anchors the popover on window resize/scroll, not when its content
+  // changes height — so a sub-menu would float detached above the Settings
+  // button. Nudge a reposition after each view switch, before paint.
+  useLayoutEffect(() => {
+    if (isOpen) window.dispatchEvent(new Event("resize"));
+  }, [view, isOpen]);
   // Minor #4: per-id "this icon's src failed to load" state, so a broken
   // sideloaded icon (bad path, corrupt file) falls back to the generic
   // Puzzle glyph instead of sitting as a permanently broken <img> box.
@@ -426,6 +442,18 @@ export function SettingsMenu({
     document.documentElement.style.filter = `brightness(${brightness}%)`;
   });
 
+  // Problems surfaced as warning dots on the main screen so they are never
+  // hidden inside a closed category (see settings-nav.ts).
+  const settingsProblems = {
+    themeErrors: themeErrorEntries.length,
+    widgetFolderErrors: invalidWidgetPickerEntries.length,
+    communityWidgetProblems: communityWidgetPickerEntries.filter(
+      (e) => e.status === "crashed" || e.status === "error",
+    ).length,
+    serviceAccountMissing: !!serviceAccountError,
+  };
+  const activeCategory = SETTINGS_CATEGORIES.find((c) => c.id === view);
+
   return (
     <>
       <AlertDialog open={!!calendarToRemove} onOpenChange={(open) => { if (!open) setCalendarToRemove(null); }}>
@@ -449,7 +477,7 @@ export function SettingsMenu({
         </AlertDialogContent>
       </AlertDialog>
 
-      <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           {compactTrigger ? (
             <button
@@ -470,15 +498,38 @@ export function SettingsMenu({
             </Button>
           )}
         </PopoverTrigger>
-        <PopoverContent className="w-[416px] p-0" align="end">
+        {/* Height-capped to the space Radix has on screen, and scrollable,
+            so no view can ever push the header off the top of the kiosk
+            screen again (the 2026-09 Theme-section overflow bug). A class,
+            NOT an inline style: the stricter on-screen-keyboard cap in
+            index.css (`html[data-osk-open] … [role="dialog"]`) must still
+            win while the keyboard is open, and an inline style would
+            override it. */}
+        <PopoverContent
+          className="w-[416px] p-0 overflow-y-auto max-h-[var(--radix-popover-content-available-height)]"
+          align="end"
+          data-settings-panel=""
+        >
           <div className="p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-sm">Settings</h3>
+            <div className="flex items-center justify-between gap-2">
+              {view === "main" ? (
+                <h3 className="font-semibold text-sm">Settings</h3>
+              ) : (
+                <button
+                  type="button"
+                  className="touch-button -ml-2 flex items-center gap-1 rounded-md px-2 text-sm font-semibold hover:bg-rb-chip"
+                  onClick={() => setView("main")}
+                  data-testid="settings-back"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                  {activeCategory?.label ?? "Settings"}
+                </button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => setIsOpen(false)}
+                onClick={() => handleOpenChange(false)}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -486,6 +537,8 @@ export function SettingsMenu({
 
             <Separator />
 
+            {view === "main" && (
+              <>
             {/* Brightness Control */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -507,11 +560,60 @@ export function SettingsMenu({
               <p className="text-xs text-rb-muted">{brightness}%</p>
             </div>
 
+            <Separator />
+
+            {/* Category rows — each opens a sub-menu (settings-nav.ts). */}
+            <div className="space-y-1">
+              {SETTINGS_CATEGORIES.map((category) => {
+                const Icon = category.icon;
+                const warn = categoryHasWarning(category.id, settingsProblems);
+                return (
+                  <button
+                    type="button"
+                    key={category.id}
+                    onClick={() => setView(category.id)}
+                    data-testid={`settings-category-${category.id}`}
+                    className="touch-button w-full flex items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-rb-chip"
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0 text-rb-ink-secondary" />
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        {category.label}
+                        {warn && (
+                          <span
+                            className="h-2 w-2 rounded-full bg-rb-warn"
+                            aria-label="needs attention"
+                            data-testid={`settings-category-warning-${category.id}`}
+                          />
+                        )}
+                      </span>
+                      <span className="block text-xs text-rb-muted truncate">{category.summary}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-rb-faint" />
+                  </button>
+                );
+              })}
+            </div>
+
+            <Separator />
+
+            {/* Version Info */}
+            <div className="flex items-center justify-between text-xs text-rb-muted">
+              <div className="flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                <span>Version {APP_VERSION}</span>
+              </div>
+            </div>
+              </>
+            )}
+
+            {/* ===== Display ===== */}
+            {view === "display" && (
+              <>
             {/* Theme picker (theme engine slice 1). Rows are .touch-button
                 so they honour the kiosk's 48/44 px minimums. */}
             {themePickerEntries.length > 0 && (
               <>
-                <Separator />
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Palette className="h-4 w-4" />
@@ -573,10 +675,11 @@ export function SettingsMenu({
                 </div>
               </>
             )}
+              </>
+            )}
 
-            <Separator />
-
-            {/* On-screen keyboard */}
+            {/* ===== Keyboard ===== */}
+            {view === "keyboard" && (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Keyboard className="h-4 w-4" />
@@ -603,9 +706,11 @@ export function SettingsMenu({
                 Auto shows a touch keyboard on touchscreens only (e.g. the Pi kiosk).
               </p>
             </div>
+            )}
 
-            <Separator />
-
+            {/* ===== Widgets ===== */}
+            {view === "widgets" && (
+              <>
             {/* Widgets — layout picker (Task 9): enable/disable + reorder */}
             {widgetPickerEntries.length > 0 && (
               <>
@@ -892,7 +997,12 @@ export function SettingsMenu({
                 <Separator />
               </>
             )}
+              </>
+            )}
 
+            {/* ===== Calendars ===== */}
+            {view === "calendars" && (
+              <>
             {/* Calendar Selection */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">
@@ -999,10 +1109,11 @@ export function SettingsMenu({
                 Find Calendar ID in Google Calendar → Settings → Integrate calendar
               </p>
             </div>
+              </>
+            )}
 
-            <Separator />
-
-            {/* Update Controls */}
+            {/* ===== System ===== */}
+            {view === "system" && (
             <div className="space-y-2">
               <div className="flex gap-2">
                 {onCheckForUpdates && (
@@ -1029,16 +1140,7 @@ export function SettingsMenu({
                 )}
               </div>
             </div>
-
-            <Separator />
-
-            {/* Version Info */}
-            <div className="flex items-center justify-between text-xs text-rb-muted">
-              <div className="flex items-center gap-1">
-                <Info className="h-3 w-3" />
-                <span>Version {APP_VERSION}</span>
-              </div>
-            </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>
