@@ -10,10 +10,9 @@ const src = fs.readFileSync(path.resolve(import.meta.dirname, "settings-menu.tsx
 
 describe("settings-menu.tsx keeps every existing control", () => {
   const mustContain = [
-    // trigger + brightness
+    // trigger + brightness (the slider itself lives in brightness-control.tsx)
     'data-testid="button-settings"',
-    "localStorage.setItem('calendar-brightness'",
-    "handleBrightnessChange",
+    "<BrightnessControl",
     // display
     "theme-select-",
     "theme-error-",
@@ -49,6 +48,18 @@ describe("settings-menu.tsx keeps every existing control", () => {
     // re-anchor the popover when a shorter sub-menu opens
     expect(src).toContain('if (isOpen) window.dispatchEvent(new Event("resize"));');
     expect(src).toContain("}, [view, isOpen]);");
+  });
+
+  test("brightness slider: isolated component, persists on commit not per tick", () => {
+    const bc = fs.readFileSync(path.resolve(import.meta.dirname, "brightness-control.tsx"), "utf-8");
+    expect(bc).toContain('BRIGHTNESS_STORAGE_KEY = "calendar-brightness"');
+    expect(bc).toContain("onValueCommit={handleCommit}");
+    // the per-tick handler must not touch localStorage
+    const perTick = bc.slice(bc.indexOf("const handleChange"), bc.indexOf("const handleCommit"));
+    expect(perTick).not.toContain("localStorage");
+    // the menu no longer owns slider state or writes brightness itself
+    expect(src).not.toContain("calendar-brightness");
+    expect(src).not.toMatch(/<Slider[\s>]/); // (SlidersHorizontal is a different icon)
   });
 
   test("keyboard over Add Calendar: panel stretches upward and re-anchors", () => {

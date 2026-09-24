@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { createFrameCoalescer } from '@/lib/frame-coalescer';
 
 interface ScreensaverConfig {
   inactivityTimeout: number;
@@ -9,7 +10,6 @@ interface ScreensaverConfig {
 interface ScreensaverState {
   isActive: boolean;
   isIdle: boolean;
-  brightness: number;
   lastActivity: number;
 }
 
@@ -23,7 +23,6 @@ export const useScreensaver = (config: ScreensaverConfig) => {
   const [state, setState] = useState<ScreensaverState>({
     isActive: false,
     isIdle: false,
-    brightness: config.originalBrightness,
     lastActivity: Date.now()
   });
 
@@ -34,10 +33,20 @@ export const useScreensaver = (config: ScreensaverConfig) => {
   const configRef = useRef(config);
   configRef.current = config;
 
+  // One page-filter write per animation frame, always the latest value: a
+  // touch drag on the brightness slider delivers pointer moves faster than
+  // the Pi can recomposite a filtered full-screen page. No React state is
+  // touched here — a per-tick setState re-rendered the whole AppShell on
+  // every pointer move and was the main source of slider lag. Consumers
+  // read `currentBrightness` (a ref) instead.
+  const writeFilterRef = useRef(
+    createFrameCoalescer<number>((brightness) => {
+      document.documentElement.style.filter = `brightness(${Math.round(brightness * 100)}%)`;
+    }),
+  );
   const applyBrightness = useCallback((brightness: number) => {
-    document.documentElement.style.filter = `brightness(${Math.round(brightness * 100)}%)`;
     brightnessRef.current = brightness;
-    setState(prev => ({ ...prev, brightness }));
+    writeFilterRef.current(brightness);
   }, []);
 
   const startTimer = useCallback(() => {

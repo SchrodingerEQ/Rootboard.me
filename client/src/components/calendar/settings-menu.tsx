@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from "react";
-import { Settings, Sun, Moon, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, type LucideIcon } from "lucide-react";
+import { Settings, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { WidgetSettingsFields } from "@/components/widget-settings-fields";
 import type { WidgetSettingField } from "@shared/widget-manifest";
@@ -21,7 +21,6 @@ import {
   PopoverContent, 
   PopoverTrigger 
 } from "@/components/ui/popover";
-import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,6 +29,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useOskMode } from "@/hooks/use-osk-mode";
 import { SETTINGS_CATEGORIES, categoryHasWarning, type SettingsView } from "./settings-nav";
+import { BrightnessControl } from "./brightness-control";
 import type { OskMode } from "@/lib/osk";
 
 interface CalendarInfo {
@@ -305,10 +305,6 @@ export function SettingsMenu({
       return next;
     });
   };
-  const [brightness, setBrightness] = useState(() => {
-    const saved = localStorage.getItem('calendar-brightness');
-    return saved ? parseInt(saved) : Math.round(currentBrightness * 100);
-  });
   const [oskMode, setOskMode] = useOskMode();
   const [calendarIdInput, setCalendarIdInput] = useState('');
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
@@ -403,19 +399,6 @@ export function SettingsMenu({
     });
   };
 
-  const handleBrightnessChange = (value: number[]) => {
-    const newBrightness = value[0];
-    setBrightness(newBrightness);
-    localStorage.setItem('calendar-brightness', newBrightness.toString());
-    
-    // Use external brightness control if available (screensaver integration)
-    if (externalSetBrightness) {
-      externalSetBrightness(newBrightness / 100); // Convert to 0-1 scale
-    } else {
-      // Fallback to direct DOM manipulation
-      document.documentElement.style.filter = `brightness(${newBrightness}%)`;
-    }
-  };
 
   const getCalendarColor = (calendar: CalendarInfo): string => {
     if (calendar.backgroundColor) {
@@ -437,10 +420,6 @@ export function SettingsMenu({
     return colors[index];
   };
 
-  // Apply brightness on component mount
-  useState(() => {
-    document.documentElement.style.filter = `brightness(${brightness}%)`;
-  });
 
   // Problems surfaced as warning dots on the main screen so they are never
   // hidden inside a closed category (see settings-nav.ts).
@@ -539,26 +518,9 @@ export function SettingsMenu({
 
             {view === "main" && (
               <>
-            {/* Brightness Control */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Sun className="h-4 w-4" />
-                <Label className="text-sm font-medium">Brightness</Label>
-              </div>
-              <div className="flex items-center gap-3">
-                <Moon className="h-3 w-3 text-rb-faint" />
-                <Slider
-                  value={[brightness]}
-                  onValueChange={handleBrightnessChange}
-                  max={150}
-                  min={30}
-                  step={5}
-                  className="flex-1"
-                />
-                <Sun className="h-4 w-4 text-rb-ink-secondary" />
-              </div>
-              <p className="text-xs text-rb-muted">{brightness}%</p>
-            </div>
+            {/* Brightness — isolated component so a touch drag re-renders
+                only the slider, not this whole menu (see brightness-control.tsx). */}
+            <BrightnessControl initialBrightness={currentBrightness} onBrightness={externalSetBrightness} />
 
             <Separator />
 
