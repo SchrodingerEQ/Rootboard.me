@@ -54,9 +54,13 @@ describe("settings-menu.tsx keeps every existing control", () => {
     const bc = fs.readFileSync(path.resolve(import.meta.dirname, "brightness-control.tsx"), "utf-8");
     expect(bc).toContain('BRIGHTNESS_STORAGE_KEY = "calendar-brightness"');
     expect(bc).toContain("onValueCommit={handleCommit}");
-    // the per-tick handler must not touch localStorage
+    // the per-tick handler must not touch localStorage and must paint live
+    // (overlay only); the commit handler paints for real (filter allowed)
     const perTick = bc.slice(bc.indexOf("const handleChange"), bc.indexOf("const handleCommit"));
     expect(perTick).not.toContain("localStorage");
+    expect(perTick).toContain("applyBrightness(percent, true)");
+    const commit = bc.slice(bc.indexOf("const handleCommit"));
+    expect(commit).toContain("applyBrightness(value[0], false)");
     // the menu no longer owns slider state or writes brightness itself
     expect(src).not.toContain("calendar-brightness");
     expect(src).not.toMatch(/<Slider[\s>]/); // (SlidersHorizontal is a different icon)

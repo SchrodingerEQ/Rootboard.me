@@ -8,9 +8,11 @@ export const BRIGHTNESS_STORAGE_KEY = "calendar-brightness";
 interface BrightnessControlProps {
   /** Seed when nothing is saved yet, as a 0–1.5 fraction. */
   initialBrightness: number;
-  /** Applies the value live (0–1.5 fraction); the shell's screensaver hook
-   *  owns the page filter. Absent → fall back to writing the filter here. */
-  onBrightness?: (fraction: number) => void;
+  /** Applies the value (0–1.5 fraction); the shell's screensaver hook owns
+   *  the dim overlay / page filter. `live` is true while the finger is still
+   *  on the slider (cheap overlay-only paint) and false on commit. Absent →
+   *  fall back to writing the page filter here. */
+  onBrightness?: (fraction: number, opts: { live: boolean }) => void;
 }
 
 /**
@@ -29,22 +31,23 @@ export function BrightnessControl({ initialBrightness, onBrightness }: Brightnes
   // Apply the saved brightness once at mount (this is what restores the
   // user's brightness at kiosk boot).
   useEffect(() => {
-    applyBrightness(brightness);
+    applyBrightness(brightness, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const applyBrightness = (percent: number) => {
-    if (onBrightness) onBrightness(percent / 100);
+  const applyBrightness = (percent: number, live: boolean) => {
+    if (onBrightness) onBrightness(percent / 100, { live });
     else document.documentElement.style.filter = `brightness(${percent}%)`;
   };
 
   const handleChange = (value: number[]) => {
     const percent = value[0];
     setBrightness(percent);
-    applyBrightness(percent);
+    applyBrightness(percent, true);
   };
 
   const handleCommit = (value: number[]) => {
+    applyBrightness(value[0], false);
     localStorage.setItem(BRIGHTNESS_STORAGE_KEY, value[0].toString());
   };
 
