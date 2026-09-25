@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** executed 2026-09-22 via subagent-driven development; merged to `main` (unreleased). Per-task reviews changed two things from the text below: `DEFAULT_FLOORS` are 3.0/3.2 (true measured), and `accent-wash`/`border-strong` were registered in `tailwind.config.ts`. The final review added a config-data gate in `useTheme`, theme-subscription teardown on host `dispose()`, and softer contract wording about boot fires.
+**Status:** executed 2026-09-22 via subagent-driven development; merged to `main`; released in v1.6.0 (2026-09-25). Per-task reviews changed two things from the text below: `DEFAULT_FLOORS` are 3.0/3.2 (true measured), and `accent-wash`/`border-strong` were registered in `tailwind.config.ts`. The final review added a config-data gate in `useTheme`, theme-subscription teardown on host `dispose()`, and softer contract wording about boot fires.
 
 **Goal:** Ship a validated theme engine with a settings-menu picker, config-file persistence, a no-flash boot cache, and two built-in themes (Default, Deep Space), without changing the Default look.
 

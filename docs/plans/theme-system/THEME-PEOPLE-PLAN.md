@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development. Steps use checkbox (`- [ ]`) syntax.
 
-**Status:** implemented (unreleased) (branch `theme-people`, 2026-09-23). Ships in the same release as slice 1.
+**Status:** released in v1.6.0 (2026-09-25), together with slice 1.
 
 **Goal:** Each theme supplies an 8-slot person palette as `--rb-person-{1..8}-{color,tint,text}` tokens; Chores reads them; calendar event ink stays readable on dark surfaces.
 

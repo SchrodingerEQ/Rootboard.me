@@ -1,6 +1,6 @@
 # Theme Engine — Phase 1, Slice 1 (design spec)
 
-**Status:** implemented (unreleased).
+**Status:** released in v1.6.0 (2026-09-25).
 **Date:** 2026-09-22
 **Parent plan:** [THEME-SYSTEM-PLAN.md](THEME-SYSTEM-PLAN.md) (Phase 1).
 **Decision record:** [0009](../../decisions/0009-theme-engine-persistence-and-token-layer.md).
