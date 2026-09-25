@@ -2,32 +2,43 @@
  * How a brightness value is painted (pure; unit-tested in
  * brightness-layers.spec.ts).
  *
- * Dimming used to be `filter: brightness()` on <html>. On the Pi that makes
- * every frame of a slider drag a full-page repaint through a filter — the
- * thumb could not keep up with a finger, and even at rest a root filter makes
- * every repaint dearer. Now:
+ * Dimming used to be `filter: brightness()` on <html>. Measured on the kiosk
+ * (Raspberry Pi 5, 2026-09-24): with that filter present every frame took
+ * ~115 ms (<9 fps) versus 17 ms (60 fps) without it — the slider could not
+ * keep up with a finger, and every other repaint (scrolling, view switches)
+ * paid the same cost while the filter sat on the page.
  *
- * - 100%:   nothing (no overlay, no filter) — the resting state is free.
- * - <100%:  a fixed black overlay whose opacity is 1 - brightness. The
- *           compositor blends one quad; a drag costs nothing.
- * - >100%:  a root filter (there is no cheap way to brighten), applied when
- *           the drag ends — never per tick.
+ * Brightness is now only ever a fixed black overlay whose opacity is
+ * 1 - brightness, which the compositor blends as one quad. It is capped at
+ * 100% (founder-ratified 2026-09-25, decision 0011): brightening above 100%
+ * needed the filter, so that range was removed. 100% paints nothing.
  */
 
 export const BRIGHTNESS_MIN = 0.1;
-export const BRIGHTNESS_MAX = 1.5;
+export const BRIGHTNESS_MAX = 1;
+
+/** Slider range in percent (the idle dim may go lower, to BRIGHTNESS_MIN). */
+export const SLIDER_MIN_PERCENT = 30;
+export const SLIDER_MAX_PERCENT = 100;
 
 export interface BrightnessLayers {
   /** 0..0.9 — opacity of the black dim overlay. */
   overlayOpacity: number;
-  /** `filter` value for <html>; "" when none. */
-  filter: string;
 }
 
 export function brightnessLayers(brightness: number): BrightnessLayers {
   const b = Math.max(BRIGHTNESS_MIN, Math.min(BRIGHTNESS_MAX, brightness));
-  if (b <= 1) return { overlayOpacity: +(1 - b).toFixed(3), filter: "" };
-  return { overlayOpacity: 0, filter: `brightness(${Math.round(b * 100)}%)` };
+  return { overlayOpacity: +(1 - b).toFixed(3) };
+}
+
+/**
+ * Normalises a slider / saved percentage into the slider's range. A value
+ * saved above 100 by a build that still had the 100–150% range comes back
+ * as 100.
+ */
+export function clampBrightnessPercent(percent: number): number {
+  if (!Number.isFinite(percent)) return SLIDER_MAX_PERCENT;
+  return Math.max(SLIDER_MIN_PERCENT, Math.min(SLIDER_MAX_PERCENT, Math.round(percent)));
 }
 
 export const DIM_OVERLAY_ID = "rb-dim-overlay";
@@ -52,4 +63,9 @@ export function createDimOverlay(doc: Document = document): HTMLElement {
   s.zIndex = String(DIM_OVERLAY_Z);
   doc.body.appendChild(el);
   return el;
+}
+
+/** Paints `brightness` (0.1–1 fraction) onto the dim overlay. */
+export function paintBrightness(brightness: number, doc: Document = document): void {
+  createDimOverlay(doc).style.opacity = String(brightnessLayers(brightness).overlayOpacity);
 }

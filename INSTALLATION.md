@@ -112,6 +112,36 @@ You should see an entry like `WaveShare WS170120` or `ILITEK Multi-Touch`. If yo
 
 On Wayland (the default on Bookworm), touch is bound to whichever output is `HDMI-1` by default. If you have multiple displays or rotation, edit `~/.config/labwc/rc.xml` (or `wayfire.ini` depending on your compositor) to map the touch device to the correct output. For most single-screen setups this is unnecessary.
 
+### Turn off touch mouse emulation (required)
+
+By default the labwc compositor (Raspberry Pi OS on the Pi 5) converts touch into **emulated mouse** events, so the browser never receives real touch. Rootboard is built for real touch — the brightness slider, drag gestures and the on-screen keyboard behave best with it. Set `mouseEmulation="no"` on your touch device in `~/.config/labwc/rc.xml`.
+
+1. Find your touch device's exact name:
+   ```bash
+   grep -A1 'I: Bus=0003' /proc/bus/input/devices | grep Name
+   ```
+   You'll see something like `N: Name="ILITEK ILITEK-TP"`. Use the name *without* the `Mouse` suffix if two entries appear.
+2. Back up the file, then set the `<touch>` element (create it inside `<openbox_config>` if it is missing):
+   ```bash
+   cp ~/.config/labwc/rc.xml ~/.config/labwc/rc.xml.bak
+   nano ~/.config/labwc/rc.xml
+   ```
+   ```xml
+   <touch deviceName="ILITEK ILITEK-TP" mapToOutput="HDMI-A-1" mouseEmulation="no"/>
+   ```
+   Replace the device name with yours, and `HDMI-A-1` with your output (`wlr-randr` lists outputs).
+3. Apply it without rebooting:
+   ```bash
+   kill -HUP "$(pgrep -x labwc)"
+   ```
+4. Check: tap and drag on the desktop still work. To undo, restore `rc.xml.bak` and run step 3 again.
+
+### Set the monitor's own brightness now
+
+Rootboard's Brightness slider can only **dim** the picture (30–100 %); it cannot make the screen brighter than the monitor itself. Rootboard also never uses a page-wide CSS brightness filter — on a Pi that costs roughly 115 ms per frame and makes the whole kiosk sluggish — so there is deliberately no "above 100 %" setting.
+
+Before mounting the screen, use the **monitor's own buttons / on-screen menu** to set its hardware brightness to the brightest level you'll ever want (daytime). Everything dimmer — evenings, night, the idle power-saving dim — is handled by the app.
+
 ### Set screen rotation (if needed)
 Open **Preferences → Screen Configuration**, right-click the display, and choose your orientation. The change persists across reboots.
 
@@ -298,6 +328,8 @@ If everything looks right, stop the server with `Ctrl+C` — we're about to make
 ## 10. Set up auto-start kiosk mode
 
 The goal: when the Pi boots, it logs straight into the desktop, opens Chromium fullscreen pointing at the calendar, hides the cursor, and never sleeps.
+
+> **Note:** the reference kiosk (Raspberry Pi 5, Raspberry Pi OS / labwc) now runs **Firefox** in kiosk mode (`firefox --kiosk http://localhost:5000`) rather than Chromium, and this section has not yet been rewritten for it. Whichever browser you use, complete [step 4's touch setup](#turn-off-touch-mouse-emulation-required) first.
 
 ### 10.1 Disable screen blanking permanently
 

@@ -218,10 +218,10 @@
     box-shadow: 0 1px 2px var(--rb-shadow-soft);
   }
 
-  /* ===== Screensaver / energy-saving (unchanged behavior) ===== */
-  html {
-    transition: filter 0.5s ease-in-out;
-  }
+  /* ===== Screensaver / energy-saving =====
+     Brightness and the idle dim are a black overlay (#rb-dim-overlay,
+     lib/brightness-layers.ts), never a CSS filter on <html>: on the Pi a
+     page-wide filter costs ~115 ms per frame. Do not add one back. */
 
   .screensaver-overlay {
     background: linear-gradient(135deg, var(--rb-screensaver-bg-1) 0%, var(--rb-screensaver-bg-2) 50%, var(--rb-screensaver-bg-1) 100%);

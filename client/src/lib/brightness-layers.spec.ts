@@ -1,37 +1,62 @@
 import { describe, expect, test } from "vitest";
-import { brightnessLayers, createDimOverlay, DIM_OVERLAY_ID, DIM_OVERLAY_Z } from "./brightness-layers";
+import {
+  BRIGHTNESS_MAX,
+  BRIGHTNESS_MIN,
+  brightnessLayers,
+  clampBrightnessPercent,
+  createDimOverlay,
+  DIM_OVERLAY_ID,
+  DIM_OVERLAY_Z,
+} from "./brightness-layers";
 
-// Dimming used to be `filter: brightness()` on <html>: every change forced
-// the Pi to repaint the whole 1080p page through a filter, so a touch drag
-// on the slider could not keep up. Now 30–100% is a black overlay whose
-// opacity the compositor blends for free; only >100% still needs the filter,
-// and it is applied when the drag ends, never per tick.
+// Dimming used to be `filter: brightness()` on <html>. Measured on the kiosk
+// (Pi 5, 2026-09-24): with that filter present every frame took ~115 ms
+// (<9 fps) versus 17 ms (60 fps) without it. Brightness is now only ever a
+// black overlay the compositor blends for free, and it is capped at 100%
+// (founder-ratified 2026-09-25, decision 0011) — above 100% needed the
+// filter, which slowed the whole kiosk, not just the slider.
 
 describe("brightnessLayers", () => {
-  test("100% is no overlay and no filter (the resting state costs nothing)", () => {
-    expect(brightnessLayers(1)).toEqual({ overlayOpacity: 0, filter: "" });
+  test("100% is no overlay at all (the resting state costs nothing)", () => {
+    expect(brightnessLayers(1)).toEqual({ overlayOpacity: 0 });
   });
 
   test("below 100% is a black overlay; opacity is 1 - brightness", () => {
-    expect(brightnessLayers(0.2)).toEqual({ overlayOpacity: 0.8, filter: "" });
-    expect(brightnessLayers(0.3)).toEqual({ overlayOpacity: 0.7, filter: "" });
-    expect(brightnessLayers(0.55)).toEqual({ overlayOpacity: 0.45, filter: "" });
+    expect(brightnessLayers(0.2)).toEqual({ overlayOpacity: 0.8 });
+    expect(brightnessLayers(0.3)).toEqual({ overlayOpacity: 0.7 });
+    expect(brightnessLayers(0.55)).toEqual({ overlayOpacity: 0.45 });
   });
 
-  test("above 100% is a root filter and no overlay", () => {
-    expect(brightnessLayers(1.5)).toEqual({ overlayOpacity: 0, filter: "brightness(150%)" });
-    expect(brightnessLayers(1.05)).toEqual({ overlayOpacity: 0, filter: "brightness(105%)" });
+  test("anything above 100% is treated as 100% — there is no brighten path", () => {
+    expect(brightnessLayers(1.2)).toEqual({ overlayOpacity: 0 });
+    expect(brightnessLayers(9)).toEqual({ overlayOpacity: 0 });
   });
 
-  test("clamps to the slider's 0.1–1.5 range", () => {
-    expect(brightnessLayers(0)).toEqual({ overlayOpacity: 0.9, filter: "" });
-    expect(brightnessLayers(9)).toEqual({ overlayOpacity: 0, filter: "brightness(150%)" });
+  test("clamps below to the 10% floor", () => {
+    expect(brightnessLayers(0)).toEqual({ overlayOpacity: 0.9 });
   });
 
-  test("overlay opacity and the old filter agree: black at opacity a leaves 1 - a of the light", () => {
-    for (const b of [0.2, 0.5, 0.8, 1]) {
-      expect(1 - brightnessLayers(b).overlayOpacity).toBeCloseTo(b, 10);
-    }
+  test("range constants", () => {
+    expect(BRIGHTNESS_MIN).toBe(0.1);
+    expect(BRIGHTNESS_MAX).toBe(1);
+  });
+});
+
+describe("clampBrightnessPercent (slider / saved-value normaliser)", () => {
+  test("a value saved above 100 by an older build comes back as 100", () => {
+    expect(clampBrightnessPercent(120)).toBe(100);
+    expect(clampBrightnessPercent(150)).toBe(100);
+  });
+
+  test("in-range values pass through; the slider floor is 30", () => {
+    expect(clampBrightnessPercent(100)).toBe(100);
+    expect(clampBrightnessPercent(55)).toBe(55);
+    expect(clampBrightnessPercent(30)).toBe(30);
+    expect(clampBrightnessPercent(5)).toBe(30);
+  });
+
+  test("garbage falls back to 100", () => {
+    expect(clampBrightnessPercent(Number.NaN)).toBe(100);
   });
 });
 

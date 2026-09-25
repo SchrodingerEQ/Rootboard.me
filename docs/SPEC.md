@@ -491,12 +491,21 @@ tallyDate}`.
 
 ### 3.6 Screensaver / power saving
 
-Both mechanisms drive `filter: brightness()` on `<html>` (0.5 s CSS
-transition).
+Brightness is painted only as a fixed, click-through black overlay
+(`#rb-dim-overlay`, `lib/brightness-layers.ts`, z-index 110 — above the
+power-saving overlay) whose opacity is `1 − brightness`, written at most
+once per animation frame. There is **no** `filter: brightness()` on
+`<html>` any more: measured on the kiosk (Pi 5, 2026-09-24) a page-wide
+filter costs ~115 ms per frame (<9 fps) versus 17 ms (60 fps) without,
+slowing every repaint, not just the slider. Brightness is therefore
+capped at 100 % (decision 0011); 100 % paints nothing.
 
-- Inactivity: 5 min timeout → 20 % brightness; activity events
-  (mouse/key/scroll/touch, capture phase) restore. Brightness setting is
-  localStorage `calendar-brightness` (default 1.0), clamped 0.1–1.5.
+- Inactivity: 5 min timeout → 20 % brightness (overlay opacity 0.8);
+  activity events (mouse/key/scroll/touch, capture phase) restore. The
+  change is instant (the old 0.5 s filter transition is gone). Brightness
+  setting is localStorage `calendar-brightness` (percent, default 100),
+  clamped 30–100 by the slider (0.1–1 internally); a value saved above
+  100 by an older build is clamped to 100 and re-saved on load.
 - The screensaver state **pauses all queries** while dimmed; exiting
   resets to month view of the current month and force-refreshes.
 - Manual "Sleep" buttons (calendar header, chores, dinner) show a
@@ -508,7 +517,8 @@ transition).
 ### 3.7 Settings and update UI
 
 Settings is a 416 px Radix popover from the nav rail (authenticated
-only): brightness slider (30–150 %, step 5), OSK mode (Auto/Always/Off),
+only): brightness slider (30–100 %, step 5; its own component so a drag
+re-renders only the slider, saved on release), OSK mode (Auto/Always/Off),
 per-calendar visibility switches + unsubscribe, add-calendar-by-ID
 (`POST /api/calendar/subscribe`), service-account email display with
 copy button (or a "key file not found" warning linking `/setup`),

@@ -10,7 +10,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 - **Power-Saving Mode** — Auto-dims after 5 minutes of inactivity, wakes on any touch
 - **Auto-Updates** — Daily check for new GitHub releases with one-tap install
 - **Safe Rollback** — Automatic backup before every update with manual rollback option
-- **Brightness Control** — Adjustable from the in-app settings menu
+- **Brightness Control** — Dim the screen from 30–100 % in the settings menu (set the monitor's own brightness for the daytime maximum — see [INSTALLATION.md](INSTALLATION.md#set-the-monitors-own-brightness-now))
 - **Themes** — Built-in Default and Deep Space looks, switchable from the settings menu; the Default manifest is written to be copied as the starting point for new themes
 
 ## Tech Stack

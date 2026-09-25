@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createFrameCoalescer } from '@/lib/frame-coalescer';
-import { brightnessLayers, createDimOverlay, DIM_OVERLAY_ID } from '@/lib/brightness-layers';
+import { BRIGHTNESS_MAX, BRIGHTNESS_MIN, DIM_OVERLAY_ID, paintBrightness } from '@/lib/brightness-layers';
 
 interface ScreensaverConfig {
   inactivityTimeout: number;
@@ -34,25 +34,16 @@ export const useScreensaver = (config: ScreensaverConfig) => {
   const configRef = useRef(config);
   configRef.current = config;
 
-  // Brightness is painted as a black dim overlay (<=100%) plus, only above
-  // 100%, a root filter — see brightness-layers.ts for why the old root
-  // filter made a touch drag lag on the Pi. Writes are coalesced to one per
-  // animation frame, always the latest value. `live` ticks (finger still on
-  // the slider) touch only the overlay; the filter is written on commit
-  // (drag end) and for programmatic changes (idle dim, wake, boot). No React
-  // state is touched here — a per-tick setState used to re-render the whole
-  // AppShell on every pointer move. Consumers read `currentBrightness` (a
-  // ref) instead.
-  const writeRef = useRef(
-    createFrameCoalescer<{ brightness: number; commit: boolean }>(({ brightness, commit }) => {
-      const layers = brightnessLayers(brightness);
-      createDimOverlay().style.opacity = String(layers.overlayOpacity);
-      if (commit) document.documentElement.style.filter = layers.filter;
-    }),
-  );
-  const applyBrightness = useCallback((brightness: number, commit = true) => {
+  // Brightness is painted only as a black dim overlay (see
+  // brightness-layers.ts for why the old root `filter: brightness()` made
+  // the whole kiosk render at <9 fps), capped at 100%. Writes are coalesced
+  // to one per animation frame, always the latest value. No React state is
+  // touched here — a per-tick setState used to re-render the whole AppShell
+  // on every pointer move. Consumers read `currentBrightness` (a ref).
+  const writeRef = useRef(createFrameCoalescer<number>((brightness) => paintBrightness(brightness)));
+  const applyBrightness = useCallback((brightness: number) => {
     brightnessRef.current = brightness;
-    writeRef.current({ brightness, commit });
+    writeRef.current(brightness);
   }, []);
 
   const startTimer = useCallback(() => {
@@ -128,19 +119,16 @@ export const useScreensaver = (config: ScreensaverConfig) => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
-      document.documentElement.style.filter = '';
       document.getElementById(DIM_OVERLAY_ID)?.remove();
     };
   }, []);
 
-  /** `live: true` while a finger is still on the slider — cheap overlay-only
-   *  paint; `live: false` (default) on commit and for programmatic changes. */
-  const setBrightness = useCallback((brightness: number, opts?: { live?: boolean }) => {
-    const clampedBrightness = Math.max(0.1, Math.min(1.5, brightness));
+  const setBrightness = useCallback((brightness: number) => {
+    const clampedBrightness = Math.max(BRIGHTNESS_MIN, Math.min(BRIGHTNESS_MAX, brightness));
     if (!isActiveRef.current) {
       originalBrightnessRef.current = clampedBrightness;
     }
-    applyBrightness(clampedBrightness, !opts?.live);
+    applyBrightness(clampedBrightness);
   }, [applyBrightness]);
 
   const exitScreensaver = useCallback(() => {

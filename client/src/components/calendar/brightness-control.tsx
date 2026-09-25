@@ -2,52 +2,59 @@ import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import {
+  SLIDER_MIN_PERCENT,
+  clampBrightnessPercent,
+  paintBrightness,
+} from "@/lib/brightness-layers";
 
 export const BRIGHTNESS_STORAGE_KEY = "calendar-brightness";
 
 interface BrightnessControlProps {
-  /** Seed when nothing is saved yet, as a 0–1.5 fraction. */
+  /** Seed when nothing is saved yet, as a 0.1–1 fraction. */
   initialBrightness: number;
-  /** Applies the value (0–1.5 fraction); the shell's screensaver hook owns
-   *  the dim overlay / page filter. `live` is true while the finger is still
-   *  on the slider (cheap overlay-only paint) and false on commit. Absent →
-   *  fall back to writing the page filter here. */
-  onBrightness?: (fraction: number, opts: { live: boolean }) => void;
+  /** Applies the value (0.1–1 fraction); the shell's screensaver hook owns
+   *  the dim overlay. Absent → paint the overlay here directly. */
+  onBrightness?: (fraction: number) => void;
 }
 
 /**
  * The Brightness slider, isolated in its own component so a touch drag only
  * re-renders this small tree — not the whole Settings menu — on every
- * pointer move. Persistence happens once, when the drag ends
- * (`onValueCommit`), not on every tick; the live value goes straight to the
- * screensaver hook, which coalesces the page-filter write per frame.
+ * pointer move. The live value goes straight to the screensaver hook, which
+ * paints a dim overlay once per frame; it is saved once, when the drag ends
+ * (`onValueCommit`). Capped at 100% (decision 0011): a value saved above 100
+ * by an older build is clamped to 100 on load and re-saved.
  */
 export function BrightnessControl({ initialBrightness, onBrightness }: BrightnessControlProps) {
   const [brightness, setBrightness] = useState(() => {
     const saved = localStorage.getItem(BRIGHTNESS_STORAGE_KEY);
-    return saved ? parseInt(saved) : Math.round(initialBrightness * 100);
+    return clampBrightnessPercent(saved ? parseInt(saved) : Math.round(initialBrightness * 100));
   });
 
   // Apply the saved brightness once at mount (this is what restores the
-  // user's brightness at kiosk boot).
+  // user's brightness at kiosk boot), and normalise a stale >100 value.
   useEffect(() => {
-    applyBrightness(brightness, false);
+    applyBrightness(brightness);
+    const saved = localStorage.getItem(BRIGHTNESS_STORAGE_KEY);
+    if (saved !== null && saved !== String(brightness)) {
+      localStorage.setItem(BRIGHTNESS_STORAGE_KEY, String(brightness));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const applyBrightness = (percent: number, live: boolean) => {
-    if (onBrightness) onBrightness(percent / 100, { live });
-    else document.documentElement.style.filter = `brightness(${percent}%)`;
+  const applyBrightness = (percent: number) => {
+    if (onBrightness) onBrightness(percent / 100);
+    else paintBrightness(percent / 100);
   };
 
   const handleChange = (value: number[]) => {
     const percent = value[0];
     setBrightness(percent);
-    applyBrightness(percent, true);
+    applyBrightness(percent);
   };
 
   const handleCommit = (value: number[]) => {
-    applyBrightness(value[0], false);
     localStorage.setItem(BRIGHTNESS_STORAGE_KEY, value[0].toString());
   };
 
@@ -63,8 +70,8 @@ export function BrightnessControl({ initialBrightness, onBrightness }: Brightnes
           value={[brightness]}
           onValueChange={handleChange}
           onValueCommit={handleCommit}
-          max={150}
-          min={30}
+          max={100}
+          min={SLIDER_MIN_PERCENT}
           step={5}
           className="flex-1"
         />
