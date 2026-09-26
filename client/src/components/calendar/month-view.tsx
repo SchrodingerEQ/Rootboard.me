@@ -84,13 +84,16 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
     dayKeys.forEach(k => eventsMap.set(k, []));
 
     for (const event of events) {
+      // Same rule as eventOverlapsDay (lib/date-utils): half-open, so an
+      // event ending exactly at midnight stays off the next day; a
+      // zero-length event counts as 1 ms so it isn't dropped.
       const startMs = new Date(event.startTime).getTime();
-      const endMs = new Date(event.endTime).getTime();
+      const endMs = Math.max(new Date(event.endTime).getTime(), startMs + 1);
 
       let lo = 0;
       while (lo < monthDays.length && dayEnds[lo] < startMs) lo++;
       let hi = monthDays.length - 1;
-      while (hi >= 0 && dayStarts[hi] > endMs) hi--;
+      while (hi >= 0 && dayStarts[hi] >= endMs) hi--;
       if (lo > hi) continue;
       for (let i = lo; i <= hi; i++) eventsMap.get(dayKeys[i])!.push(event);
     }

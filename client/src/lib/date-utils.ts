@@ -44,6 +44,24 @@ export function isToday(date: Date): boolean {
   return isSameDay(date, new Date());
 }
 
+/**
+ * Does an event occupy any part of `day`'s local calendar day?
+ *
+ * Half-open on both sides — the day is [local midnight, next midnight) and
+ * the event is [start, end) — so an event ending exactly at midnight (e.g.
+ * 10 PM–12 AM) stays on its own day instead of also landing on the next one.
+ * A zero-length event is treated as 1 ms long so it isn't dropped. `day`'s
+ * time of day is ignored.
+ */
+export function eventOverlapsDay(start: Date, end: Date, day: Date): boolean {
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const nextDayStart = new Date(dayStart);
+  nextDayStart.setDate(nextDayStart.getDate() + 1);
+  const effectiveEnd = Math.max(end.getTime(), start.getTime() + 1);
+  return start.getTime() < nextDayStart.getTime() && effectiveEnd > dayStart.getTime();
+}
+
 export function formatTime(date: Date): string {
   return date.toLocaleTimeString('en-US', {
     hour: 'numeric',

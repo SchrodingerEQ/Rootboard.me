@@ -409,9 +409,13 @@ from Open-Meteo and cached server-side.
   `currentDate`; greyed adjacent-month days work too). Today stays the
   coral fill; a picked non-today day gets an accent ring. The agenda
   heading reads "Today's Schedule" on today, otherwise the date
-  (e.g. "Monday, Sep 28"). The agenda includes every event overlapping
-  the viewed day's `[local midnight, next midnight)` — an event ending
-  exactly at midnight does not leak onto the next day.
+  (e.g. "Monday, Sep 28").
+- **Which day an event is on** (all three views): half-open overlap
+  with the day's `[local midnight, next midnight)`, ignoring the viewed
+  date's time of day — `eventOverlapsDay` in `lib/date-utils.ts` (Day,
+  Week; Month's bucketing loop applies the same rule inline). An event
+  ending exactly at midnight stays off the next day; overnight events
+  land on both days; a zero-length event counts as 1 ms.
   Main: all-day chips + timed event cards. A 30 s clock dims past events
   to 50 % opacity and drives the "Up next" badge (today only, first
   not-yet-ended event, auto-scrolled into view).

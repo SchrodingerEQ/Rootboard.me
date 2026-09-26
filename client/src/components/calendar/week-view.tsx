@@ -1,7 +1,7 @@
 import { useMemo, useRef, useEffect } from "react";
 import { EventItem } from "./event-item";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getWeekDays, isToday } from "@/lib/date-utils";
+import { getWeekDays, isToday, eventOverlapsDay } from "@/lib/date-utils";
 import {
   getEventPosition as computeEventPosition,
   calculateEventLayout as computeEventLayout,
@@ -38,11 +38,11 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
 
     weekDays.forEach(date => {
       const dateKey = date.toDateString();
-      const dayEvents = events.filter(event => {
-        const eventStart = new Date(event.startTime);
-        const eventEnd = new Date(event.endTime);
-        return eventStart.toDateString() === dateKey || (eventStart <= date && eventEnd >= date);
-      });
+      // Whole-day overlap: weekDays carry currentDate's wall-clock time, which
+      // used to make overnight events appear or vanish by time of day.
+      const dayEvents = events.filter(event =>
+        eventOverlapsDay(new Date(event.startTime), new Date(event.endTime), date),
+      );
       eventsMap.set(dateKey, dayEvents);
     });
     return eventsMap;
