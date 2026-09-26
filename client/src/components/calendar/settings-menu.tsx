@@ -507,10 +507,11 @@ export function SettingsMenu({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="touch-button h-12 w-12 rounded-full bg-[var(--rb-chip)] hover:bg-[var(--rb-chip-hover)] [&_svg]:size-6"
                 onClick={() => handleOpenChange(false)}
+                aria-label="Close settings"
               >
-                <X className="h-4 w-4" />
+                <X className="h-6 w-6" strokeWidth={2.4} />
               </Button>
             </div>
 

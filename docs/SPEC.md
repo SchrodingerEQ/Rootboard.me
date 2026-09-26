@@ -390,15 +390,28 @@ from Open-Meteo and cached server-side.
   (unchanged). Single filtering path: the widget computes
   `filteredEvents` once and passes it to Month/Week/Day alike; none of
   the three re-filters internally.
+- **Default view is Day** (the widget opens on today's agenda).
 - **Month:** 7-col grid, 5 rows unless the month genuinely spills into a
-  6th week; max 4 event chips per cell, overflow opens a day dialog;
-  events bucketed all-day-first, then start time, then calendarId.
+  6th week; max 4 event chips per cell. When a day overflows, a
+  full-width **"+ N more" pill** (≥32 px tall) replaces the last chip
+  row and sits outside the clipped chip list, so it is never cut off;
+  a ResizeObserver on the grid fits only whole chip rows into short
+  cells (fewer chips on small screens, pill always kept). Tapping the
+  pill **or the day number** opens the day dialog. Events bucketed
+  all-day-first, then start time, then calendarId.
 - **Week:** fixed 24 h grid, 65 px/hour, auto-scrolls to 7 AM; separate
   all-day row only when needed; overlap layout via
   `lib/calendar-layout.ts`; red now-line on today; day headers show
   weather hi/lo when weather is enabled.
 - **Day:** agenda-style (a former 24 h timeline was replaced). Left rail:
   independently browsable MiniMonth + "Coming up" (next 3 future events).
+  **Tapping a MiniMonth day shows that day** (sets the widget's
+  `currentDate`; greyed adjacent-month days work too). Today stays the
+  coral fill; a picked non-today day gets an accent ring. The agenda
+  heading reads "Today's Schedule" on today, otherwise the date
+  (e.g. "Monday, Sep 28"). The agenda includes every event overlapping
+  the viewed day's `[local midnight, next midnight)` — an event ending
+  exactly at midnight does not leak onto the next day.
   Main: all-day chips + timed event cards. A 30 s clock dims past events
   to 50 % opacity and drives the "Up next" badge (today only, first
   not-yet-ended event, auto-scrolled into view).
@@ -507,7 +520,8 @@ capped at 100 % (decision 0011); 100 % paints nothing.
   clamped 30–100 by the slider (0.1–1 internally); a value saved above
   100 by an older build is clamped to 100 and re-saved on load.
 - The screensaver state **pauses all queries** while dimmed; exiting
-  resets to month view of the current month and force-refreshes.
+  **keeps the current view** (Day/Week/Month), jumps the date back to
+  today, and force-refreshes.
 - Manual "Sleep" buttons (calendar header, chores, dinner) show a
   full-screen black overlay ("press any key or touch to wake"); while
   active, event/auth/update dialogs are suppressed.
@@ -542,7 +556,10 @@ failure during polling is *assumed to be the restart* and reloads after
 - **Fullscreen** comes from launching the browser with `--kiosk` — the
   client never calls `requestFullscreen`.
 - Body: `user-select: none`, `touch-action: manipulation`; touch targets
-  min 48 px (56 px on ≥1920 px screens).
+  min 48 px (56 px on ≥1920 px screens). The shared dialog close (X)
+  button (`ui/dialog.tsx`, used by every Dialog) and the Settings
+  panel's X follow this: a 48/56 px round `.touch-button` around a
+  24 px icon; `DialogHeader` carries `pr-12` so titles clear it.
 - **Native pickers are unusable on the kiosk** (Firefox time segments
   only accept physical-keyboard digits), so the event form uses touch
   hour/minute Selects instead of `datetime-local`.

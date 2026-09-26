@@ -18,6 +18,8 @@ interface DayViewProps {
   monthEvents?: CalendarEvent[];
   /** Calendar metadata for avatar names/colors. */
   calendars?: CalendarInfo[];
+  /** Mini-month tap: show that day in the agenda. */
+  onSelectDate?: (date: Date) => void;
 }
 
 function durationLabel(start: Date, end: Date): string {
@@ -32,7 +34,7 @@ function durationLabel(start: Date, end: Date): string {
 // Agenda-style Day view: left rail (mini-month + coming-up countdowns) and a
 // main panel listing today's events as large tinted cards. Replaces the old
 // 24-hour timeline (see git history for the timeline version).
-export function DayView({ currentDate, events, isLoading, onEventClick, monthEvents, calendars }: DayViewProps) {
+export function DayView({ currentDate, events, isLoading, onEventClick, monthEvents, calendars, onSelectDate }: DayViewProps) {
   const listRef = useRef<HTMLDivElement>(null);
   const upNextRef = useRef<HTMLDivElement>(null);
   const surface = useSurfaceHex();
@@ -56,14 +58,23 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
       return next;
     });
 
-  // Today's agenda: events starting on the viewed day, or spanning it.
+  // The viewed day's agenda: every event overlapping [local midnight, next
+  // midnight). Compared against the whole day, not `currentDate`'s wall-clock
+  // time — a mini-month pick is midnight, and an event ending exactly at
+  // midnight must not leak onto the following day.
   const dayEvents = useMemo(() => {
+    const dayStart = new Date(currentDate);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
     return events.filter(event => {
       const eventStart = new Date(event.startTime);
       const eventEnd = new Date(event.endTime);
-      return eventStart.toDateString() === currentDate.toDateString() || (eventStart <= currentDate && eventEnd >= currentDate);
+      return eventStart < dayEnd && (eventEnd > dayStart || eventStart >= dayStart);
     });
   }, [events, currentDate]);
+
+  const viewingToday = isToday(currentDate);
 
   const allDayEvents = useMemo(() => dayEvents.filter(e => e.isAllDay), [dayEvents]);
   const timedEvents = useMemo(
@@ -161,7 +172,14 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
     <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] overflow-hidden" style={{ padding: '22px 28px' }}>
       {/* Left rail */}
       <aside className="flex flex-col gap-[18px] flex-shrink-0 overflow-y-auto" style={{ width: 380 }}>
-        <MiniMonth date={railMonth} eventDays={eventDays} onPrev={() => shiftRailMonth(-1)} onNext={() => shiftRailMonth(1)} />
+        <MiniMonth
+          date={railMonth}
+          eventDays={eventDays}
+          onPrev={() => shiftRailMonth(-1)}
+          onNext={() => shiftRailMonth(1)}
+          selectedDate={currentDate}
+          onSelectDate={onSelectDate}
+        />
         <ComingUp items={countdowns} />
       </aside>
 
@@ -169,10 +187,14 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
       <section className="flex-1 bg-[var(--rb-surface)] rounded-[18px] flex flex-col min-w-0" style={{ boxShadow: '0 1px 3px var(--rb-shadow-card)' }}>
         <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 flex-shrink-0">
           <div>
-            <h2 className="text-[26px] leading-tight text-rb-ink" style={{ fontWeight: 900 }}>Today's Schedule</h2>
+            <h2 className="text-[26px] leading-tight text-rb-ink" style={{ fontWeight: 900 }}>
+              {viewingToday
+                ? "Today's Schedule"
+                : currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </h2>
             <div className="text-base font-semibold text-[var(--rb-muted)] mt-0.5">
               {timedEvents.length} {timedEvents.length === 1 ? 'event' : 'events'}
-              {isToday(currentDate) ? ` · ${stillToCome} still to come` : ''}
+              {viewingToday ? ` · ${stillToCome} still to come` : ''}
             </div>
           </div>
           {allDayEvents.length > 0 && (
@@ -199,7 +221,9 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
           {timedEvents.length === 0 && allDayEvents.length === 0 ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
-                <div className="text-xl font-extrabold text-[var(--rb-muted)]">Nothing scheduled today</div>
+                <div className="text-xl font-extrabold text-[var(--rb-muted)]">
+                  {viewingToday ? 'Nothing scheduled today' : 'Nothing scheduled'}
+                </div>
                 <div className="text-sm font-semibold text-[var(--rb-faint)] mt-1">Enjoy the open day</div>
               </div>
             </div>
