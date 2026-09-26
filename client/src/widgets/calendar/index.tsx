@@ -95,7 +95,7 @@ interface CalendarAppProps {
 function CalendarApp({ host, bridge }: CalendarAppProps) {
   const [isVisible, setIsVisible] = useState(bridge.visible);
   const [isPowerSavingActive, setIsPowerSavingActive] = useState(false);
-  const [currentView, setCurrentView] = useState<CalendarView>("month");
+  const [currentView, setCurrentView] = useState<CalendarView>("day");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -213,11 +213,11 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
     }
   }, [authStatus?.needsAuth]);
 
-  // Handle screensaver exit - return to month view of current month. Stays a
+  // Handle screensaver exit - keep whatever view was showing, but jump back to
+  // today so a kiosk that slept overnight doesn't wake on yesterday. Stays a
   // window event: it is page-global and fired by the shell's screensaver hook.
   useEffect(() => {
     const handleScreensaverExit = () => {
-      setCurrentView('month');
       setCurrentDate(new Date());
       // Refresh calendar data when exiting screensaver
       manualRefresh();
@@ -410,6 +410,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
               onEventClick={handleEventClick}
               monthEvents={filteredEvents}
               calendars={calendars}
+              onSelectDate={setCurrentDate}
             />
           </div>
         )}
