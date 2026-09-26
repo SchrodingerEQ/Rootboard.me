@@ -3,7 +3,7 @@ import { MapPin } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MiniMonth } from "./mini-month";
 import { ComingUp, type CountdownItem } from "./coming-up";
-import { isToday, formatTime } from "@/lib/date-utils";
+import { isToday, formatTime, eventOverlapsDay } from "@/lib/date-utils";
 import { eventTint, eventTextColor } from "@/lib/color-utils";
 import { getCalendarColor, getInitials, EVENT_FALLBACK_COLOR, type CalendarInfo } from "@/lib/calendar-meta";
 import { useSurfaceHex } from "@/hooks/use-surface-hex";
@@ -58,21 +58,12 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
       return next;
     });
 
-  // The viewed day's agenda: every event overlapping [local midnight, next
-  // midnight). Compared against the whole day, not `currentDate`'s wall-clock
-  // time — a mini-month pick is midnight, and an event ending exactly at
-  // midnight must not leak onto the following day.
-  const dayEvents = useMemo(() => {
-    const dayStart = new Date(currentDate);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayEnd.getDate() + 1);
-    return events.filter(event => {
-      const eventStart = new Date(event.startTime);
-      const eventEnd = new Date(event.endTime);
-      return eventStart < dayEnd && (eventEnd > dayStart || eventStart >= dayStart);
-    });
-  }, [events, currentDate]);
+  // The viewed day's agenda: every event overlapping the whole local day
+  // (not `currentDate`'s wall-clock time). See eventOverlapsDay.
+  const dayEvents = useMemo(
+    () => events.filter(event => eventOverlapsDay(new Date(event.startTime), new Date(event.endTime), currentDate)),
+    [events, currentDate],
+  );
 
   const viewingToday = isToday(currentDate);
 
