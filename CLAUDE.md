@@ -90,6 +90,8 @@ Git history retains it even after deletion, and this repo is public — so **tre
 - `reusePort` is enabled on non-Windows only (`server/index.ts`) — it throws `ENOTSUP` on Windows.
 - After changing `server/**`, rebuild (`npm run build`) — the server is bundled into `dist/index.js`.
 - On the Pi the app runs as the `touchscreen-scheduler` systemd service → `scripts/start.sh` (health-check + auto-rollback supervisor). Files preserved across updates are listed in `PRESERVE_PATHS` (`updateService.ts`) and the `start.sh` rollback case — keep those two in sync.
+- **`package-lock.json` is written with npm 11.** npm 10 (bundled with Node 22) lays out a few nested packages differently (e.g. its own `esbuild` copy under `vitest`), so npm 10's strict `npm ci` rejects the lock ("Missing: esbuild@… from lock file") even though it is valid. Plain `npm install` works on either version — that's what the updater, rollback and `start.sh` use, so kiosks are unaffected. For a strict install on npm 10, run `npx npm@11 ci`. Don't regenerate/commit the lock with npm 10: the next npm 11 install flips it back (and it strips npm 11's `libc` fields).
+- **Hooks need gitleaks 8.19+** (the hook calls `gitleaks git --staged`). Ubuntu/Debian `apt` ships an older version; use a GitHub release binary or `go install github.com/zricethezav/gitleaks/v8@latest`.
 
 <!-- Crucible Creations — company principles digest.
      Source of truth: SchrodingerEQ/Crucible-HQ/CLAUDE.md
