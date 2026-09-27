@@ -9,6 +9,8 @@ if ! command -v gitleaks >/dev/null 2>&1; then
   echo "       pre-commit security scan (public repo + auto-update tarball)."
   echo "  Install:  winget install gitleaks.gitleaks   (Windows)"
   echo "            brew install gitleaks               (macOS)"
+  echo "            go install github.com/zricethezav/gitleaks/v8@latest   (Linux; or a"
+  echo "            release binary — distro packages are often too old, need 8.19+)"
   echo "  Then retry. Emergency bypass (discouraged):  git commit --no-verify"
   exit 1
 fi
