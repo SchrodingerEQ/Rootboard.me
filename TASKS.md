@@ -30,6 +30,8 @@
 - [x] Release theme engine slice 1 as its own small release (bump shared/version.ts, npm audit, pre-push security review, tag) and run the spec's kiosk rollout: update, reboot, set Deep Space, reboot again and confirm no light flash, then hand-edit dashboard.json to `"theme": "nope"` and confirm Default within a minute with the widget layout intact; flip SPEC.md's current-as-of stamp and the theme spec's status to the version; first boot after update shows Default person colours for under a second until the 100-token cache is written (expected) (added 2026-09-22) (done 2026-09-25)
 - [x] Month (and likely Week) view buckets a timed event that ends exactly at midnight onto the NEXT day too (e.g. 10 PM–12 AM shows on both days): `month-view.tsx` overlap check uses `dayStarts[hi] > endMs` (inclusive end). Day view was fixed to a half-open `[midnight, next midnight)` check; port the same rule, keeping zero-length midnight events on their own day (added 2026-09-26) (done 2026-09-26 — shared `eventOverlapsDay`; Week view also compared against the wall-clock time of day, fixed too)
 
+- [ ] Build the What to Wear widget (kid-facing school outfit + weather) — brief at `docs/plans/what-to-wear-widget/BRIEF.md` (added 2026-10-04)
+
 ## Deferred (recorded, not scheduled)
 
 - [ ] Widget registry / one-click install / widget auto-updates — only if a community materializes (added 2026-08-15)
