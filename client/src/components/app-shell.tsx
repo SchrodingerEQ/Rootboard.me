@@ -683,9 +683,9 @@ export default function AppShell() {
         if (!patch) return null;
         // Merge is pure + spec'd in client/src/lib/widget-config.spec.ts;
         // null == this widget has no config entry, so nothing to write.
-        return applyWidgetSettingsPatch(current, widgetId, patch);
+        return applyWidgetSettingsPatch(current, widgetId, patch, { appendIfMissing: builtinById.has(widgetId) });
       }, "Couldn't save settings"),
-    [writeDashboardConfig],
+    [writeDashboardConfig, builtinById],
   );
 
   // Settings-editor writes (Phase 4 Task 5): commits ONE field's edit for

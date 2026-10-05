@@ -19,6 +19,25 @@ function config(): DashboardConfig {
 }
 
 describe("applyWidgetSettingsPatch", () => {
+  test("absent id without the option → null", () => {
+    expect(applyWidgetSettingsPatch(config(), "what-to-wear", { zipCode: "00000" })).toBeNull();
+  });
+
+  test("absent id with appendIfMissing → appended disabled entry last, others untouched", () => {
+    const base = config();
+    const next = applyWidgetSettingsPatch(base, "what-to-wear", { zipCode: "00000" }, { appendIfMissing: true });
+    expect(next?.widgets).toHaveLength(4);
+    expect(next?.widgets[3]).toEqual({ id: "what-to-wear", enabled: false, settings: { zipCode: "00000" } });
+    expect(next?.widgets.slice(0, 3)).toEqual(config().widgets);
+    expect(base.widgets).toHaveLength(3);
+  });
+
+  test("present id with appendIfMissing → normal merge, no duplicate", () => {
+    const next = applyWidgetSettingsPatch(config(), "chores", { extra: 1 }, { appendIfMissing: true });
+    expect(next?.widgets).toHaveLength(3);
+    expect(next?.widgets[1]).toEqual({ id: "chores", enabled: false, settings: { theme: "dark", extra: 1 } });
+  });
+
   test("merges into the target widget's existing settings rather than replacing them", () => {
     const next = applyWidgetSettingsPatch(config(), "calendar", { disabledCalendars: ["family"] });
     expect(next?.widgets[0].settings).toEqual({
