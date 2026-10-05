@@ -38,7 +38,12 @@ export function sanitizeSettingsPatch(
  * Returns `null` when `widgetId` isn't present in the config: a widget with
  * no config entry has nowhere to store settings, and inventing an entry
  * would mean guessing its `enabled` state (which the schema requires).
- * Callers treat `null` as "nothing to write".
+ * Callers treat `null` as "nothing to write". Exception: with
+ * `options.appendIfMissing`, an absent id is APPENDED as
+ * `{ id, enabled: false, settings: <patch> }` — used for built-in widgets
+ * that exist in code but not yet in dashboard.json (listed in the layout
+ * picker), so settings typed before the widget is added are kept. The entry
+ * is disabled; enabling it stays an explicit picker action.
  *
  * Semantics that matter:
  *  - The patch is MERGED into that widget's existing settings, not
@@ -55,8 +60,12 @@ export function applyWidgetSettingsPatch(
   config: DashboardConfig,
   widgetId: string,
   patch: Record<string, unknown>,
+  options?: { appendIfMissing?: boolean },
 ): DashboardConfig | null {
-  if (!config.widgets.some((w) => w.id === widgetId)) return null;
+  if (!config.widgets.some((w) => w.id === widgetId)) {
+    if (!options?.appendIfMissing) return null;
+    return { ...config, widgets: [...config.widgets, { id: widgetId, enabled: false, settings: { ...patch } }] };
+  }
   return {
     ...config,
     widgets: config.widgets.map((w) =>

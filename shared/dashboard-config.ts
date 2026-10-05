@@ -36,9 +36,11 @@ export const dashboardConfigSchema = z
 export type DashboardConfig = z.infer<typeof dashboardConfigSchema>;
 
 /**
- * The built-in default config: calendar, chores, dinner — all enabled,
- * empty settings, calendar as the default widget. Returns a fresh
- * object on every call; callers may mutate the result freely.
+ * The built-in default config: calendar, chores, dinner — all enabled —
+ * plus what-to-wear disabled (it needs a zip code or host weather to be
+ * useful; a fresh kiosk opts in from the layout picker). Empty settings,
+ * calendar as the default widget. Returns a fresh object on every call;
+ * callers may mutate the result freely.
  */
 export function defaultDashboardConfig(): DashboardConfig {
   return {
@@ -48,6 +50,7 @@ export function defaultDashboardConfig(): DashboardConfig {
       { id: "calendar", enabled: true, settings: {} },
       { id: "chores", enabled: true, settings: {} },
       { id: "dinner", enabled: true, settings: {} },
+      { id: "what-to-wear", enabled: false, settings: {} },
     ],
   };
 }

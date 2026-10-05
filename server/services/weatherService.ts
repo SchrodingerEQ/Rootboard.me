@@ -32,18 +32,43 @@ export interface WeatherDaily {
   icon: string;
 }
 
+/** One forecast hour for the What to Wear widget (additive).
+ *  `temp`/`feelsLike` follow WEATHER_UNITS; wind is km/h, precipitation mm,
+ *  snowfall cm regardless. The widget normalises to Celsius client-side. */
+export interface WeatherHourly {
+  time: string; // ISO local time, "YYYY-MM-DDTHH:MM"
+  temp: number;
+  feelsLike: number;
+  precipChance: number; // 0–100
+  precipMm: number;
+  snowCm: number;
+  code: number;
+  windKmh: number;
+  uv: number;
+}
+
 export interface WeatherPayload {
   enabled: true;
   current: WeatherCurrent;
   daily: WeatherDaily[];
+  /** Next 48 hours from the start of the current local day (additive). */
+  hourly: WeatherHourly[];
+  /** Unit of `current`, `daily`, and `hourly` temperatures (additive). */
+  units: "celsius" | "fahrenheit";
   location: string;
   updatedAt: string;
 }
 
-export type WeatherResponse = WeatherPayload | { enabled: false };
+/** `configured: true` on a disabled response means weather IS configured but
+ *  the upstream fetch failed with a cold cache (an outage), as opposed to
+ *  `{ enabled: false }` alone, which means weather is not configured. */
+export type WeatherResponse = WeatherPayload | { enabled: false; configured?: true };
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const FETCH_TIMEOUT_MS = 10 * 1000;
+const HOURLY_FIELDS =
+  "temperature_2m,apparent_temperature,precipitation_probability,precipitation,snowfall,weather_code,wind_speed_10m,uv_index";
+const HOURLY_COUNT = 48;
 
 let cached: WeatherPayload | null = null;
 let cachedAt = 0;
@@ -80,13 +105,46 @@ function iconForCode(code: number): { icon: string; label: string } {
   return { icon: "cloud", label: "Cloudy" };
 }
 
+function num(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Slice the hourly arrays to HOURLY_COUNT entries starting at the first
+ *  hour of the current local day (Open-Meteo returns local times with
+ *  timezone=auto; the kiosk runs in its location's timezone). Missing or
+ *  malformed hourly data yields [] — never a throw. */
+function buildHourly(raw: any, now: Date): WeatherHourly[] {
+  if (!raw || !Array.isArray(raw.time)) return [];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const out: WeatherHourly[] = [];
+  for (let i = 0; i < raw.time.length && out.length < HOURLY_COUNT; i++) {
+    const time = String(raw.time[i]);
+    if (time.slice(0, 10) < todayKey) continue;
+    out.push({
+      time,
+      temp: num(raw.temperature_2m?.[i]),
+      feelsLike: num(raw.apparent_temperature?.[i]),
+      precipChance: num(raw.precipitation_probability?.[i]),
+      precipMm: num(raw.precipitation?.[i]),
+      snowCm: num(raw.snowfall?.[i]),
+      code: num(raw.weather_code?.[i]),
+      windKmh: num(raw.wind_speed_10m?.[i]),
+      uv: num(raw.uv_index?.[i]),
+    });
+  }
+  return out;
+}
+
 async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null> {
   const url =
     `https://api.open-meteo.com/v1/forecast` +
     `?latitude=${cfg.lat}&longitude=${cfg.lon}` +
     `&current=temperature_2m,weather_code` +
     `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
-    `&temperature_unit=${cfg.units}&timezone=auto&forecast_days=7`;
+    `&hourly=${HOURLY_FIELDS}` +
+    `&temperature_unit=${cfg.units}&wind_speed_unit=kmh&precipitation_unit=mm&timezone=auto&forecast_days=7`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -124,6 +182,8 @@ async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null>
         label: cur.label,
       },
       daily,
+      hourly: buildHourly(data.hourly, new Date()),
+      units: cfg.units,
       location: cfg.label,
       updatedAt: new Date().toISOString(),
     };
@@ -155,8 +215,9 @@ export async function getWeather(): Promise<WeatherResponse> {
     cachedAt = Date.now();
     return result;
   }
-  // Fetch failed: serve last-good (stale) if we have it, else report disabled
-  // so the UI simply hides weather rather than showing an error.
+  // Fetch failed: serve last-good (stale) if we have it, else report
+  // disabled (UI simply hides weather rather than showing an error) with
+  // `configured: true` so consumers can tell an outage from "not set up".
   if (cached) return cached;
-  return { enabled: false };
+  return { enabled: false, configured: true };
 }

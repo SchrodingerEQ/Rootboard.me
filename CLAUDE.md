@@ -33,6 +33,7 @@ Guidance for any AI agent (Claude Code, etc.) working in this repository.
 - Ships an **auto-update** feature (`server/services/updateService.ts`) that downloads the latest GitHub **release source tarball**, applies it, runs `npm install && npm run build`, and restarts under a supervisor (`scripts/start.sh` / systemd).
 - Has a **community widget system** (contract: `docs/plans/widget-system/CONTRACT.md`; sideloaded folders in `/widgets/`, gitignored + update-preserved). Three companion public repos live under the same GitHub account: `rootboard-widget-template` (starter + tutorial + contribution guide, MIT), `rootboard-widget-grocery-list` (reference widget, MIT), `awesome-rootboard` (community list, CC0). Changes to the contract or host must keep those repos' docs in sync.
 - Has a **theme engine** (spec: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009). One token layer: the shadcn tokens in `client/src/index.css` `:root` are `var(--rb-*)` aliases — never add a literal color there. Themes are bundled modules in `client/src/themes/` validated by `shared/theme-manifest.ts` (every token required); `default.ts` is the copyable authoring reference. Active theme id lives in `data/config/dashboard.json`; a localStorage cache plus an inline script in `client/index.html` prevent a light flash at boot.
+- Four first-party widgets live in `client/src/widgets/` (calendar, chores, dinner, what-to-wear); What to Wear's brief and plan are under `docs/plans/what-to-wear-widget/`.
 
 ## ⚠️ MANDATORY: security review before every push/release
 

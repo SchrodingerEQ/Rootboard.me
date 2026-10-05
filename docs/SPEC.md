@@ -1,8 +1,8 @@
 # Rootboard.me — As-Built Specification
 
 Regenerated from the code at v1.4.1 (2026-07-23); maintained
-incrementally through the widget-system phases and current as of v1.6.0
-(2026-08-24). This documents what the app **actually does**, including
+incrementally through the widget-system phases and current as of v1.7.0
+(2026-10-05). This documents what the app **actually does**, including
 quirks. Update it when behavior changes.
 Public document — no deployment specifics (hostnames, IPs, real names).
 
@@ -162,7 +162,21 @@ retention sweep, which runs inside each sync.
 Enabled only when `WEATHER_ENABLED="true"` and `WEATHER_LAT`/`WEATHER_LON`
 are finite numbers. `WEATHER_UNITS` is `fahrenheit` or defaults to
 celsius; `WEATHER_LOCATION_LABEL` defaults to empty. Forecast is fetched
-from Open-Meteo and cached server-side.
+from Open-Meteo and cached server-side for 30 minutes; a failed refresh
+serves the last good payload.
+
+Payload: `{ enabled: true, current, daily[7], hourly[≤48], units,
+location, updatedAt }`. `hourly` (added for the What to Wear widget,
+3.10) carries `time, temp, feelsLike, precipChance, precipMm, snowCm,
+code, windKmh, uv` from the first hour of the current local day;
+`temp`/`feelsLike` follow `WEATHER_UNITS` (reported in `units`), wind is
+km/h, precipitation mm, snowfall cm. The kiosk's coordinates never reach
+the client — only the derived forecast does. The weather service
+contacts only `api.open-meteo.com` (HTTPS, keyless). When weather is not
+configured the response is `{ enabled: false }`; when it is configured
+but the upstream fetch failed with a cold cache it is
+`{ enabled: false, configured: true }` (an outage, not a setup problem;
+an older server without the field reads as not configured).
 
 ### 2.6 Environment variables
 
@@ -229,9 +243,13 @@ from Open-Meteo and cached server-side.
   picked up without a restart; react-query's structural sharing means
   an unchanged file produces the same object identity, so polling can't
   cause a spurious re-render. `defaultDashboardConfig()` (calendar,
-  chores, dinner — all enabled, `defaultWidget: "calendar"`) is both
+  chores, dinner enabled; what-to-wear disabled;
+  `defaultWidget: "calendar"`) is both
   the client's placeholder while the query is pending and the server's
   fallback for a missing/corrupt file (2.2).
+  A built-in widget absent from an existing `dashboard.json` (e.g. one
+  added in a later release) is listed in the layout picker as disabled
+  and appended to the config when the user enables it.
 - **Widget host / keep-alive** (`components/widget-host-mount.tsx`):
   every enabled+installed widget is mounted exactly once and stays
   mounted across nav — switching sections toggles `display: none` on
@@ -329,8 +347,8 @@ from Open-Meteo and cached server-side.
   becoming visible or waking while overdue fires immediately as a
   catch-up (coming back online does not trigger a catch-up on its own).
   A widget with no `refresh` block in its manifest never fires.
-- Three first-party widgets ship under `client/src/widgets/`:
-  `calendar/`, `chores/`, `dinner/` — each a `manifest.json` +
+- Four first-party widgets ship under `client/src/widgets/`:
+  `calendar/`, `chores/`, `dinner/`, `what-to-wear/` (3.10) — each a `manifest.json` +
   `index.tsx` that mounts its own `createRoot` React tree (wrapped in
   `QueryClientProvider client={queryClient}`) around the pre-widget
   page/hook, reached only through `mount(container, host)` like any
@@ -668,6 +686,73 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   byte-identical on light surfaces; Deep Space event-chip contrast went
   from ~1.2–2.0:1 to ≥ 6.1:1.
 - **Widgets:** `host.theme.subscribe` now fires on every switch.
+
+### 3.10 What to Wear (`client/src/widgets/what-to-wear/`)
+
+Kid-facing, display-only section: weather for Morning / Afternoon /
+Evening, what to wear this morning, what changes this afternoon, and
+what to pack. Brief: `docs/plans/what-to-wear-widget/BRIEF.md`;
+decision 0012. Disabled in the default config; enable it from the
+layout picker.
+
+- **Settings** (manifest, edited in the host Settings UI, persisted in
+  `dashboard.json`): `zipCode` (blank = use the kiosk's `/api/weather`),
+  `units` (`celsius` default / `fahrenheit`), `schoolStart` / `schoolEnd`
+  (`"HH:MM"`, fall back to `08:00` / `15:00` when unparsable or
+  inverted). Evening is fixed at 18:00. The zip is treated as personal
+  data: never logged, never in an error message, no default.
+- **Data paths** (`forecast.ts`): zip set → `api.zippopotam.us` (zip →
+  lat/lon; 404 = invalid zip) then Open-Meteo hourly direct via
+  `host.fetch`, always requested in °C / km/h / mm, with no `daily`
+  parameter. Zip blank → `/api/weather` `hourly` (2.5), normalised to
+  °C client-side. Both yield the same `ForecastBundle`; the last good
+  one (≤ 48 h) persists in `host.storage` so a reboot or outage still
+  renders. The zip → coords cache in `host.storage` holds only the
+  current zip: it is re-run only when the zip changes, and older zips
+  are dropped on the next lookup. Exactly two outside hosts, both
+  HTTPS, keyless.
+- **Cadence:** manifest `refresh.intervalSeconds: 1800` (host-driven,
+  visible + online + awake). One private 1-minute timer re-evaluates
+  the day flip and footer; it runs only while visible and is cleared on
+  unmount. No other polling.
+- **Day selection:** before `schoolEnd` → today, otherwise tomorrow
+  ("Today · Tuesday"). Windows: Morning = hour nearest `schoolStart`
+  (range −1 h…+2 h), Afternoon = nearest `schoolEnd` (same range),
+  Evening = 18:00 (17–20). School day (backpack rules) = start…end.
+- **Rules** (`advice.ts`, pure, unit-tested): feels-like bands Hot ≥24,
+  Warm 18–23, Cool 12–17, Chilly 5–11, Cold −5–4, Freezing <−5 with
+  base outfits per band. Layering: when the afternoon is at least one
+  band warmer, the outfit is the afternoon base plus the morning band's
+  removable layer ("take it off") and, for Cold/Freezing mornings, the
+  morning's warm hat, gloves, and scarf (so a child at 0 °C is not sent
+  out without gloves); the afternoon note names only the layer. When
+  the afternoon is colder, the outfit is the morning base and the
+  afternoon layer is packed. Never shorts when the morning is
+  Cold/Freezing. Rain: ≥40 % morning → raincoat worn; ≥40 % afternoon
+  only → raincoat packed; ≥70 % in the school day → rain boots worn +
+  umbrella packed; code ≥95 → storm headline. Snow: any → boots,
+  gloves, hat; ≥2 cm → snow pants. Wind: ≥30 km/h → windbreaker if no
+  outer layer, "windy" chip; ≥45 → headline. UV: ≥6 → sunscreen, sun
+  hat, water bottle; the "strong sun" chip goes on the window whose own
+  range max UV is ≥6 (highest wins, ties to the earliest), and if the
+  school-day peak falls between windows the backpack items are still
+  added but no window is chipped. UV 3–5 with a clear afternoon →
+  sunscreen; Hot afternoon → water bottle.
+- **Copy and emoji** live in `phrases.ts`; single-codepoint emoji only
+  (3.3). `ItemChip` takes an optional lucide icon for one-line swaps if
+  a glyph is missing on the kiosk.
+- **States:** no zip + host weather not configured → "Ask a grown-up to add
+  your zip code in Settings"; a host-side outage (`enabled: false,
+  configured: true`) renders the cached forecast with the "from earlier"
+  footer (or "Can't reach the weather right now" with no cache); the
+  host-path footer time comes from the payload's `updatedAt`; invalid zip → "That zip code didn't work";
+  fetch failed with cache → render it, footer "Weather from earlier — as
+  of …"; failed with no cache → "Can't reach the weather right now".
+  Nothing throws out of `mount()`/`refresh()`.
+- **Known limitation:** times are compared in the kiosk's local zone; a
+  zip in a different time zone than the kiosk shifts the windows by the
+  offset (not a v1 use case).
+- **Layout:** fixed landscape panel, nothing scrolls; theme tokens only.
 
 ## 4. Update system
 

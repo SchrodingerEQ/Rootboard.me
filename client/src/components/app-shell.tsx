@@ -296,6 +296,25 @@ export default function AppShell() {
         settingsValues: w.settings,
       });
     }
+    // A built-in the kiosk's dashboard.json predates (e.g. what-to-wear on
+    // a config written by an older build) has no entry above and would
+    // otherwise be unreachable from the UI. List it after the in-config
+    // rows as a disabled widget; toggling it on appends an entry (see
+    // toggleWidgetEnabled) — the same "enable = add" rule community
+    // widgets follow (CONTRACT.md §5).
+    const inConfig = new Set(dashboardConfig.widgets.map((w) => w.id));
+    for (const builtin of BUILTIN_WIDGETS) {
+      if (inConfig.has(builtin.manifest.id)) continue;
+      entries.push({
+        id: builtin.manifest.id,
+        label: builtin.manifest.name,
+        icon: builtin.navIcon ?? DEFAULT_NAV_ICON,
+        enabled: false,
+        crashed: crashedWidgets.get(builtin.manifest.id)?.message,
+        settings: builtin.manifest.settings,
+        settingsValues: undefined,
+      });
+    }
     return entries;
   }, [dashboardConfig, builtinById, crashedWidgets]);
 
@@ -664,9 +683,9 @@ export default function AppShell() {
         if (!patch) return null;
         // Merge is pure + spec'd in client/src/lib/widget-config.spec.ts;
         // null == this widget has no config entry, so nothing to write.
-        return applyWidgetSettingsPatch(current, widgetId, patch);
+        return applyWidgetSettingsPatch(current, widgetId, patch, { appendIfMissing: builtinById.has(widgetId) });
       }, "Couldn't save settings"),
-    [writeDashboardConfig],
+    [writeDashboardConfig, builtinById],
   );
 
   // Settings-editor writes (Phase 4 Task 5): commits ONE field's edit for
@@ -830,15 +849,22 @@ export default function AppShell() {
   const toggleWidgetEnabled = useCallback(
     (id: string, enabled: boolean) => {
       void updateWidgetLayout((widgets) => {
+        const idx = widgets.findIndex((w) => w.id === id);
+        if (idx === -1) {
+          // Built-in not yet in config (see widgetPickerEntries): enabling
+          // appends `{id, enabled: true, settings: {}}`; disabling is a no-op.
+          if (!enabled || !builtinById.has(id)) return null;
+          return [...widgets, { id, enabled: true, settings: {} }];
+        }
         if (!enabled) {
-          const target = widgets.find((w) => w.id === id);
+          const target = widgets[idx];
           const enabledCount = widgets.filter((w) => w.enabled).length;
-          if (target?.enabled && enabledCount <= 1) return null;
+          if (target.enabled && enabledCount <= 1) return null;
         }
         return widgets.map((w) => (w.id === id ? { ...w, enabled } : w));
       });
     },
-    [updateWidgetLayout],
+    [updateWidgetLayout, builtinById],
   );
 
   // --- Community widget picker writes (Phase 4) ---------------------------
