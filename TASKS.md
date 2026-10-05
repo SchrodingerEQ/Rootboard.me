@@ -32,7 +32,8 @@
 
 - [x] Build the What to Wear widget (kid-facing school outfit + weather) — brief at `docs/plans/what-to-wear-widget/BRIEF.md` (added 2026-10-04) (done 2026-10-04 — plan at `docs/plans/what-to-wear-widget/PLAN.md`; SPEC §3.10, decision 0012)
 - [ ] New npm audit findings seen at the v1.7.0 release (12 total: 8 high, 4 moderate), none on the running kiosk request path: `brace-expansion` has a plain `npm audit fix` (lockfile change — write it with npm 11, ship as its own release); `braces`/`micromatch`/`chokidar`/`fast-glob` come via Tailwind 3 build tooling (fix is the breaking Tailwind 4 major); `vite` path-traversal/launch-editor advisories affect the dev server only (fix is the existing vite 5→8 item). Fold into the remaining-audit item above when tackled (added 2026-10-05)
-- [ ] What to Wear kiosk check before release: both fetch paths (zip set / blank), the no-config state, a theme switch, screensaver dim/wake, a 10-minute soak after section switches for timer leaks, and confirm every emoji in `client/src/widgets/what-to-wear/phrases.ts` renders in kiosk Firefox (swap any tofu for a lucide icon via ItemChip's `icon` prop) (added 2026-10-04)
+- [x] What to Wear kiosk check on v1.7.0: both fetch paths (zip set / blank), emoji rendering, theme switch, screensaver dim/wake, short section-switching soak — all fine (added 2026-10-04) (done 2026-10-05)
+- [ ] What to Wear in daily use on the kiosk: confirm the Today → Tomorrow flip at the school end time, and that a long-running session shows no slowdown or timer leak (added 2026-10-05)
 - [ ] After What to Wear ships in a release: add it to the first-party list in awesome-rootboard and mention it in README.md (added 2026-10-04)
 
 ## Deferred (recorded, not scheduled)
