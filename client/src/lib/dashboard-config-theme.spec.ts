@@ -18,7 +18,7 @@ describe("dashboard config `theme` field", () => {
       expect(result.success, String(bad)).toBe(true);
       if (result.success) {
         expect(result.data.theme).toBeUndefined();
-        expect(result.data.widgets).toHaveLength(3); // rest of the document intact
+        expect(result.data.widgets).toHaveLength(defaultDashboardConfig().widgets.length); // rest of the document intact
       }
     }
   });

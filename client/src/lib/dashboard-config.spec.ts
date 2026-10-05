@@ -68,12 +68,12 @@ describe("defaultDashboardConfig", () => {
     expect(result.success).toBe(true);
   });
 
-  test("has calendar, chores, dinner in order, all enabled, defaultWidget calendar", () => {
+  test("has calendar, chores, dinner enabled and what-to-wear disabled, defaultWidget calendar", () => {
     const config = defaultDashboardConfig();
     expect(config.configVersion).toBe(1);
     expect(config.defaultWidget).toBe("calendar");
-    expect(config.widgets.map((w) => w.id)).toEqual(["calendar", "chores", "dinner"]);
-    expect(config.widgets.every((w) => w.enabled)).toBe(true);
+    expect(config.widgets.map((w) => w.id)).toEqual(["calendar", "chores", "dinner", "what-to-wear"]);
+    expect(config.widgets.map((w) => w.enabled)).toEqual([true, true, true, false]);
     expect(config.widgets.every((w) => Object.keys(w.settings).length === 0)).toBe(true);
   });
 
