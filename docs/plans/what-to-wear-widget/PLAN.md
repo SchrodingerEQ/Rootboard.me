@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** executed 2026-10-04 via subagent-driven development; merged to `main`; released in v1.7.0 (2026-10-05). Reviews changed the plan in places — see decision 0012 and SPEC §3.10 for the as-built behaviour.
+
 **Goal:** Ship the kid-facing "What to Wear" first-party widget specified in [BRIEF.md](BRIEF.md): kid-friendly weather for morning/afternoon/evening, outfit advice with a layering rule, and a backpack list, driven by Open-Meteo hourly data.
 
 **Architecture:** A pure rules engine (`advice.ts`) turns a normalized `ForecastBundle` plus resolved settings into structured `Advice`; React only renders it. `forecast.ts` produces the bundle from either a widget-side Open-Meteo fetch (zip set) or the host's `/api/weather` (zip blank), caching the last good bundle and zip coordinates in `host.storage`. The widget entry (`index.tsx`) mirrors the calendar widget's bridge pattern (own React root, `refresh()` from the host scheduler, visibility-gated one-minute clock).

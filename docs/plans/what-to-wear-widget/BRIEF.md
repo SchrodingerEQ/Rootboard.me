@@ -1,7 +1,7 @@
 # What to Wear — kid-facing school outfit widget
 
-**Status:** Brief approved 2026-10-04, not yet built. Hand this document
-to the implementing agent as-is.
+**Status:** Built and released in v1.7.0 (2026-10-05). Deviations made during
+review are recorded in decision 0012 and SPEC §3.10.
 **Type:** First-party widget (lives in this repo, `client/src/widgets/what-to-wear/`).
 **Contract:** [Widget Contract apiVersion 1](../widget-system/CONTRACT.md) — zero exceptions, like every first-party widget.
 **Parent decisions:** [0006](../../decisions/0006-community-widget-system.md), [0007](../../decisions/0007-widget-contract-shape.md), [0009](../../decisions/0009-theme-engine-persistence-and-token-layer.md).
