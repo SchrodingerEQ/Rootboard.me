@@ -53,25 +53,49 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
   const [load, setLoad] = useState<LoadState>({ loaded: false, status: "ok", bundle: null });
   const stateRef = useRef<StoredState | null>(null);
   const inflight = useRef<Promise<void> | null>(null);
+  const pending = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   const reload = useCallback((): Promise<void> => {
-    if (inflight.current) return inflight.current;
+    if (inflight.current) {
+      pending.current = true;
+      return inflight.current;
+    }
     inflight.current = (async () => {
+      const zipAtStart = settingsRef.current.zipCode;
+      let rerun = false;
       try {
         if (!stateRef.current) {
           const raw = await host.storage.get<unknown>().catch(() => null);
           stateRef.current = raw === null ? emptyStoredState() : normalizeStoredState(raw);
         }
         const result = await fetchForecast(host.fetch, settingsRef.current, stateRef.current, new Date());
+        // Learned coords are keyed by zip, so keeping them is harmless.
         stateRef.current = result.state;
+        if (!alive.current) return;
+        if (settingsRef.current.zipCode !== zipAtStart) {
+          // The zip changed mid-flight: this result is for the old zip.
+          rerun = true;
+          return;
+        }
         if (result.status === "ok") host.storage.set(result.state);
         setLoad({ loaded: true, status: result.status, bundle: result.bundle });
         setNow(new Date());
       } catch {
-        // fetchForecast never throws; this guards storage.get/set only.
+        // fetchForecast never throws; this guards normalizeStoredState and any unexpected throw.
+        if (!alive.current) return;
         setLoad((prev) => ({ loaded: true, status: "unreachable", bundle: prev.bundle ?? stateRef.current?.forecast ?? null }));
       } finally {
         inflight.current = null;
+        const again = rerun || pending.current;
+        pending.current = false;
+        if (again && alive.current) void reload();
       }
     })();
     return inflight.current;
