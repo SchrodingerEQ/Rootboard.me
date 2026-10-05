@@ -32,7 +32,7 @@ export interface WeatherDaily {
   icon: string;
 }
 
-/** One forecast hour for the What to Wear widget (additive, since 1.7.0).
+/** One forecast hour for the What to Wear widget (additive).
  *  `temp`/`feelsLike` follow WEATHER_UNITS; wind is km/h, precipitation mm,
  *  snowfall cm regardless. The widget normalises to Celsius client-side. */
 export interface WeatherHourly {
@@ -59,7 +59,10 @@ export interface WeatherPayload {
   updatedAt: string;
 }
 
-export type WeatherResponse = WeatherPayload | { enabled: false };
+/** `configured: true` on a disabled response means weather IS configured but
+ *  the upstream fetch failed with a cold cache (an outage), as opposed to
+ *  `{ enabled: false }` alone, which means weather is not configured. */
+export type WeatherResponse = WeatherPayload | { enabled: false; configured?: true };
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const FETCH_TIMEOUT_MS = 10 * 1000;
@@ -212,8 +215,9 @@ export async function getWeather(): Promise<WeatherResponse> {
     cachedAt = Date.now();
     return result;
   }
-  // Fetch failed: serve last-good (stale) if we have it, else report disabled
-  // so the UI simply hides weather rather than showing an error.
+  // Fetch failed: serve last-good (stale) if we have it, else report
+  // disabled (UI simply hides weather rather than showing an error) with
+  // `configured: true` so consumers can tell an outage from "not set up".
   if (cached) return cached;
-  return { enabled: false };
+  return { enabled: false, configured: true };
 }

@@ -76,6 +76,12 @@ describe("normalizeHostWeather", () => {
     expect(normalizeHostWeather({ enabled: false }, NOW.toISOString())).toBeNull();
     expect(normalizeHostWeather({ enabled: true, current: {} }, NOW.toISOString())).toBeNull();
   });
+  test("uses the payload's updatedAt as fetchedAt when valid; falls back to the argument otherwise", () => {
+    const updatedAt = "2026-01-06T07:30:00.000Z";
+    expect(normalizeHostWeather({ enabled: true, units: "celsius", location: "", hourly, updatedAt }, NOW.toISOString())!.fetchedAt).toBe(updatedAt);
+    expect(normalizeHostWeather({ enabled: true, units: "celsius", location: "", hourly }, NOW.toISOString())!.fetchedAt).toBe(NOW.toISOString());
+    expect(normalizeHostWeather({ enabled: true, units: "celsius", location: "", hourly, updatedAt: "not a date" }, NOW.toISOString())!.fetchedAt).toBe(NOW.toISOString());
+  });
 });
 
 describe("normalizeStoredState", () => {
@@ -109,6 +115,15 @@ describe("urls", () => {
 });
 
 describe("fetchForecast", () => {
+  test("blank zip + host configured but outage (enabled:false, configured:true) → unreachable with the cached bundle", async () => {
+    const state = emptyStoredState();
+    state.forecast = { location: "Cached", fetchedAt: NOW.toISOString(), hours: [] };
+    const f = fakeFetch({ "/api/weather": () => json({ enabled: false, configured: true }) });
+    const r = await fetchForecast(f, base, state, NOW);
+    expect(r.status).toBe("unreachable");
+    expect(r.bundle).toBe(state.forecast);
+  });
+
   test("blank zip + host weather disabled → no-config, no outside calls", async () => {
     const f = fakeFetch({ "/api/weather": () => json({ enabled: false }) });
     const r = await fetchForecast(f, base, emptyStoredState(), NOW);

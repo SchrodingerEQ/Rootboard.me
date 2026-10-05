@@ -100,6 +100,7 @@ describe("buildAdvice — other rules", () => {
     const a = buildAdvice(bundle((h) => ({ feelsLikeC: h < 12 ? -8 : 8 })), SETTINGS, NOW)!;
     expect(ids(a.wear)).toEqual(expect.arrayContaining(["heavyCoat", "scarf", "warmHat", "gloves", "pants"]));
     expect(ids(a.wear)).not.toContain("shorts");
+    expect(ids(a.wear)).not.toContain("jacket");
     expect(a.afternoonNotes).toContain("Take off your heavy coat when it warms up ☀️");
   });
 

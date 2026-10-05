@@ -85,6 +85,8 @@ export function buildAdvice(bundle: ForecastBundle, settings: ResolvedSettings, 
     // Afternoon warmer: afternoon base + the morning's removable layer.
     for (const item of BASE_OUTFIT[aBand]) addItem(wear, item);
     addItem(wear, mLayer);
+    // The morning layer replaces the afternoon's own outer layer (no coat + jacket).
+    if (aLayer) removeItem(wear, aLayer.id);
     // A cold morning's accessories stay on even though the afternoon is warmer.
     for (const item of BASE_OUTFIT[mBand]) {
       if (item.id === ITEMS.warmHat.id || item.id === ITEMS.gloves.id || item.id === ITEMS.scarf.id) addItem(wear, item);

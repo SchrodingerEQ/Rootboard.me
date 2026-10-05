@@ -171,8 +171,12 @@ location, updatedAt }`. `hourly` (added for the What to Wear widget,
 code, windKmh, uv` from the first hour of the current local day;
 `temp`/`feelsLike` follow `WEATHER_UNITS` (reported in `units`), wind is
 km/h, precipitation mm, snowfall cm. The kiosk's coordinates never reach
-the client — only the derived forecast does. Outside hosts contacted by
-the server: `api.open-meteo.com` only (HTTPS, keyless).
+the client — only the derived forecast does. The weather service
+contacts only `api.open-meteo.com` (HTTPS, keyless). When weather is not
+configured the response is `{ enabled: false }`; when it is configured
+but the upstream fetch failed with a cold cache it is
+`{ enabled: false, configured: true }` (an outage, not a setup problem;
+an older server without the field reads as not configured).
 
 ### 2.6 Environment variables
 
@@ -737,11 +741,17 @@ layout picker.
 - **Copy and emoji** live in `phrases.ts`; single-codepoint emoji only
   (3.3). `ItemChip` takes an optional lucide icon for one-line swaps if
   a glyph is missing on the kiosk.
-- **States:** no zip + host weather disabled → "Ask a grown-up to add
-  your zip code in Settings"; invalid zip → "That zip code didn't work";
+- **States:** no zip + host weather not configured → "Ask a grown-up to add
+  your zip code in Settings"; a host-side outage (`enabled: false,
+  configured: true`) renders the cached forecast with the "from earlier"
+  footer (or "Can't reach the weather right now" with no cache); the
+  host-path footer time comes from the payload's `updatedAt`; invalid zip → "That zip code didn't work";
   fetch failed with cache → render it, footer "Weather from earlier — as
   of …"; failed with no cache → "Can't reach the weather right now".
   Nothing throws out of `mount()`/`refresh()`.
+- **Known limitation:** times are compared in the kiosk's local zone; a
+  zip in a different time zone than the kiosk shifts the windows by the
+  offset (not a v1 use case).
 - **Layout:** fixed landscape panel, nothing scrolls; theme tokens only.
 
 ## 4. Update system

@@ -123,7 +123,7 @@ export function normalizeOpenMeteo(data: unknown, location: string, fetchedAt: s
  *  temperatures normalised to Celsius. Null when weather is disabled or the
  *  server predates the `hourly` field. */
 export function normalizeHostWeather(data: unknown, fetchedAt: string): ForecastBundle | null {
-  const d = data as { enabled?: boolean; units?: string; location?: string; hourly?: unknown[] } | null;
+  const d = data as { enabled?: boolean; units?: string; location?: string; hourly?: unknown[]; updatedAt?: unknown } | null;
   if (!d || d.enabled !== true || !Array.isArray(d.hourly)) return null;
   const toC = d.units === "fahrenheit" ? fToC : (x: number) => x;
   const hours: HourPoint[] = d.hourly.map((raw) => {
@@ -140,7 +140,10 @@ export function normalizeHostWeather(data: unknown, fetchedAt: string): Forecast
       uv: num(h.uv),
     };
   });
-  return { location: typeof d.location === "string" ? d.location : "", fetchedAt, hours };
+  // The footer shows when the DATA was fetched (server cache time), not when
+  // this client last asked; fall back to the client's time if absent/invalid.
+  const dataTime = typeof d.updatedAt === "string" && !Number.isNaN(new Date(d.updatedAt).getTime()) ? d.updatedAt : fetchedAt;
+  return { location: typeof d.location === "string" ? d.location : "", fetchedAt: dataTime, hours };
 }
 
 /** Fetches and (when ok) parses JSON under one timeout that covers the body read. */
@@ -198,7 +201,8 @@ export async function fetchForecast(
       const res = await fetchJson(fetchFn, "/api/weather");
       if (!res.ok) return fail("unreachable");
       const data = res.data;
-      if ((data as { enabled?: boolean } | null)?.enabled !== true) return fail("no-config");
+      const hostData = data as { enabled?: boolean; configured?: boolean } | null;
+      if (hostData?.enabled !== true) return fail(hostData?.configured === true ? "unreachable" : "no-config");
       const bundle = normalizeHostWeather(data, fetchedAt);
       return bundle ? ok(bundle, state) : fail("unreachable");
     }

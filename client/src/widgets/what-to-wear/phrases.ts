@@ -67,18 +67,6 @@ export function isSnowCode(code: number): boolean {
   return (code >= 71 && code <= 77) || code === 85 || code === 86;
 }
 
-export function weatherPhrase(code: number): string {
-  if (code <= 1) return "Sunny";
-  if (code === 2) return "Some clouds, some sun";
-  if (code === 3) return "Cloudy";
-  if (code === 45 || code === 48) return "Foggy — hard to see far";
-  if (code >= 51 && code <= 57) return "Drizzly";
-  if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return "Rainy";
-  if (isSnowCode(code)) return "Snowy!";
-  if (code >= 95) return "Stormy";
-  return "Cloudy";
-}
-
 /** Short form for the headline sentence ("Sunny and nice and warm ☀️"). */
 export function weatherWord(code: number): string {
   if (code <= 1) return "Sunny";
