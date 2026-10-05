@@ -77,7 +77,7 @@ describe("normalizeHostWeather", () => {
     expect(normalizeHostWeather({ enabled: true, current: {} }, NOW.toISOString())).toBeNull();
   });
   test("uses the payload's updatedAt as fetchedAt when valid; falls back to the argument otherwise", () => {
-    const updatedAt = "2026-01-06T07:30:00.000Z";
+    const updatedAt = "2030-03-12T07:30:00.000Z";
     expect(normalizeHostWeather({ enabled: true, units: "celsius", location: "", hourly, updatedAt }, NOW.toISOString())!.fetchedAt).toBe(updatedAt);
     expect(normalizeHostWeather({ enabled: true, units: "celsius", location: "", hourly }, NOW.toISOString())!.fetchedAt).toBe(NOW.toISOString());
     expect(normalizeHostWeather({ enabled: true, units: "celsius", location: "", hourly, updatedAt: "not a date" }, NOW.toISOString())!.fetchedAt).toBe(NOW.toISOString());
