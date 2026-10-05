@@ -44,4 +44,6 @@ Status: accepted (brief founder-approved 2026-10-04)
   them. Payload grows by ≤ 48 entries.
 - Zip is personal data: never logged, never in error text, no default.
 - Changing a cutoff is a code change in `advice.ts` with a test update.
-- Rule 6.2 was extended during review to carry Cold/Freezing-morning accessories into a warmer afternoon's outfit; the founder should confirm or revert.
+- The layering rule (SPEC §3.10) was extended during review to carry
+  Cold/Freezing-morning accessories (hat, gloves, scarf) into a warmer
+  afternoon's outfit; the founder should confirm or revert.

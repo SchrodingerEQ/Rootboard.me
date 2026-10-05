@@ -239,7 +239,8 @@ the server: `api.open-meteo.com` only (HTTPS, keyless).
   picked up without a restart; react-query's structural sharing means
   an unchanged file produces the same object identity, so polling can't
   cause a spurious re-render. `defaultDashboardConfig()` (calendar,
-  chores, dinner — all enabled, `defaultWidget: "calendar"`) is both
+  chores, dinner enabled; what-to-wear disabled;
+  `defaultWidget: "calendar"`) is both
   the client's placeholder while the query is pending and the server's
   fallback for a missing/corrupt file (2.2).
   A built-in widget absent from an existing `dashboard.json` (e.g. one
