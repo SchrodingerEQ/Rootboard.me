@@ -866,7 +866,7 @@ describe("buildAdvice — other rules", () => {
   });
 
   test("UV ≥ 6 packs sunscreen, sun hat, water bottle and chips the sunniest window", () => {
-    const a = buildAdvice(bundle((h) => ({ feelsLikeC: 20, uv: h === 13 ? 7 : 2 })), SETTINGS, NOW)!;
+    const a = buildAdvice(bundle((h) => ({ feelsLikeC: 20, uv: h >= 12 && h <= 15 ? 7 : 2 })), SETTINGS, NOW)!;
     expect(ids(a.backpack)).toEqual(expect.arrayContaining(["sunscreen", "sunHat", "waterBottle"]));
     expect(a.windows[1].chips).toContain("☀️ strong sun");
     expect(a.windows[0].chips).not.toContain("☀️ strong sun");
