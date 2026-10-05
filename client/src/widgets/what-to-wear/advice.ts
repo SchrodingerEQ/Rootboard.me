@@ -85,6 +85,10 @@ export function buildAdvice(bundle: ForecastBundle, settings: ResolvedSettings, 
     // Afternoon warmer: afternoon base + the morning's removable layer.
     for (const item of BASE_OUTFIT[aBand]) addItem(wear, item);
     addItem(wear, mLayer);
+    // A cold morning's accessories stay on even though the afternoon is warmer.
+    for (const item of BASE_OUTFIT[mBand]) {
+      if (item.id === ITEMS.warmHat.id || item.id === ITEMS.gloves.id || item.id === ITEMS.scarf.id) addItem(wear, item);
+    }
     if (COLDNESS[mBand] >= COLDNESS.cold) {
       removeItem(wear, ITEMS.shorts.id);
       addItem(wear, ITEMS.pants);
@@ -152,7 +156,7 @@ export function buildAdvice(bundle: ForecastBundle, settings: ResolvedSettings, 
     let best = -1;
     for (const w of windows) {
       const uv = maxOf(w.range, (h) => h.uv);
-      if (uv > best) {
+      if (uv >= 6 && uv > best) {
         best = uv;
         sunniest = w.key;
       }

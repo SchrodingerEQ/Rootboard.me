@@ -92,6 +92,29 @@ describe("buildAdvice — other rules", () => {
     expect(ids(a.wear)).not.toContain("shorts");
     expect(ids(a.wear)).toContain("pants");
     expect(ids(a.wear)).toContain("winterCoat");
+    expect(ids(a.wear)).toContain("warmHat");
+    expect(ids(a.wear)).toContain("gloves");
+  });
+
+  test("freezing morning, chilly afternoon: keep coat, scarf, hat, gloves, pants", () => {
+    const a = buildAdvice(bundle((h) => ({ feelsLikeC: h < 12 ? -8 : 8 })), SETTINGS, NOW)!;
+    expect(ids(a.wear)).toEqual(expect.arrayContaining(["heavyCoat", "scarf", "warmHat", "gloves", "pants"]));
+    expect(ids(a.wear)).not.toContain("shorts");
+    expect(a.afternoonNotes).toContain("Take off your heavy coat when it warms up ☀️");
+  });
+
+  test("rain in both morning and afternoon → raincoat worn all day", () => {
+    const a = buildAdvice(bundle((h) => ({ feelsLikeC: 14, precipChance: h >= 7 && h <= 16 ? 50 : 0 })), SETTINGS, NOW)!;
+    expect(ids(a.wear)).toContain("raincoat");
+    expect(ids(a.backpack)).not.toContain("raincoat");
+    expect(a.afternoonNotes).toContain("Keep your raincoat on 🌧️");
+  });
+
+  test("light snow on a chilly (sneaker) band swaps to boots, gloves, hat; no snow pants under 2 cm", () => {
+    const a = buildAdvice(bundle((h) => ({ feelsLikeC: 10, snowCm: h === 9 || h === 10 ? 0.3 : 0, code: h === 9 || h === 10 ? 71 : 3 })), SETTINGS, NOW)!;
+    expect(ids(a.wear)).toEqual(expect.arrayContaining(["boots", "gloves", "warmHat"]));
+    expect(ids(a.wear)).not.toContain("sneakers");
+    expect(ids(a.wear)).not.toContain("snowPants");
   });
 
   test("thunderstorm in the school day → gentle storm headline", () => {
@@ -119,6 +142,12 @@ describe("buildAdvice — other rules", () => {
     expect(ids(a.backpack)).toEqual(expect.arrayContaining(["sunscreen", "sunHat", "waterBottle"]));
     expect(a.windows[1].chips).toContain("☀️ strong sun");
     expect(a.windows[0].chips).not.toContain("☀️ strong sun");
+  });
+
+  test("strong-sun chip is withheld when the school-day UV peak falls between windows", () => {
+    const a = buildAdvice(bundle((h) => ({ feelsLikeC: 20, uv: h === 13 ? 7 : 2 })), SETTINGS, NOW)!;
+    expect(ids(a.backpack)).toEqual(expect.arrayContaining(["sunscreen", "sunHat", "waterBottle"]));
+    for (const w of a.windows) expect(w.chips).not.toContain("☀️ strong sun");
   });
 
   test("UV 3–5 with a sunny afternoon packs sunscreen only", () => {
