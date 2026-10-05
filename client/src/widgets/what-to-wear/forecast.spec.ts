@@ -155,6 +155,37 @@ describe("fetchForecast", () => {
     expect(f.calls.filter((u) => u.startsWith("https://api.zippopotam.us")).length).toBe(1);
   });
 
+  test("Open-Meteo throws after a successful lookup → unreachable, learned coords kept", async () => {
+    const f = fakeFetch({
+      "https://api.zippopotam.us/us/00000": () => json({ places: [{ "place name": "Testville", "state abbreviation": "TS", latitude: "1.5", longitude: "-2.25" }] }),
+    });
+    const r = await fetchForecast(f, { ...base, zipCode: "00000" }, emptyStoredState(), NOW);
+    expect(r.status).toBe("unreachable");
+    expect(r.bundle).toBeNull();
+    expect(r.state.zipCoords["00000"]).toEqual({ lat: 1.5, lon: -2.25, label: "Testville, TS" });
+  });
+
+  test("lookup without a place name → empty label, never the zip", async () => {
+    const f = fakeFetch({
+      "https://api.zippopotam.us/us/00000": () => json({ places: [{ latitude: "1", longitude: "2" }] }),
+      "https://api.open-meteo.com/v1/forecast": () => json(openMeteoJson()),
+    });
+    const r = await fetchForecast(f, { ...base, zipCode: "00000" }, emptyStoredState(), NOW);
+    expect(r.bundle?.location).toBe("");
+    expect(r.state.zipCoords["00000"].label).toBe("");
+  });
+
+  test("a newly looked-up zip replaces older cached zips", async () => {
+    const state = emptyStoredState();
+    state.zipCoords["11111"] = { lat: 9, lon: 9, label: "Old" };
+    const f = fakeFetch({
+      "https://api.zippopotam.us/us/00000": () => json({ places: [{ "place name": "New", latitude: "1", longitude: "2" }] }),
+      "https://api.open-meteo.com/v1/forecast": () => json(openMeteoJson()),
+    });
+    const r = await fetchForecast(f, { ...base, zipCode: "00000" }, state, NOW);
+    expect(Object.keys(r.state.zipCoords)).toEqual(["00000"]);
+  });
+
   test("Open-Meteo unreachable with a cached forecast → unreachable, cached bundle returned", async () => {
     const state = emptyStoredState();
     state.zipCoords["00000"] = { lat: 1, lon: 2, label: "Cached" };

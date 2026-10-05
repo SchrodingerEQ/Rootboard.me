@@ -83,7 +83,7 @@ export function normalizeStoredState(raw: unknown): StoredState {
 export function openMeteoUrl(lat: number, lon: number): string {
   return (
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-    `&hourly=${OPEN_METEO_HOURLY}&daily=sunrise,sunset` +
+    `&hourly=${OPEN_METEO_HOURLY}` +
     `&temperature_unit=celsius&wind_speed_unit=kmh&precipitation_unit=mm&timezone=auto&forecast_days=3`
   );
 }
@@ -106,7 +106,7 @@ export function normalizeOpenMeteo(data: unknown, location: string, fetchedAt: s
   const wind = col("wind_speed_10m");
   const uv = col("uv_index");
   const hours: HourPoint[] = (hourly.time as unknown[]).map((t, i) => ({
-    time: String(t),
+    time: typeof t === "string" ? t : "",
     tempC: num(temp[i]),
     feelsLikeC: num(feels[i]),
     precipChance: num(pop[i]),
@@ -143,11 +143,14 @@ export function normalizeHostWeather(data: unknown, fetchedAt: string): Forecast
   return { location: typeof d.location === "string" ? d.location : "", fetchedAt, hours };
 }
 
-async function fetchWithTimeout(fetchFn: typeof fetch, url: string): Promise<Response> {
+/** Fetches and (when ok) parses JSON under one timeout that covers the body read. */
+async function fetchJson(fetchFn: typeof fetch, url: string): Promise<{ status: number; ok: boolean; data: unknown }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    return await fetchFn(url, { signal: controller.signal });
+    const res = await fetchFn(url, { signal: controller.signal });
+    const data: unknown = res.ok ? await res.json() : null;
+    return { status: res.status, ok: res.ok, data };
   } finally {
     clearTimeout(timer);
   }
@@ -155,17 +158,17 @@ async function fetchWithTimeout(fetchFn: typeof fetch, url: string): Promise<Res
 
 /** zippopotam.us lookup. "invalid" on 404; throws on network/other errors. */
 export async function lookupZip(fetchFn: typeof fetch, zip: string): Promise<ZipCoords | "invalid"> {
-  const res = await fetchWithTimeout(fetchFn, zipLookupUrl(zip));
+  const res = await fetchJson(fetchFn, zipLookupUrl(zip));
   if (res.status === 404) return "invalid";
   if (!res.ok) throw new Error(`zip lookup HTTP ${res.status}`);
-  const data = (await res.json()) as { places?: Array<Record<string, unknown>> };
+  const data = res.data as { places?: Array<Record<string, unknown>> } | null;
   const place = data?.places?.[0];
   const lat = Number(place?.latitude);
   const lon = Number(place?.longitude);
   if (!place || !Number.isFinite(lat) || !Number.isFinite(lon)) return "invalid";
   const name = typeof place["place name"] === "string" ? (place["place name"] as string) : "";
   const st = typeof place["state abbreviation"] === "string" ? (place["state abbreviation"] as string) : "";
-  const label = [name, st].filter(Boolean).join(", ") || zip;
+  const label = [name, st].filter(Boolean).join(", ");
   return { lat, lon, label };
 }
 
@@ -189,11 +192,12 @@ export async function fetchForecast(
     return { status: "ok", bundle: trimmed, state: { ...next, forecast: trimmed } };
   };
 
+  let next = state;
   try {
     if (settings.zipCode === "") {
-      const res = await fetchWithTimeout(fetchFn, "/api/weather");
+      const res = await fetchJson(fetchFn, "/api/weather");
       if (!res.ok) return fail("unreachable");
-      const data: unknown = await res.json();
+      const data = res.data;
       if ((data as { enabled?: boolean } | null)?.enabled !== true) return fail("no-config");
       const bundle = normalizeHostWeather(data, fetchedAt);
       return bundle ? ok(bundle, state) : fail("unreachable");
@@ -202,19 +206,18 @@ export async function fetchForecast(
     if (!ZIP_RE.test(settings.zipCode)) return fail("invalid-zip");
 
     let coords = state.zipCoords[settings.zipCode];
-    let next = state;
     if (!coords) {
       const looked = await lookupZip(fetchFn, settings.zipCode);
       if (looked === "invalid") return fail("invalid-zip");
       coords = looked;
-      next = { ...state, zipCoords: { ...state.zipCoords, [settings.zipCode]: coords } };
+      next = { ...state, zipCoords: { [settings.zipCode]: coords } };
     }
 
-    const res = await fetchWithTimeout(fetchFn, openMeteoUrl(coords.lat, coords.lon));
+    const res = await fetchJson(fetchFn, openMeteoUrl(coords.lat, coords.lon));
     if (!res.ok) return { ...fail("unreachable"), state: next };
-    const bundle = normalizeOpenMeteo(await res.json(), coords.label, fetchedAt);
+    const bundle = normalizeOpenMeteo(res.data, coords.label, fetchedAt);
     return bundle ? ok(bundle, next) : { ...fail("unreachable"), state: next };
   } catch {
-    return fail("unreachable");
+    return { ...fail("unreachable"), state: next };
   }
 }
