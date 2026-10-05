@@ -1,0 +1,17 @@
+{
+  "id": "what-to-wear",
+  "name": "What to Wear",
+  "version": "1.0.0",
+  "apiVersion": 1,
+  "entry": "index.js",
+  "slots": ["section"],
+  "description": "Kid-friendly weather and what to wear to school, morning and afternoon.",
+  "refresh": { "intervalSeconds": 1800 },
+  "settings": [
+    { "key": "zipCode", "label": "Zip code (blank = kiosk location)", "type": "string", "default": "" },
+    { "key": "units", "label": "Temperature", "type": "select", "default": "celsius",
+      "options": [ { "value": "celsius", "label": "°C" }, { "value": "fahrenheit", "label": "°F" } ] },
+    { "key": "schoolStart", "label": "School starts (HH:MM)", "type": "string", "default": "08:00" },
+    { "key": "schoolEnd", "label": "School ends (HH:MM)", "type": "string", "default": "15:00" }
+  ]
+}
