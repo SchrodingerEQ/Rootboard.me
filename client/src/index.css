@@ -255,7 +255,9 @@
   .touch-button {
     min-width: 48px;
     min-height: 48px;
-    touch-action: manipulation;
+    /* pan-x pan-y, never `manipulation` (which still allows pinch zoom) —
+       see the kiosk zoom policy in client/index.html / decision 0013. */
+    touch-action: pan-x pan-y;
   }
 
   .time-slot {

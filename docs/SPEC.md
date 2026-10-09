@@ -1,7 +1,7 @@
 # Rootboard.me — As-Built Specification
 
 Regenerated from the code at v1.4.1 (2026-07-23); maintained
-incrementally through the widget-system phases and current as of v1.7.0
+incrementally through the widget-system phases and current as of v1.7.1
 (2026-10-05). This documents what the app **actually does**, including
 quirks. Update it when behavior changes.
 Public document — no deployment specifics (hostnames, IPs, real names).
@@ -577,7 +577,16 @@ failure during polling is *assumed to be the restart* and reloads after
   `::-webkit-scrollbar` and shrink the bars.
 - **Fullscreen** comes from launching the browser with `--kiosk` — the
   client never calls `requestFullscreen`.
-- Body: `user-select: none`, `touch-action: manipulation`; touch targets
+- **No browser zoom.** `html, body { touch-action: pan-x pan-y }` (and
+  the same value on `.touch-button`) disables pinch and double-tap zoom
+  while keeping touch scrolling. Never use `touch-action: manipulation`
+  here — it is an alias for `pan-x pan-y pinch-zoom` and still lets a
+  pinch zoom the whole page, which on the kiosk (Firefox desktop,
+  `apz.allow_zooming=true`, viewport meta ignored) left the layout
+  panning instead of fitting the screen. Guarded by
+  `lib/kiosk-zoom-policy.spec.ts`; decision 0013. The install guide also
+  pins Firefox's zoom prefs on the device as a second layer.
+- Body: `user-select: none`; touch targets
   min 48 px (56 px on ≥1920 px screens). The shared dialog close (X)
   button (`ui/dialog.tsx`, used by every Dialog) and the Settings
   panel's X follow this: a 48/56 px round `.touch-button` around a
@@ -859,6 +868,8 @@ identifies the restored version, then `npm install` + `npm run build`
   latch; `pointer: coarse` under-reports on the kiosk (3.3).
 - Firefox scrollbar CSS must stay inside the
   `@supports not selector(::-webkit-scrollbar)` guard (3.8).
+- `touch-action: manipulation` still allows pinch zoom; the kiosk root
+  uses `pan-x pan-y` and nothing may re-enable zoom below it (3.8).
 - Chore cap counts completed chores; dinner vote cooldown is in-memory
   only by design (3.4, 3.5).
 - `screensaver-overlay.tsx` is dead code; the live overlay is

@@ -136,6 +136,24 @@ By default the labwc compositor (Raspberry Pi OS on the Pi 5) converts touch int
    ```
 4. Check: tap and drag on the desktop still work. To undo, restore `rc.xml.bak` and run step 3 again.
 
+### Turn off browser zoom (Firefox)
+
+Rootboard's layout is sized to the screen, so any zoom leaves it panning instead of fitting. The app itself blocks pinch and double-tap zoom with CSS (`touch-action: pan-x pan-y`), but Firefox can still zoom from a keyboard or a trackpad gesture, so pin it off at the browser too. Add these lines to `user.js` in the kiosk's Firefox profile (on Raspberry Pi OS the profile lives under `~/.config/mozilla/firefox/<id>.default-release/`, not `~/.mozilla`; create `user.js` if it does not exist):
+
+```js
+// Rootboard kiosk: no zoom of any kind
+user_pref("apz.allow_zooming", false);            // touch pinch zoom
+user_pref("apz.allow_double_tap_zooming", false); // double-tap zoom
+user_pref("zoom.minPercent", 100);                // clamp Ctrl +/- and Ctrl+wheel
+user_pref("zoom.maxPercent", 100);
+user_pref("browser.gesture.pinch.in", "");        // trackpad pinch commands
+user_pref("browser.gesture.pinch.out", "");
+user_pref("browser.gesture.pinch.in.shift", "");
+user_pref("browser.gesture.pinch.out.shift", "");
+```
+
+`user.js` is read at every Firefox start, so restart Firefox (or reboot) for it to apply. Check: a two-finger pinch on the dashboard does nothing; scrolling the week view still works.
+
 ### Set the monitor's own brightness now
 
 Rootboard's Brightness slider can only **dim** the picture (30–100 %); it cannot make the screen brighter than the monitor itself. Rootboard also never uses a page-wide CSS brightness filter — on a Pi that costs roughly 115 ms per frame and makes the whole kiosk sluggish — so there is deliberately no "above 100 %" setting.
