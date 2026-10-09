@@ -37,6 +37,7 @@
 - [ ] After What to Wear ships in a release: add it to the first-party list in awesome-rootboard and mention it in README.md (added 2026-10-04)
 - [ ] Kiosk zoom: after the no-browser-zoom release (decision 0013) is deployed, add the Firefox user.js zoom prefs from INSTALLATION.md step 4 on the kiosk, reboot, and verify a two-finger pinch does nothing while the week view still scrolls (added 2026-10-08)
 - [ ] The "Syncing calendar..." toast overlaps the What to Wear header's weather summary (top-right) at 1920x1080 — move the toast or reserve space for it (added 2026-10-08)
+- [ ] npm audit at the v1.7.1 release: 18 findings (2 critical). New since v1.7.0 and all plain `npm audit fix`: `proxy-addr` (critical, via Express — only exploitable with a `trust proxy` subnet, which the app never sets), `shell-quote` (critical, via drizzle-kit, dev-only), `source-map-js` (high, CSS build tooling). Ship them with the pending `brace-expansion` fix as one dependency-only release (lockfile written with npm 11); the rest are the known Tailwind/Vite/Drizzle majors (added 2026-10-08)
 
 ## Deferred (recorded, not scheduled)
 
