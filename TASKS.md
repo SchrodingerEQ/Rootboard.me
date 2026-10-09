@@ -35,6 +35,8 @@
 - [x] What to Wear kiosk check on v1.7.0: both fetch paths (zip set / blank), emoji rendering, theme switch, screensaver dim/wake, short section-switching soak — all fine (added 2026-10-04) (done 2026-10-05)
 - [ ] What to Wear in daily use on the kiosk: confirm the Today → Tomorrow flip at the school end time, and that a long-running session shows no slowdown or timer leak (added 2026-10-05)
 - [ ] After What to Wear ships in a release: add it to the first-party list in awesome-rootboard and mention it in README.md (added 2026-10-04)
+- [ ] Kiosk zoom: after the no-browser-zoom release (decision 0013) is deployed, add the Firefox user.js zoom prefs from INSTALLATION.md step 4 on the kiosk, reboot, and verify a two-finger pinch does nothing while the week view still scrolls (added 2026-10-08)
+- [ ] The "Syncing calendar..." toast overlaps the What to Wear header's weather summary (top-right) at 1920x1080 — move the toast or reserve space for it (added 2026-10-08)
 
 ## Deferred (recorded, not scheduled)
 
