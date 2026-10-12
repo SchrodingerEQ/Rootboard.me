@@ -7,7 +7,7 @@ import { buildAdvice } from "./advice";
 import { emptyStoredState, fetchForecast, normalizeStoredState, type ForecastStatus, type StoredState } from "./forecast";
 import type { ForecastBundle } from "./types";
 import { resolveSettings } from "./settings";
-import { formatClock } from "./time-windows";
+import { formatAsOf } from "./time-windows";
 import { WhatToWear } from "./WhatToWear";
 
 /**
@@ -133,9 +133,12 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
   const advice = useMemo(() => (load.bundle ? buildAdvice(load.bundle, settings, now) : null), [load.bundle, settings, now]);
 
   let footer = "";
+  let staleSince = "";
   if (load.loaded && load.bundle) {
-    const at = formatClock(load.bundle.fetchedAt);
+    const at = formatAsOf(load.bundle.fetchedAt, now);
     footer = load.status === "ok" ? `Weather as of ${at} · Open-Meteo` : `Weather from earlier — as of ${at}`;
+    // Data exists but doesn't cover the day being shown: it's too old.
+    if (!advice) staleSince = at;
   }
 
   return (
@@ -146,6 +149,7 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
       location={load.bundle?.location ?? ""}
       units={settings.units}
       footer={footer}
+      staleSince={staleSince}
     />
   );
 }

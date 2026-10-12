@@ -204,7 +204,13 @@ export async function fetchForecast(
       const hostData = data as { enabled?: boolean; configured?: boolean } | null;
       if (hostData?.enabled !== true) return fail(hostData?.configured === true ? "unreachable" : "no-config");
       const bundle = normalizeHostWeather(data, fetchedAt);
-      return bundle ? ok(bundle, state) : fail("unreachable");
+      if (!bundle) return fail("unreachable");
+      // The server re-served its last good forecast after a failed upstream
+      // fetch: render it, but as "from earlier" and without persisting it.
+      if ((data as { stale?: unknown }).stale === true) {
+        return { status: "unreachable", bundle: { ...bundle, hours: trimHours(bundle.hours, now) }, state };
+      }
+      return ok(bundle, state);
     }
 
     if (!ZIP_RE.test(settings.zipCode)) return fail("invalid-zip");

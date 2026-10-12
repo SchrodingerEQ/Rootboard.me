@@ -141,6 +141,19 @@ describe("fetchForecast", () => {
     expect(r.state.forecast).toBe(r.bundle);
   });
 
+  test("blank zip + host re-serving its last good forecast (stale: true) → unreachable with that bundle, not persisted", async () => {
+    const hourly = Array.from({ length: 48 }, (_, i) => ({ time: `${i < 24 ? "2030-03-11" : DAY}T${String(i % 24).padStart(2, "0")}:00`, temp: 10, feelsLike: 9, precipChance: 0, precipMm: 0, snowCm: 0, code: 1, windKmh: 3, uv: 2 }));
+    const updatedAt = new Date(2030, 2, 11, 6, 29).toISOString();
+    const f = fakeFetch({ "/api/weather": () => json({ enabled: true, units: "celsius", location: "Home", hourly, updatedAt, stale: true }) });
+    const state = emptyStoredState();
+    const r = await fetchForecast(f, base, state, NOW);
+    expect(r.status).toBe("unreachable");
+    expect(r.bundle?.fetchedAt).toBe(updatedAt);
+    expect(r.bundle?.hours).toHaveLength(24); // yesterday's hours trimmed
+    expect(r.bundle?.hours[0].time).toBe(`${DAY}T00:00`);
+    expect(r.state).toBe(state);
+  });
+
   test("malformed zip → invalid-zip without any fetch", async () => {
     const f = fakeFetch({});
     const r = await fetchForecast(f, { ...base, zipCode: "1234" }, emptyStoredState(), NOW);

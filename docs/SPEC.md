@@ -176,7 +176,10 @@ contacts only `api.open-meteo.com` (HTTPS, keyless). When weather is not
 configured the response is `{ enabled: false }`; when it is configured
 but the upstream fetch failed with a cold cache it is
 `{ enabled: false, configured: true }` (an outage, not a setup problem;
-an older server without the field reads as not configured).
+an older server without the field reads as not configured). When the
+upstream fetch fails with a warm cache, the last good forecast is served
+with an additive `stale: true` (its `updatedAt` says how old it is);
+fresh responses omit the field.
 
 ### 2.6 Environment variables
 
@@ -754,10 +757,16 @@ layout picker.
   your zip code in Settings"; a host-side outage (`enabled: false,
   configured: true`) renders the cached forecast with the "from earlier"
   footer (or "Can't reach the weather right now" with no cache); the
-  host-path footer time comes from the payload's `updatedAt`; invalid zip → "That zip code didn't work";
+  host-path footer time comes from the payload's `updatedAt`; a host
+  payload flagged `stale: true` (server re-serving its last good forecast)
+  is treated the same as an outage with cache — rendered with the "from
+  earlier" footer, not persisted; invalid zip → "That zip code didn't work";
   fetch failed with cache → render it, footer "Weather from earlier — as
-  of …"; failed with no cache → "Can't reach the weather right now".
-  Nothing throws out of `mount()`/`refresh()`.
+  of …"; failed with no cache → "Can't reach the weather right now". The
+  footer time gains the day ("Sun 6:29 AM", or "Mar 5, 6:29 AM" past a
+  week) when the data is not from today. A forecast that no longer covers
+  the day shown → "The weather is out of date" with the last-update time
+  as the hint. Nothing throws out of `mount()`/`refresh()`.
 - **Known limitation:** times are compared in the kiosk's local zone; a
   zip in a different time zone than the kiosk shifts the windows by the
   offset (not a v1 use case).

@@ -12,7 +12,7 @@ export default defineConfig({
     jsx: "automatic",
   },
   test: {
-    include: ["client/src/**/*.spec.ts"],
+    include: ["client/src/**/*.spec.ts", "server/**/*.spec.ts"],
     environment: "node",
   },
   resolve: {

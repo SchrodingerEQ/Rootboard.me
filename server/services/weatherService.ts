@@ -57,6 +57,10 @@ export interface WeatherPayload {
   units: "celsius" | "fahrenheit";
   location: string;
   updatedAt: string;
+  /** Present (additive) when this is the last good forecast re-served
+   *  because the latest upstream fetch failed; `updatedAt` then says how
+   *  old it is. Fresh responses omit it. */
+  stale?: true;
 }
 
 /** `configured: true` on a disabled response means weather IS configured but
@@ -215,9 +219,11 @@ export async function getWeather(): Promise<WeatherResponse> {
     cachedAt = Date.now();
     return result;
   }
-  // Fetch failed: serve last-good (stale) if we have it, else report
-  // disabled (UI simply hides weather rather than showing an error) with
-  // `configured: true` so consumers can tell an outage from "not set up".
-  if (cached) return cached;
+  // Fetch failed: serve last-good (stale) if we have it, flagged so
+  // consumers can tell it from a fresh forecast — otherwise an outage that
+  // lasts days looks current. With no cache, report disabled (UI simply
+  // hides weather rather than showing an error) with `configured: true`
+  // so consumers can tell an outage from "not set up".
+  if (cached) return { ...cached, stale: true };
   return { enabled: false, configured: true };
 }
