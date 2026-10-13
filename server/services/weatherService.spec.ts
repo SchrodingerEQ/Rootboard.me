@@ -83,6 +83,62 @@ describe("getWeather stale flag", () => {
   });
 });
 
+describe("describeFetchError", () => {
+  test.each([
+    [Object.assign(new Error("aborted"), { name: "AbortError" }), "Timed out — Open-Meteo didn't answer in 10 seconds"],
+    [new TypeError("fetch failed", { cause: { code: "ENOTFOUND" } }), "Couldn't look up api.open-meteo.com — no internet, or a DNS problem (ENOTFOUND)"],
+    [new TypeError("fetch failed", { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } }), "Timed out — Open-Meteo didn't answer in 10 seconds (UND_ERR_CONNECT_TIMEOUT)"],
+    [new TypeError("fetch failed", { cause: { errors: [{ code: "ENETUNREACH" }] } }), "Couldn't connect to Open-Meteo — network problem (ENETUNREACH)"],
+    [new TypeError("fetch failed", { cause: { code: "CERT_NOT_YET_VALID" } }), "Secure connection failed — check the kiosk's date and time (CERT_NOT_YET_VALID)"],
+    [new SyntaxError("Unexpected token <"), "Open-Meteo sent an unexpected response"],
+    [new TypeError("fetch failed"), "Network error"],
+  ])("%s", async (err, expected) => {
+    const { describeFetchError } = await loadService();
+    expect(describeFetchError(err)).toBe(expected);
+  });
+
+  test("never echoes the error message, which could carry the request URL", async () => {
+    const { describeFetchError } = await loadService();
+    const reason = describeFetchError(new Error("GET https://api.open-meteo.com/v1/forecast?latitude=12.34 failed", { cause: { code: "lat=12.34" } }));
+    expect(reason).toBe("Network error");
+  });
+});
+
+describe("getWeatherStatus", () => {
+  test("not configured", async () => {
+    vi.stubEnv("WEATHER_ENABLED", "false");
+    const { getWeatherStatus } = await loadService();
+    expect(getWeatherStatus()).toEqual({ configured: false, lastSuccessAt: null, lastError: null });
+  });
+
+  test("records the last success, then the failure reason", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls++;
+      if (calls === 1) return new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 });
+      throw new TypeError("fetch failed", { cause: { code: "EAI_AGAIN" } });
+    });
+    const { getWeather, getWeatherStatus } = await loadService();
+    const first = await getWeather();
+    expect(getWeatherStatus()).toMatchObject({ configured: true, lastError: null });
+    expect(getWeatherStatus().lastSuccessAt).toBe(first.enabled && first.updatedAt);
+
+    vi.setSystemTime(new Date(2030, 2, 11, 16, 0));
+    await getWeather();
+    expect(getWeatherStatus().lastError).toEqual({
+      at: new Date(2030, 2, 11, 16, 0).toISOString(),
+      reason: "Couldn't look up api.open-meteo.com — no internet, or a DNS problem (EAI_AGAIN)",
+    });
+  });
+
+  test("an HTTP error names the status", async () => {
+    vi.stubGlobal("fetch", async () => new Response("{}", { status: 429 }));
+    const { getWeather, getWeatherStatus } = await loadService();
+    await getWeather();
+    expect(getWeatherStatus().lastError?.reason).toBe("Open-Meteo answered HTTP 429 (too many requests)");
+  });
+});
+
 // Regression for the kiosk showing "Can't reach the weather right now" under
 // a footer of "Weather as of 6:29 AM · Open-Meteo": the server re-served a
 // days-old forecast that the widget took for fresh.

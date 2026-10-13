@@ -78,6 +78,56 @@ let cached: WeatherPayload | null = null;
 let cachedAt = 0;
 let inflight: Promise<WeatherPayload | null> | null = null;
 
+/** Upstream health for the Settings → System panel, so a family can read
+ *  why the weather stopped updating off the touchscreen — no terminal.
+ *  Kept in memory only (resets on restart); never leaves the kiosk. */
+export interface WeatherStatus {
+  configured: boolean;
+  /** When the server last got a good forecast from Open-Meteo. */
+  lastSuccessAt: string | null;
+  /** The most recent failure; kept after a later success for context. */
+  lastError: { at: string; reason: string } | null;
+}
+
+let lastSuccessAt: string | null = null;
+let lastError: WeatherStatus["lastError"] = null;
+
+const NETWORK_CODES = new Set(["ECONNREFUSED", "ECONNRESET", "ENETUNREACH", "EHOSTUNREACH", "EPIPE", "ENETDOWN"]);
+
+/** A failed fetch → one plain-language sentence plus the error code. Only
+ *  the code is taken from the error, never its message, so nothing from the
+ *  request (the coordinates are in the URL) can reach the client. */
+export function describeFetchError(err: unknown): string {
+  const e = err as { name?: unknown; code?: unknown; cause?: { code?: unknown; errors?: Array<{ code?: unknown }> } } | null;
+  const name = typeof e?.name === "string" ? e.name : "";
+  const rawCode = e?.cause?.code ?? e?.cause?.errors?.[0]?.code ?? e?.code;
+  const code = typeof rawCode === "string" && /^[A-Z0-9_]+$/.test(rawCode) ? rawCode : "";
+  const tag = code ? ` (${code})` : "";
+
+  if (name === "AbortError" || name === "TimeoutError" || code === "UND_ERR_CONNECT_TIMEOUT" || code === "ETIMEDOUT") {
+    return `Timed out — Open-Meteo didn't answer in ${FETCH_TIMEOUT_MS / 1000} seconds${tag}`;
+  }
+  if (name === "SyntaxError") return "Open-Meteo sent an unexpected response";
+  if (code === "ENOTFOUND" || code === "EAI_AGAIN") {
+    return `Couldn't look up api.open-meteo.com — no internet, or a DNS problem${tag}`;
+  }
+  if (NETWORK_CODES.has(code)) return `Couldn't connect to Open-Meteo — network problem${tag}`;
+  if (/CERT|TLS|SSL|UNABLE_TO_|SELF_SIGNED/.test(code)) {
+    return `Secure connection failed — check the kiosk's date and time${tag}`;
+  }
+  return `Network error${tag}`;
+}
+
+function recordFailure(reason: string): null {
+  console.error(`Weather fetch failed: ${reason}`);
+  lastError = { at: new Date().toISOString(), reason };
+  return null;
+}
+
+export function getWeatherStatus(): WeatherStatus {
+  return { configured: getConfig() !== null, lastSuccessAt, lastError };
+}
+
 interface WeatherConfig {
   lat: number;
   lon: number;
@@ -155,13 +205,12 @@ async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null>
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) {
-      console.error(`Weather fetch failed: HTTP ${res.status}`);
-      return null;
+      const hint = res.status === 429 ? " (too many requests)" : res.status >= 500 ? " (a problem on Open-Meteo's side)" : "";
+      return recordFailure(`Open-Meteo answered HTTP ${res.status}${hint}`);
     }
     const data: any = await res.json();
     if (!data?.current || !data?.daily?.time) {
-      console.error("Weather fetch returned unexpected shape");
-      return null;
+      return recordFailure("Open-Meteo sent an unexpected response");
     }
 
     const currentCode = Number(data.current.weather_code ?? 0);
@@ -192,8 +241,7 @@ async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null>
       updatedAt: new Date().toISOString(),
     };
   } catch (err) {
-    console.error("Weather fetch error:", err instanceof Error ? err.message : err);
-    return null;
+    return recordFailure(describeFetchError(err));
   } finally {
     clearTimeout(timer);
   }
@@ -217,6 +265,7 @@ export async function getWeather(): Promise<WeatherResponse> {
   if (result) {
     cached = result;
     cachedAt = Date.now();
+    lastSuccessAt = result.updatedAt;
     return result;
   }
   // Fetch failed: serve last-good (stale) if we have it, flagged so

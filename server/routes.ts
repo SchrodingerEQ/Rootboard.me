@@ -7,7 +7,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { googleCalendarService } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
-import { getWeather } from "./services/weatherService";
+import { getWeather, getWeatherStatus } from "./services/weatherService";
 import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
 import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscovery";
 import { APP_VERSION } from "@shared/version";
@@ -63,6 +63,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // location is configured in .env — the client hides all weather UI then).
   app.get("/api/weather", async (req, res) => {
     res.json(await getWeather());
+  });
+
+  // Upstream health for Settings → System: when weather last updated and
+  // the most recent failure reason (plain text + error code, no request data).
+  app.get("/api/weather/status", (req, res) => {
+    res.json(getWeatherStatus());
   });
 
   // Calendar events routes

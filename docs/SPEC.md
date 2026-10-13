@@ -51,6 +51,7 @@ retention sweep, which runs inside each sync.
 |---|---|---|---|
 | GET | `/api/version` | `{version, timestamp}` — supervisor health-check target | none |
 | GET | `/api/weather` | Cached Open-Meteo forecast, or `{enabled:false}` | none |
+| GET | `/api/weather/status` | `{configured, lastSuccessAt, lastError:{at, reason}}` — server-side Open-Meteo health for Settings → System | none |
 | GET | `/api/calendar/events` | Events overlapping `from`/`to` (legacy `startDate`/`endDate` accepted) | none |
 | GET | `/api/calendar/calendars` | Google calendar list | none |
 | DELETE | `/api/calendar/calendars/:calendarId` | Unsubscribe + purge local events | none |
@@ -222,10 +223,21 @@ fresh responses omit the field.
   visibility switches, remove, add-calendar), **Widgets** (layout
   picker — enable/disable + reorder installed widgets and their
   settings, community widgets, widget-folder errors), **Keyboard** (OSK
-  mode), **System** (update check, roll back). It always reopens on the
-  main screen; a category with a problem (theme error, widget-folder
-  error or crashed community widget, missing service-account key) shows
-  a warning dot on the main screen. The panel is height-capped to the
+  mode), **System** (update check, roll back, weather status). It always
+  reopens on the main screen; a category with a problem (theme error,
+  widget-folder error or crashed community widget, missing
+  service-account key, the server's latest weather fetch failed) shows
+  a warning dot on the main screen. The weather status
+  (`lib/weather-status.ts`, refetched each time Settings opens) shows
+  the last successful update and the most recent failure as a plain
+  sentence plus the error code (e.g. "Couldn't look up
+  api.open-meteo.com — no internet, or a DNS problem (ENOTFOUND)"), so
+  the cause can be read off the touchscreen before a reboot clears it.
+  It lives in server memory only, is hidden when weather isn't
+  configured, and covers the server's fetch — not What to Wear's
+  zip-code path, which the browser fetches itself. The reason never
+  includes the error message (the request URL carries the coordinates),
+  only a mapped sentence and the code. The panel is height-capped to the
   on-screen space and scrolls; because it opens upward from the rail and
   floating-ui re-anchors only on window resize, a view switch and the
   OSK opening/closing each dispatch a `resize` so it stays on its

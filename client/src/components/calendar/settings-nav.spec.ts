@@ -11,6 +11,7 @@ const NONE: SettingsProblems = {
   widgetFolderErrors: 0,
   communityWidgetProblems: 0,
   serviceAccountMissing: false,
+  weatherFailing: false,
 };
 
 describe("SETTINGS_CATEGORIES", () => {
@@ -46,6 +47,7 @@ describe("categoryHasWarning", () => {
     [{ widgetFolderErrors: 2 }, "widgets"],
     [{ communityWidgetProblems: 1 }, "widgets"],
     [{ serviceAccountMissing: true }, "calendars"],
+    [{ weatherFailing: true }, "system"],
   ];
 
   for (const [problem, expected] of cases) {
