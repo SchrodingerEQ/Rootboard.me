@@ -89,3 +89,19 @@ export function formatClock(iso: string): string {
   if (Number.isNaN(d.getTime())) return "";
   return formatTimeLabel(minutesOfDay(d));
 }
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** ISO timestamp → "7:30 AM" when it is from `now`'s local day, "Sat 7:30 AM"
+ *  within the past week, else "Mar 3, 7:30 AM" — so old data never reads as
+ *  today's. "" if unparsable. */
+export function formatAsOf(iso: string, now: Date): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const clock = formatTimeLabel(minutesOfDay(d));
+  if (dateKeyOf(d) === dateKeyOf(now)) return clock;
+  const weekAgo = new Date(now);
+  weekAgo.setDate(weekAgo.getDate() - 6);
+  if (dateKeyOf(d) >= dateKeyOf(weekAgo) && d < now) return `${WEEKDAYS[d.getDay()].slice(0, 3)} ${clock}`;
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${clock}`;
+}

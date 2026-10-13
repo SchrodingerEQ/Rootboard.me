@@ -1,0 +1,163 @@
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { buildAdvice } from "../../client/src/widgets/what-to-wear/advice";
+import { emptyStoredState, fetchForecast } from "../../client/src/widgets/what-to-wear/forecast";
+import { resolveSettings } from "../../client/src/widgets/what-to-wear/settings";
+import { formatAsOf } from "../../client/src/widgets/what-to-wear/time-windows";
+
+/** A minimal Open-Meteo response covering 7 local days from `startDay`. */
+function openMeteoJson(startDay: string) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const start = new Date(`${startDay}T00:00:00`);
+  const time = Array.from({ length: 7 * 24 }, (_, i) => {
+    const d = new Date(start.getTime());
+    d.setHours(d.getHours() + i);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+  });
+  const fill = (v: number) => time.map(() => v);
+  return {
+    current: { temperature_2m: 10, weather_code: 1 },
+    daily: { time: [startDay], weather_code: [1], temperature_2m_max: [15], temperature_2m_min: [5] },
+    hourly: {
+      time,
+      temperature_2m: fill(10),
+      apparent_temperature: fill(9),
+      precipitation_probability: fill(0),
+      precipitation: fill(0),
+      snowfall: fill(0),
+      weather_code: fill(1),
+      wind_speed_10m: fill(5),
+      uv_index: fill(2),
+    },
+  };
+}
+
+/** Upstream answers once, then is unreachable. */
+function stubUpstreamThenOutage() {
+  let calls = 0;
+  vi.stubGlobal("fetch", async () => {
+    calls++;
+    if (calls === 1) return new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 });
+    throw new Error("fetch failed");
+  });
+}
+
+async function loadService() {
+  vi.resetModules(); // the service caches at module level
+  return import("./weatherService");
+}
+
+beforeEach(() => {
+  vi.stubEnv("WEATHER_ENABLED", "true");
+  vi.stubEnv("WEATHER_LAT", "0");
+  vi.stubEnv("WEATHER_LON", "0");
+  vi.stubEnv("WEATHER_UNITS", "celsius");
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2030, 2, 10, 6, 29));
+  vi.spyOn(console, "error").mockImplementation(() => {});
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
+});
+
+describe("getWeather stale flag", () => {
+  test("a fresh forecast carries no stale flag", async () => {
+    stubUpstreamThenOutage();
+    const { getWeather } = await loadService();
+    const w = await getWeather();
+    expect(w.enabled).toBe(true);
+    expect("stale" in w).toBe(false);
+  });
+
+  test("after the cache expires and upstream fails, the last good forecast is served flagged stale", async () => {
+    stubUpstreamThenOutage();
+    const { getWeather } = await loadService();
+    const first = await getWeather();
+    vi.setSystemTime(new Date(2030, 2, 11, 16, 0));
+    const second = await getWeather();
+    expect(second).toMatchObject({ enabled: true, stale: true });
+    expect(second.enabled && second.updatedAt).toBe(first.enabled && first.updatedAt);
+  });
+});
+
+describe("describeFetchError", () => {
+  test.each([
+    [Object.assign(new Error("aborted"), { name: "AbortError" }), "Timed out — Open-Meteo didn't answer in 10 seconds"],
+    [new TypeError("fetch failed", { cause: { code: "ENOTFOUND" } }), "Couldn't look up api.open-meteo.com — no internet, or a DNS problem (ENOTFOUND)"],
+    [new TypeError("fetch failed", { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } }), "Timed out — Open-Meteo didn't answer in 10 seconds (UND_ERR_CONNECT_TIMEOUT)"],
+    [new TypeError("fetch failed", { cause: { errors: [{ code: "ENETUNREACH" }] } }), "Couldn't connect to Open-Meteo — network problem (ENETUNREACH)"],
+    [new TypeError("fetch failed", { cause: { code: "CERT_NOT_YET_VALID" } }), "Secure connection failed — check the kiosk's date and time (CERT_NOT_YET_VALID)"],
+    [new SyntaxError("Unexpected token <"), "Open-Meteo sent an unexpected response"],
+    [new TypeError("fetch failed"), "Network error"],
+  ])("%s", async (err, expected) => {
+    const { describeFetchError } = await loadService();
+    expect(describeFetchError(err)).toBe(expected);
+  });
+
+  test("never echoes the error message, which could carry the request URL", async () => {
+    const { describeFetchError } = await loadService();
+    const reason = describeFetchError(new Error("GET https://api.open-meteo.com/v1/forecast?latitude=12.34 failed", { cause: { code: "lat=12.34" } }));
+    expect(reason).toBe("Network error");
+  });
+});
+
+describe("getWeatherStatus", () => {
+  test("not configured", async () => {
+    vi.stubEnv("WEATHER_ENABLED", "false");
+    const { getWeatherStatus } = await loadService();
+    expect(getWeatherStatus()).toEqual({ configured: false, lastSuccessAt: null, lastError: null });
+  });
+
+  test("records the last success, then the failure reason", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", async () => {
+      calls++;
+      if (calls === 1) return new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 });
+      throw new TypeError("fetch failed", { cause: { code: "EAI_AGAIN" } });
+    });
+    const { getWeather, getWeatherStatus } = await loadService();
+    const first = await getWeather();
+    expect(getWeatherStatus()).toMatchObject({ configured: true, lastError: null });
+    expect(getWeatherStatus().lastSuccessAt).toBe(first.enabled && first.updatedAt);
+
+    vi.setSystemTime(new Date(2030, 2, 11, 16, 0));
+    await getWeather();
+    expect(getWeatherStatus().lastError).toEqual({
+      at: new Date(2030, 2, 11, 16, 0).toISOString(),
+      reason: "Couldn't look up api.open-meteo.com — no internet, or a DNS problem (EAI_AGAIN)",
+    });
+  });
+
+  test("an HTTP error names the status", async () => {
+    vi.stubGlobal("fetch", async () => new Response("{}", { status: 429 }));
+    const { getWeather, getWeatherStatus } = await loadService();
+    await getWeather();
+    expect(getWeatherStatus().lastError?.reason).toBe("Open-Meteo answered HTTP 429 (too many requests)");
+  });
+});
+
+// Regression for the kiosk showing "Can't reach the weather right now" under
+// a footer of "Weather as of 6:29 AM · Open-Meteo": the server re-served a
+// days-old forecast that the widget took for fresh.
+describe("What to Wear on a long upstream outage", () => {
+  test("reports the forecast as from earlier, with its day, once it no longer covers the day shown", async () => {
+    stubUpstreamThenOutage();
+    const { getWeather } = await loadService();
+    await getWeather(); // Sun 06:29, good
+
+    const now = new Date(2030, 2, 11, 16, 0); // Mon after school → shows Tuesday
+    vi.setSystemTime(now);
+    const served = await getWeather();
+    const hostFetch = (async () => new Response(JSON.stringify(served), { status: 200 })) as unknown as typeof fetch;
+
+    const settings = resolveSettings({});
+    const r = await fetchForecast(hostFetch, settings, emptyStoredState(), now);
+    expect(r.status).toBe("unreachable"); // footer: "Weather from earlier — as of …"
+    expect(r.bundle).not.toBeNull();
+    expect(buildAdvice(r.bundle!, settings, now)).toBeNull(); // → "The weather is out of date"
+    expect(formatAsOf(r.bundle!.fetchedAt, now)).toBe("Sun 6:29 AM");
+  });
+});

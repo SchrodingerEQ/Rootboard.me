@@ -25,7 +25,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   { id: "calendars", label: "Calendars", summary: "Share email, show/hide, remove, add by ID", icon: Calendar },
   { id: "widgets", label: "Widgets", summary: "Built-in layout + settings, community, folder errors", icon: LayoutGrid },
   { id: "keyboard", label: "Keyboard", summary: "On-screen keyboard: Auto/Always/Off", icon: Keyboard },
-  { id: "system", label: "System", summary: "Check for updates, roll back", icon: RefreshCw },
+  { id: "system", label: "System", summary: "Check for updates, roll back, weather status", icon: RefreshCw },
 ];
 
 /** Problems the main screen must surface so they are never hidden inside a closed category. */
@@ -36,6 +36,8 @@ export interface SettingsProblems {
   communityWidgetProblems: number;
   /** The Google service-account key file is missing (calendar setup needed). */
   serviceAccountMissing: boolean;
+  /** The server's latest Open-Meteo fetch failed (weather-status.ts). */
+  weatherFailing: boolean;
 }
 
 export function categoryHasWarning(id: SettingsView, p: SettingsProblems): boolean {
@@ -46,6 +48,8 @@ export function categoryHasWarning(id: SettingsView, p: SettingsProblems): boole
       return p.widgetFolderErrors > 0 || p.communityWidgetProblems > 0;
     case "calendars":
       return p.serviceAccountMissing;
+    case "system":
+      return p.weatherFailing;
     default:
       return false;
   }

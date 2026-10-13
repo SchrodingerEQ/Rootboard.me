@@ -11,6 +11,8 @@ export interface WhatToWearProps {
   location: string;
   units: Units;
   footer: string;
+  /** "as of" label of a forecast too old to cover the day shown; "" if none. */
+  staleSince: string;
 }
 
 const card: CSSProperties = {
@@ -56,7 +58,7 @@ function WindowCard({ w, units }: { w: WindowSummary; units: Units }) {
   );
 }
 
-export function WhatToWear({ loaded, status, advice, location, units, footer }: WhatToWearProps) {
+export function WhatToWear({ loaded, status, advice, location, units, footer, staleSince }: WhatToWearProps) {
   let body: JSX.Element;
   if (!loaded) {
     body = <MessagePanel text="Checking the weather… ☁️" />;
@@ -64,6 +66,8 @@ export function WhatToWear({ loaded, status, advice, location, units, footer }: 
     body = <MessagePanel text="Ask a grown-up to add your zip code in Settings 🙂" hint="Settings is on the nav rail." />;
   } else if (status === "invalid-zip") {
     body = <MessagePanel text="That zip code didn't work — check it in Settings" />;
+  } else if (!advice && staleSince) {
+    body = <MessagePanel text="The weather is out of date ☁️" hint={`The kiosk hasn't been able to update it since ${staleSince}. It will keep trying.`} />;
   } else if (!advice) {
     body = <MessagePanel text="Can't reach the weather right now. Try again in a bit ☁️" />;
   } else {

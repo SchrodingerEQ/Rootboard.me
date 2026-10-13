@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { HourPoint } from "./types";
 import {
   dateKeyOf,
+  formatAsOf,
   formatClock,
   formatTimeLabel,
   hoursInRange,
@@ -82,5 +83,13 @@ describe("labels", () => {
   test("formatClock renders an ISO timestamp's local time", () => {
     const iso = new Date(2030, 2, 12, 7, 30).toISOString();
     expect(formatClock(iso)).toBe("7:30 AM");
+  });
+  test("formatAsOf adds the day once the timestamp is not from today", () => {
+    const now = new Date(2030, 2, 12, 16, 0); // Tuesday
+    expect(formatAsOf(new Date(2030, 2, 12, 6, 29).toISOString(), now)).toBe("6:29 AM");
+    expect(formatAsOf(new Date(2030, 2, 10, 6, 29).toISOString(), now)).toBe("Sun 6:29 AM");
+    expect(formatAsOf(new Date(2030, 2, 6, 6, 29).toISOString(), now)).toBe("Wed 6:29 AM");
+    expect(formatAsOf(new Date(2030, 2, 5, 6, 29).toISOString(), now)).toBe("Mar 5, 6:29 AM");
+    expect(formatAsOf("nope", now)).toBe("");
   });
 });

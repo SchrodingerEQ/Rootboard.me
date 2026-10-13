@@ -29,6 +29,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useOskMode } from "@/hooks/use-osk-mode";
 import { SETTINGS_CATEGORIES, categoryHasWarning, type SettingsView } from "./settings-nav";
+import { describeWeatherStatus, type WeatherStatus } from "@/lib/weather-status";
 import { BrightnessControl } from "./brightness-control";
 import type { OskMode } from "@/lib/osk";
 
@@ -391,6 +392,15 @@ export function SettingsMenu({
   });
   const serviceAccountEmail = serviceAccountData?.email ?? null;
 
+  // Fetched fresh each time Settings opens (the app-wide default is staleTime: Infinity).
+  const { data: weatherStatusData } = useQuery<WeatherStatus>({
+    queryKey: ['/api/weather/status'],
+    enabled: isOpen,
+    staleTime: 0,
+    retry: false,
+  });
+  const weatherStatus = describeWeatherStatus(weatherStatusData, new Date());
+
   const handleCopyEmail = () => {
     if (!serviceAccountEmail) return;
     navigator.clipboard.writeText(serviceAccountEmail).then(() => {
@@ -430,6 +440,7 @@ export function SettingsMenu({
       (e) => e.status === "crashed" || e.status === "error",
     ).length,
     serviceAccountMissing: !!serviceAccountError,
+    weatherFailing: weatherStatus?.failing ?? false,
   };
   const activeCategory = SETTINGS_CATEGORIES.find((c) => c.id === view);
 
@@ -1102,6 +1113,26 @@ export function SettingsMenu({
                   </Button>
                 )}
               </div>
+
+              {/* Weather status — why the weather stopped updating, readable
+                  without a terminal. Hidden when weather isn't set up. */}
+              {weatherStatus && (
+                <>
+                  <Separator />
+                  <div className="space-y-1" data-testid="weather-status">
+                    <div className="flex items-center gap-2">
+                      {weatherStatus.failing && <AlertTriangle className="h-4 w-4 text-rb-warn" />}
+                      <Label className="text-sm font-medium">Weather</Label>
+                    </div>
+                    <p className="text-xs text-rb-muted leading-snug">Last update: {weatherStatus.lastUpdate}</p>
+                    {weatherStatus.lastError && (
+                      <p className={`text-xs leading-snug ${weatherStatus.failing ? "text-rb-warn-ink" : "text-rb-faint"}`}>
+                        Last error: {weatherStatus.lastError}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             )}
           </div>

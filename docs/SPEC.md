@@ -1,8 +1,8 @@
 # Rootboard.me — As-Built Specification
 
 Regenerated from the code at v1.4.1 (2026-07-23); maintained
-incrementally through the widget-system phases and current as of v1.7.1
-(2026-10-05). This documents what the app **actually does**, including
+incrementally through the widget-system phases and current as of v1.7.2
+(2026-10-13). This documents what the app **actually does**, including
 quirks. Update it when behavior changes.
 Public document — no deployment specifics (hostnames, IPs, real names).
 
@@ -51,6 +51,7 @@ retention sweep, which runs inside each sync.
 |---|---|---|---|
 | GET | `/api/version` | `{version, timestamp}` — supervisor health-check target | none |
 | GET | `/api/weather` | Cached Open-Meteo forecast, or `{enabled:false}` | none |
+| GET | `/api/weather/status` | `{configured, lastSuccessAt, lastError:{at, reason}}` — server-side Open-Meteo health for Settings → System | none |
 | GET | `/api/calendar/events` | Events overlapping `from`/`to` (legacy `startDate`/`endDate` accepted) | none |
 | GET | `/api/calendar/calendars` | Google calendar list | none |
 | DELETE | `/api/calendar/calendars/:calendarId` | Unsubscribe + purge local events | none |
@@ -176,7 +177,10 @@ contacts only `api.open-meteo.com` (HTTPS, keyless). When weather is not
 configured the response is `{ enabled: false }`; when it is configured
 but the upstream fetch failed with a cold cache it is
 `{ enabled: false, configured: true }` (an outage, not a setup problem;
-an older server without the field reads as not configured).
+an older server without the field reads as not configured). When the
+upstream fetch fails with a warm cache, the last good forecast is served
+with an additive `stale: true` (its `updatedAt` says how old it is);
+fresh responses omit the field.
 
 ### 2.6 Environment variables
 
@@ -219,10 +223,21 @@ an older server without the field reads as not configured).
   visibility switches, remove, add-calendar), **Widgets** (layout
   picker — enable/disable + reorder installed widgets and their
   settings, community widgets, widget-folder errors), **Keyboard** (OSK
-  mode), **System** (update check, roll back). It always reopens on the
-  main screen; a category with a problem (theme error, widget-folder
-  error or crashed community widget, missing service-account key) shows
-  a warning dot on the main screen. The panel is height-capped to the
+  mode), **System** (update check, roll back, weather status). It always
+  reopens on the main screen; a category with a problem (theme error,
+  widget-folder error or crashed community widget, missing
+  service-account key, the server's latest weather fetch failed) shows
+  a warning dot on the main screen. The weather status
+  (`lib/weather-status.ts`, refetched each time Settings opens) shows
+  the last successful update and the most recent failure as a plain
+  sentence plus the error code (e.g. "Couldn't look up
+  api.open-meteo.com — no internet, or a DNS problem (ENOTFOUND)"), so
+  the cause can be read off the touchscreen before a reboot clears it.
+  It lives in server memory only, is hidden when weather isn't
+  configured, and covers the server's fetch — not What to Wear's
+  zip-code path, which the browser fetches itself. The reason never
+  includes the error message (the request URL carries the coordinates),
+  only a mapped sentence and the code. The panel is height-capped to the
   on-screen space and scrolls; because it opens upward from the rail and
   floating-ui re-anchors only on window resize, a view switch and the
   OSK opening/closing each dispatch a `resize` so it stays on its
@@ -754,10 +769,16 @@ layout picker.
   your zip code in Settings"; a host-side outage (`enabled: false,
   configured: true`) renders the cached forecast with the "from earlier"
   footer (or "Can't reach the weather right now" with no cache); the
-  host-path footer time comes from the payload's `updatedAt`; invalid zip → "That zip code didn't work";
+  host-path footer time comes from the payload's `updatedAt`; a host
+  payload flagged `stale: true` (server re-serving its last good forecast)
+  is treated the same as an outage with cache — rendered with the "from
+  earlier" footer, not persisted; invalid zip → "That zip code didn't work";
   fetch failed with cache → render it, footer "Weather from earlier — as
-  of …"; failed with no cache → "Can't reach the weather right now".
-  Nothing throws out of `mount()`/`refresh()`.
+  of …"; failed with no cache → "Can't reach the weather right now". The
+  footer time gains the day ("Sun 6:29 AM", or "Mar 5, 6:29 AM" past a
+  week) when the data is not from today. A forecast that no longer covers
+  the day shown → "The weather is out of date" with the last-update time
+  as the hint. Nothing throws out of `mount()`/`refresh()`.
 - **Known limitation:** times are compared in the kiosk's local zone; a
   zip in a different time zone than the kiosk shifts the windows by the
   offset (not a v1 use case).
