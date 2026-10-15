@@ -39,3 +39,18 @@ regexes = [
   '''your-project-id\.iam\.gserviceaccount\.com''', # documentation placeholder
   '''key\.client_email''',                          # source field reference, not a value
 ]
+# Historical commits (2025-07-01 to 2025-08-12) that tracked google_credentials.json,
+# a legacy OAuth token file holding a Google access and refresh token. The file was
+# removed in 127ab64 and the grant was revoked by the founder on 2026-10-14.
+# Allowlisted by commit, not by path, so any new commit of that file is still caught.
+commits = [
+  "51071886e3353aa487443ae20aa940ea92ddff13",
+  "12f531929cc701eb6baf6896e0a5b126cbb1206c",
+  "86207e23d7b1a277a478a44e596aa459373aaf38",
+  "895196a686736cef8b99566565a5f8a3e0f379cd",
+  "95c5ae29e463a6404d199563cd5a54c1f56bd490",
+  "975f41acce9f579ebd0f4319c8b60803acb264d4",
+  "9df0bed345e12ce00242ae24899c36dd536e4dfd",
+  "bfbbe47f31e797536421b653c88363fceae214e7",
+  "ea342d5a9781edcfdaada95907028050783497e7",
+]
