@@ -1,0 +1,74 @@
+# Crucible triage gate — enforces PR-POLICY.md on GitHub's side.
+#
+# A required status check (via branch protection). It passes only when:
+#   * exactly one tier label is present (auto-merge | principle-flag | needs-founder), AND
+#   * the PR body carries the required sections, AND
+#   * for principle-flag / needs-founder, the founder has added `founder-approved`.
+#
+# Solo-founder note: GitHub won't let an account approve its own PR, and the
+# agent pushes as the founder's account, so "required reviewers" can't be used.
+# The `founder-approved` label is the founder's approval signal instead.
+#
+# Installed from Crucible-HQ/claude-config/repo-template/.
+
+name: Triage gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  gate:
+    name: PR-POLICY tier check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate tier label and body
+        env:
+          LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          labels=$(echo "$LABELS_JSON" | tr -d '[]" ' | tr ',' '\n')
+
+          has() { echo "$labels" | grep -qx "$1"; }
+
+          tier_count=0
+          for t in auto-merge principle-flag needs-founder; do
+            if has "$t"; then tier_count=$((tier_count+1)); tier="$t"; fi
+          done
+
+          if [ "$tier_count" -eq 0 ]; then
+            echo "::error::No tier label. Every PR needs exactly one of: auto-merge, principle-flag, needs-founder (see PR-POLICY.md). Run /crucible-code-standards-review then /pr."
+            exit 1
+          fi
+          if [ "$tier_count" -gt 1 ]; then
+            echo "::error::More than one tier label present. Keep the highest tier only."
+            exit 1
+          fi
+
+          # Required body sections — the founder-readable format from PR-POLICY.md
+          missing=""
+          for h in "## See it working" "## What changed and why" "## Tier" "## Evidence" "## Code review"; do
+            if ! printf '%s' "$BODY" | grep -qF "$h"; then missing="$missing\n  - $h"; fi
+          done
+          if [ -n "$missing" ]; then
+            printf "::error::PR body is missing required sections:%b\nUse /pr to write the body.\n" "$missing"
+            exit 1
+          fi
+
+          case "$tier" in
+            auto-merge)
+              echo "Tier: safe zone. Gate passes; auto-merge will land it when CI is green."
+              ;;
+            principle-flag|needs-founder)
+              if has "founder-approved"; then
+                echo "Tier: $tier — founder approval present (founder-approved). Gate passes."
+              else
+                echo "::error::Tier '$tier' requires the founder's decision. Waiting for the founder-approved label."
+                exit 1
+              fi
+              ;;
+          esac

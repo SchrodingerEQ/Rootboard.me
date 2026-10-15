@@ -17,7 +17,7 @@ const css = fs.readFileSync(path.join(clientRoot, "src/index.css"), "utf-8");
 
 /** Every `touch-action: <value>` declaration in a stylesheet / inline <style>. */
 function touchActions(source: string): string[] {
-  return [...source.matchAll(/touch-action\s*:\s*([^;}]+)/g)].map((m) => m[1].trim());
+  return Array.from(source.matchAll(/touch-action\s*:\s*([^;}]+)/g), (m) => m[1].trim());
 }
 
 describe("kiosk zoom policy", () => {

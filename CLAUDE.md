@@ -132,3 +132,26 @@ Check it when asked what's next or what's outstanding; when you
 complete work that matches an open item, propose checking it off
 (confirm with me first). Add new discovered work there, not in
 ad-hoc notes.
+
+## Pull requests and merging
+
+This repo follows the company PR policy (`Crucible-HQ/PR-POLICY.md`, loaded
+via the HQ import). Before any branch goes to main: run `/crucible-code-standards-review`
+against `main`, then `/pr`. Never open a PR with red checks. Never apply a
+lower tier than `/crucible-code-standards-review` reported.
+
+After cloning, run `git config core.hooksPath .githooks` once so the gitleaks
+pre-commit secret scan runs (PR-POLICY gate 4); CI scans the full history as
+the backstop.
+
+**What "done" means for this product:** none yet — to be set with the
+founder (TASKS.md).
+
+**Project-specific hard stops** (in addition to the company list; may add,
+never remove):
+- none yet — to be set with the founder (TASKS.md).
+
+**Project-specific mandatory verifications:**
+- none yet — to be set with the founder (TASKS.md).
+
+Record the reasoning for any entry above in `docs/decisions/`.

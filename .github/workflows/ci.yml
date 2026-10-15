@@ -1,0 +1,122 @@
+# Crucible CI — layer-one deterministic gate.
+# Stack-agnostic: runs whatever test / typecheck / lint scripts the repo defines,
+# plus a full-history gitleaks secret scan (PR-POLICY.md gate 4, layer 2).
+# Installed from Crucible-HQ/claude-config/repo-template/. Edit the per-repo
+# copy only to add steps; never remove the gate.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    name: tests · types · lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------- Node / TypeScript projects ----------
+      - name: Detect Node project
+        id: node
+        run: |
+          if [ -f package.json ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-node@v4
+        if: steps.node.outputs.present == 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      # Rootboard: package-lock.json is written with npm 11, and npm 10 (bundled
+      # with Node 20/22) rejects it under `npm ci` — see CLAUDE.md.
+      - name: Use npm 11
+        if: steps.node.outputs.present == 'true'
+        run: npm install -g npm@11.16.0
+
+      - name: Install (npm)
+        if: steps.node.outputs.present == 'true'
+        run: npm ci
+
+      - name: Lint (npm)
+        if: steps.node.outputs.present == 'true'
+        run: npm run lint --if-present
+
+      - name: Type check (npm)
+        if: steps.node.outputs.present == 'true'
+        run: npm run typecheck --if-present
+
+      - name: Test (npm)
+        if: steps.node.outputs.present == 'true'
+        # Rootboard: no `-- --ci` — Vitest rejects unknown flags and detects CI itself.
+        run: npm test --if-present
+
+      # ---------- Python projects ----------
+      - name: Detect Python project
+        id: py
+        run: |
+          if [ -f pyproject.toml ] || [ -f requirements.txt ]; then echo "present=true" >> "$GITHUB_OUTPUT"; else echo "present=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: actions/setup-python@v5
+        if: steps.py.outputs.present == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install (pip)
+        if: steps.py.outputs.present == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          if [ -f pyproject.toml ]; then pip install -e . || true; fi
+          pip install pytest ruff mypy
+
+      - name: Lint (ruff)
+        if: steps.py.outputs.present == 'true'
+        run: ruff check .
+
+      - name: Type check (mypy)
+        if: steps.py.outputs.present == 'true'
+        run: mypy . --ignore-missing-imports || true   # tighten to a hard fail once the repo is clean
+
+      - name: Test (pytest)
+        if: steps.py.outputs.present == 'true'
+        run: pytest -q
+
+      # ---------- Nothing detected ----------
+      - name: No recognised project
+        if: steps.node.outputs.present == 'false' && steps.py.outputs.present == 'false'
+        run: |
+          echo "::error::No package.json or pyproject.toml/requirements.txt found. Add the repo's test/lint/typecheck commands to .github/workflows/ci.yml."
+          exit 1
+
+  secrets:
+    name: gitleaks · secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history: the scan covers every commit, not just this diff
+
+      - name: Install gitleaks (pinned, checksum-verified)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+        run: |
+          set -euo pipefail
+          curl -sSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+          rm -f gitleaks gitleaks.tar.gz
+
+      - name: Scan full git history
+        run: |
+          set -euo pipefail
+          CFG=""
+          if [ -f .gitleaks.toml ]; then CFG="-c .gitleaks.toml"; fi
+          gitleaks git --redact --no-banner --exit-code 1 $CFG .
