@@ -29,7 +29,7 @@ path = '''(?:^|/)(?:service-account\.json|google_credentials\.json|\.env|\.env\.
 
 # --- Allowlist: triaged, safe-by-design ------------------------------------
 
-[allowlist]
+[[allowlists]]
 description = "Known-safe matches (intentional templates, docs, code references)"
 paths = [
   '''(?:^|/)\.env\.example$''',   # template, intentionally tracked (gitignore whitelists it)
@@ -42,7 +42,12 @@ regexes = [
 # Historical commits (2025-07-01 to 2025-08-12) that tracked google_credentials.json,
 # a legacy OAuth token file holding a Google access and refresh token. The file was
 # removed in 127ab64 and the grant was revoked by the founder on 2026-10-14.
-# Allowlisted by commit, not by path, so any new commit of that file is still caught.
+# Scoped to that file AND those commits, so every other rule still scans those
+# commits and any new commit of the file is still caught.
+[[allowlists]]
+description = "Revoked legacy OAuth token file in historical commits"
+condition = "AND"
+paths = ['''(?:^|/)google_credentials\.json$''']
 commits = [
   "51071886e3353aa487443ae20aa940ea92ddff13",
   "12f531929cc701eb6baf6896e0a5b126cbb1206c",

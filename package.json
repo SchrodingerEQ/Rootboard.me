@@ -10,7 +10,7 @@
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "typecheck": "tsc",
+    "typecheck": "npm run check",
     "lint": "echo No linter configured yet, see TASKS.md",
     "db:push": "drizzle-kit push"
   },
