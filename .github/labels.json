@@ -1,0 +1,6 @@
+[
+  { "name": "auto-merge",     "color": "0E8A16", "description": "PR-POLICY safe zone — merges itself when CI and the triage gate are green" },
+  { "name": "principle-flag", "color": "FBCA04", "description": "PR-POLICY soft flag — touches a Crucible principle; founder decides" },
+  { "name": "needs-founder",     "color": "B60205", "description": "PR-POLICY hard stop — irreversible or founder-ratified; waits for approval" },
+  { "name": "founder-approved",  "color": "1D76DB", "description": "Founder has reviewed and approved a flagged or stopped PR" }
+]
