@@ -73,10 +73,12 @@ These are gitignored — confirm none are staged or force-added:
    `private_key`, `BEGIN PRIVATE KEY`, `client_email`, `192.168.`, `10.0.`, `/home/`, `@gmail.com`, known hostnames/usernames.
 4. Confirm `.gitignore` still covers every sensitive path above.
 5. Treat "what ships" as **everything tracked by git** (that's what lands in the public release tarball).
-6. A **gitleaks** pre-commit hook (config: `.gitleaks.toml`, hook: `.githooks/`) automates steps 1–2 against staged content and blocks the commit on a hit. It is a safety net, **not** a replacement for this review: it does not scan commit messages, release notes, or existing history, and it can be bypassed with `--no-verify`. New clones must enable it once with `git config core.hooksPath .githooks`.
+6. A **gitleaks** pre-commit hook (config: `.gitleaks.toml`, hook: `.githooks/`) automates steps 1–2 against staged content and blocks the commit on a hit. It is a safety net, **not** a replacement for this review: it does not scan commit messages, release notes, or existing history, and it can be bypassed with `--no-verify`. New clones must enable it once with `git config core.hooksPath .githooks`. The backstop is the `gitleaks · secret scan` CI job (`.github/workflows/ci.yml`), which scans the full git history on every PR and is a required check on `main`.
 
 ### If a secret was ever committed
 Git history retains it even after deletion, and this repo is public — so **treat any previously committed secret as compromised**: rotate it immediately (regenerate the Google service-account key, etc.) and consider rewriting history.
+
+Known case: the legacy OAuth token file `google_credentials.json` was committed in 2025 (nine commits, removed in `127ab64`). The grant was revoked on 2026-10-14 and history was not rewritten; those commits are allowlisted in `.gitleaks.toml` by file path AND commit, so the full-history CI scan passes while any new commit of that file is still blocked.
 
 ## Broader security checks before a release
 
@@ -91,8 +93,8 @@ Git history retains it even after deletion, and this repo is public — so **tre
 - `reusePort` is enabled on non-Windows only (`server/index.ts`) — it throws `ENOTSUP` on Windows.
 - After changing `server/**`, rebuild (`npm run build`) — the server is bundled into `dist/index.js`.
 - On the Pi the app runs as the `touchscreen-scheduler` systemd service → `scripts/start.sh` (health-check + auto-rollback supervisor). Files preserved across updates are listed in `PRESERVE_PATHS` (`updateService.ts`) and the `start.sh` rollback case — keep those two in sync.
-- **`package-lock.json` is written with npm 11.** npm 10 (bundled with Node 22) lays out a few nested packages differently (e.g. its own `esbuild` copy under `vitest`), so npm 10's strict `npm ci` rejects the lock ("Missing: esbuild@… from lock file") even though it is valid. Plain `npm install` works on either version — that's what the updater, rollback and `start.sh` use, so kiosks are unaffected. For a strict install on npm 10, run `npx npm@11 ci`. Don't regenerate/commit the lock with npm 10: the next npm 11 install flips it back (and it strips npm 11's `libc` fields).
-- **Hooks need gitleaks 8.19+** (the hook calls `gitleaks git --staged`). Ubuntu/Debian `apt` ships an older version; use a GitHub release binary or `go install github.com/zricethezav/gitleaks/v8@latest`.
+- **`package-lock.json` is written with npm 11.** npm 10 (bundled with Node 22) lays out a few nested packages differently (e.g. its own `esbuild` copy under `vitest`), so npm 10's strict `npm ci` rejects the lock ("Missing: esbuild@… from lock file") even though it is valid. Plain `npm install` works on either version — that's what the updater, rollback and `start.sh` use, so kiosks are unaffected. For a strict install on npm 10, run `npx npm@11 ci`. CI does the equivalent: it installs `npm@11.16.0` before `npm ci`. Don't regenerate/commit the lock with npm 10: the next npm 11 install flips it back (and it strips npm 11's `libc` fields).
+- **Hooks need gitleaks 8.19+** (the hook calls `gitleaks git --staged`). Ubuntu/Debian `apt` ships an older version; use a GitHub release binary or `go install github.com/zricethezav/gitleaks/v8@latest`. `.gitleaks.toml` uses the `[[allowlists]]` table form; CI pins gitleaks 8.30.1, and older releases may fail to load the config.
 
 <!-- Crucible Creations — company principles digest.
      Source of truth: SchrodingerEQ/Crucible-HQ/CLAUDE.md
