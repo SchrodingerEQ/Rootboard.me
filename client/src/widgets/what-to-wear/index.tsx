@@ -7,7 +7,7 @@ import { buildAdvice } from "./advice";
 import { emptyStoredState, fetchForecast, normalizeStoredState, type ForecastStatus, type StoredState } from "./forecast";
 import type { ForecastBundle } from "./types";
 import { resolveSettings } from "./settings";
-import { retryDelayMs } from "./retry";
+import { IDLE_RETRY, nextRetryState, type RetryState } from "./retry";
 import { formatAsOf } from "./time-windows";
 import { WhatToWear } from "./WhatToWear";
 
@@ -59,8 +59,7 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
   const pending = useRef(false);
   const alive = useRef(true);
   // Consecutive "unreachable" results and when the next retry is due (retry.ts).
-  const failures = useRef(0);
-  const retryAt = useRef<number | null>(null);
+  const retry = useRef<RetryState>(IDLE_RETRY);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -70,19 +69,13 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
 
   const reload = useCallback((opts?: { retry?: boolean }): Promise<void> => {
     if (inflight.current) {
-      pending.current = true;
+      // A retry landing mid-load is already covered by that load; only a
+      // host- or zip-driven request needs a rerun on fresh settings afterwards.
+      if (!opts?.retry) pending.current = true;
       return inflight.current;
     }
     const noteOutcome = (unreachable: boolean) => {
-      if (!unreachable) {
-        failures.current = 0;
-        retryAt.current = null;
-        return;
-      }
-      // A host-driven (or initial) load restarts the bounded sequence.
-      failures.current = opts?.retry ? failures.current + 1 : 1;
-      const delay = retryDelayMs(failures.current);
-      retryAt.current = delay === null ? null : Date.now() + delay;
+      retry.current = nextRetryState(retry.current, { unreachable, retry: opts?.retry === true }, Date.now());
     };
     inflight.current = (async () => {
       const zipAtStart = settingsRef.current.zipCode;
@@ -149,8 +142,9 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
     if (!visible) return;
     const tick = () => {
       setNow(new Date());
-      if (retryAt.current !== null && Date.now() >= retryAt.current) {
-        retryAt.current = null;
+      const due = retry.current.retryAt;
+      if (due !== null && Date.now() >= due) {
+        retry.current = { ...retry.current, retryAt: null };
         void reload({ retry: true });
       }
     };

@@ -20,6 +20,10 @@
  * stale data or a disabled/empty payload — nothing throws into the route.
  */
 
+import fs from "fs";
+import path from "path";
+import { WEATHER_UPSTREAM_TIMEOUT_MS } from "@shared/weather-timeouts";
+
 export interface WeatherCurrent {
   temp: number;
   code: number;
@@ -71,13 +75,10 @@ export interface WeatherPayload {
  *  `{ enabled: false }` alone, which means weather is not configured. */
 export type WeatherResponse = WeatherPayload | { enabled: false; configured?: true };
 
-import fs from "fs";
-import path from "path";
-
 const CACHE_PATH = path.join(process.cwd(), "data", "weather-cache.json");
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const FETCH_TIMEOUT_MS = 20 * 1000; // the kiosk's Wi-Fi stalls for seconds at a time; 10 s lost real fetches
+const FETCH_TIMEOUT_MS = WEATHER_UPSTREAM_TIMEOUT_MS; // shared with What to Wear's browser timeout
 const HOURLY_FIELDS =
   "temperature_2m,apparent_temperature,precipitation_probability,precipitation,snowfall,weather_code,wind_speed_10m,uv_index";
 const HOURLY_COUNT = 48;
@@ -156,12 +157,19 @@ async function persist(payload: WeatherPayload): Promise<void> {
   }
 }
 
-// Warm the stale fallback from disk at startup. cachedAt stays 0 so the
-// first request still asks upstream — the file is only ever served flagged
-// stale, never as fresh.
-{
+// Warm the stale fallback from disk on first use (not at import, so it does
+// not depend on when .env is loaded). cachedAt stays 0 so the first request
+// still asks upstream — the file is only ever served flagged stale, never as
+// fresh. A forecast persisted under different units or a different location
+// label (an .env edit before this restart) is worse than none and is skipped;
+// the file carries no coordinates, so a coordinate-only edit is not detected
+// until the first successful fetch replaces it.
+let warmedFromDisk = false;
+function warmFromDisk(cfg: WeatherConfig): void {
+  if (warmedFromDisk) return;
+  warmedFromDisk = true;
   const persisted = loadPersisted();
-  if (persisted) {
+  if (persisted && persisted.units === cfg.units && persisted.location === cfg.label) {
     cached = persisted;
     lastSuccessAt = persisted.updatedAt;
   }
@@ -200,7 +208,9 @@ function recordFailure(reason: string): null {
 }
 
 export function getWeatherStatus(): WeatherStatus {
-  return { configured: getConfig() !== null, lastSuccessAt, lastError };
+  const cfg = getConfig();
+  if (cfg) warmFromDisk(cfg);
+  return { configured: cfg !== null, lastSuccessAt, lastError };
 }
 
 interface WeatherConfig {
@@ -325,25 +335,31 @@ async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null>
 export async function getWeather(): Promise<WeatherResponse> {
   const cfg = getConfig();
   if (!cfg) return { enabled: false };
+  warmFromDisk(cfg);
 
   const fresh = cached && Date.now() - cachedAt < CACHE_TTL_MS;
   if (cached && fresh) return cached;
 
   // Deduplicate concurrent refreshes (header + week view mount together).
+  // The cache update and the disk write live inside the shared promise so
+  // they happen once per upstream fetch, however many requests joined it.
   if (!inflight) {
-    inflight = fetchForecast(cfg).finally(() => {
-      inflight = null;
-    });
+    inflight = fetchForecast(cfg)
+      .then(async (result) => {
+        if (result) {
+          cached = result;
+          cachedAt = Date.now();
+          lastSuccessAt = result.updatedAt;
+          await persist(result);
+        }
+        return result;
+      })
+      .finally(() => {
+        inflight = null;
+      });
   }
   const result = await inflight;
-
-  if (result) {
-    cached = result;
-    cachedAt = Date.now();
-    lastSuccessAt = result.updatedAt;
-    await persist(result);
-    return result;
-  }
+  if (result) return result;
   // Fetch failed: serve last-good (stale) if we have it, flagged so
   // consumers can tell it from a fresh forecast — otherwise an outage that
   // lasts days looks current. With no cache, report disabled (UI simply

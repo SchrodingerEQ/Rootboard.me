@@ -248,3 +248,25 @@ describe("persisted last good forecast", () => {
     expect(await (await loadService()).getWeather()).toEqual({ enabled: false, configured: true });
   });
 });
+
+// Review findings on the persistence change (2026-10-21).
+describe("persistence under concurrent requests and config changes", () => {
+  test("requests that share one upstream fetch write the cache file once", async () => {
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 }));
+    const renames = vi.spyOn(fs.promises, "rename");
+    const { getWeather } = await loadService();
+    const [a, b] = await Promise.all([getWeather(), getWeather()]);
+    expect(a).toEqual(b);
+    expect(renames).toHaveBeenCalledTimes(1);
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
+  test("a persisted forecast for a different units/location config is not served after a restart", async () => {
+    stubUpstreamThenOutage();
+    await (await loadService()).getWeather(); // celsius, label "" → persisted
+    vi.stubEnv("WEATHER_UNITS", "fahrenheit");
+    const { getWeather, getWeatherStatus } = await loadService();
+    expect(await getWeather()).toEqual({ enabled: false, configured: true });
+    expect(getWeatherStatus().lastSuccessAt).toBeNull();
+  });
+});

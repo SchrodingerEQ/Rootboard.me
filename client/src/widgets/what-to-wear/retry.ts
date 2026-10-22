@@ -16,3 +16,21 @@ export function retryDelayMs(consecutiveFailures: number): number | null {
   if (consecutiveFailures < 1) return null;
   return RETRY_DELAYS_MS[consecutiveFailures - 1] ?? null;
 }
+
+export interface RetryState {
+  /** Consecutive "unreachable" results; 0 after any success. */
+  failures: number;
+  /** When the next retry is due (ms since epoch), or null when none is. */
+  retryAt: number | null;
+}
+
+export const IDLE_RETRY: RetryState = { failures: 0, retryAt: null };
+
+/** Bookkeeping after a load finishes. `retry` says whether that load was one
+ *  of our own retries; a host-driven or initial load restarts the sequence. */
+export function nextRetryState(prev: RetryState, outcome: { unreachable: boolean; retry: boolean }, now: number): RetryState {
+  if (!outcome.unreachable) return IDLE_RETRY;
+  const failures = outcome.retry ? prev.failures + 1 : 1;
+  const delay = retryDelayMs(failures);
+  return { failures, retryAt: delay === null ? null : now + delay };
+}

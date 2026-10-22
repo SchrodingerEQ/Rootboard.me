@@ -163,7 +163,8 @@ retention sweep, which runs inside each sync.
 Enabled only when `WEATHER_ENABLED="true"` and `WEATHER_LAT`/`WEATHER_LON`
 are finite numbers. `WEATHER_UNITS` is `fahrenheit` or defaults to
 celsius; `WEATHER_LOCATION_LABEL` defaults to empty. Forecast is fetched
-from Open-Meteo (20 s budget per attempt — the kiosk's Wi-Fi can stall
+from Open-Meteo (20 s budget per attempt, kept in `shared/weather-timeouts.ts`
+next to the widget's — the kiosk's Wi-Fi can stall
 for seconds at a time) and cached server-side for 30 minutes; a failed
 refresh serves the last good payload. The last good payload is also
 written atomically to `data/weather-cache.json` (gitignored; `data/` is

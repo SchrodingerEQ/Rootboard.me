@@ -240,6 +240,11 @@ describe("fetchForecast", () => {
 // could abort a request the server was milliseconds from answering: the
 // server cache filled, nothing was shown, and nothing was logged.
 describe("fetch timeout", () => {
+  test("is longer than the server's upstream budget", async () => {
+    const { WEATHER_UPSTREAM_TIMEOUT_MS, WHAT_TO_WEAR_FETCH_TIMEOUT_MS } = await import("@shared/weather-timeouts");
+    expect(WHAT_TO_WEAR_FETCH_TIMEOUT_MS).toBeGreaterThan(WEATHER_UPSTREAM_TIMEOUT_MS);
+  });
+
   test("outlasts the server's 20 s upstream budget", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     try {
