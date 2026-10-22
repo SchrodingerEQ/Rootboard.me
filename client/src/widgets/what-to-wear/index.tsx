@@ -7,6 +7,7 @@ import { buildAdvice } from "./advice";
 import { emptyStoredState, fetchForecast, normalizeStoredState, type ForecastStatus, type StoredState } from "./forecast";
 import type { ForecastBundle } from "./types";
 import { resolveSettings } from "./settings";
+import { retryDelayMs } from "./retry";
 import { formatAsOf } from "./time-windows";
 import { WhatToWear } from "./WhatToWear";
 
@@ -17,7 +18,9 @@ import { WhatToWear } from "./WhatToWear";
  * the host's RefreshScheduler drives `refresh()` on the manifest's
  * 30-minute cadence (visible + online + awake only); the only private
  * timer is a one-minute clock for the day flip and the "as of" footer,
- * which runs only while visible and is cleared on unmount.
+ * which runs only while visible and is cleared on unmount. That same clock
+ * fires a bounded retry after an "unreachable" result (retry.ts) so a
+ * single lost fetch does not blank the panel until the next host refresh.
  */
 export const manifest = validateBuiltinManifest(rawManifest);
 
@@ -55,6 +58,9 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
   const inflight = useRef<Promise<void> | null>(null);
   const pending = useRef(false);
   const alive = useRef(true);
+  // Consecutive "unreachable" results and when the next retry is due (retry.ts).
+  const failures = useRef(0);
+  const retryAt = useRef<number | null>(null);
   useEffect(() => {
     alive.current = true;
     return () => {
@@ -62,11 +68,22 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
     };
   }, []);
 
-  const reload = useCallback((): Promise<void> => {
+  const reload = useCallback((opts?: { retry?: boolean }): Promise<void> => {
     if (inflight.current) {
       pending.current = true;
       return inflight.current;
     }
+    const noteOutcome = (unreachable: boolean) => {
+      if (!unreachable) {
+        failures.current = 0;
+        retryAt.current = null;
+        return;
+      }
+      // A host-driven (or initial) load restarts the bounded sequence.
+      failures.current = opts?.retry ? failures.current + 1 : 1;
+      const delay = retryDelayMs(failures.current);
+      retryAt.current = delay === null ? null : Date.now() + delay;
+    };
     inflight.current = (async () => {
       const zipAtStart = settingsRef.current.zipCode;
       let rerun = false;
@@ -85,11 +102,13 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
           return;
         }
         if (result.status === "ok") host.storage.set(result.state);
+        noteOutcome(result.status === "unreachable");
         setLoad({ loaded: true, status: result.status, bundle: result.bundle });
         setNow(new Date());
       } catch {
         // fetchForecast never throws; this guards normalizeStoredState and any unexpected throw.
         if (!alive.current) return;
+        noteOutcome(true);
         setLoad((prev) => ({ loaded: true, status: "unreachable", bundle: prev.bundle ?? stateRef.current?.forecast ?? null }));
       } finally {
         inflight.current = null;
@@ -123,12 +142,22 @@ function WhatToWearApp({ host, bridge }: { host: WidgetHost; bridge: Bridge }) {
   }, [reload, settings.zipCode]);
 
   // One-minute clock for the day flip + footer, visible only (brief §4.3).
+  // It also fires the bounded retry once one is due (retry.ts), so the
+  // panel is not stuck on "Can't reach the weather" until the host's next
+  // 30-minute refresh.
   useEffect(() => {
     if (!visible) return;
-    setNow(new Date());
-    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    const tick = () => {
+      setNow(new Date());
+      if (retryAt.current !== null && Date.now() >= retryAt.current) {
+        retryAt.current = null;
+        void reload({ retry: true });
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 60_000);
     return () => window.clearInterval(id);
-  }, [visible]);
+  }, [visible, reload]);
 
   const advice = useMemo(() => (load.bundle ? buildAdvice(load.bundle, settings, now) : null), [load.bundle, settings, now]);
 
