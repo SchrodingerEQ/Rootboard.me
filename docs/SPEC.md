@@ -163,8 +163,14 @@ retention sweep, which runs inside each sync.
 Enabled only when `WEATHER_ENABLED="true"` and `WEATHER_LAT`/`WEATHER_LON`
 are finite numbers. `WEATHER_UNITS` is `fahrenheit` or defaults to
 celsius; `WEATHER_LOCATION_LABEL` defaults to empty. Forecast is fetched
-from Open-Meteo and cached server-side for 30 minutes; a failed refresh
-serves the last good payload.
+from Open-Meteo (20 s budget per attempt — the kiosk's Wi-Fi can stall
+for seconds at a time) and cached server-side for 30 minutes; a failed
+refresh serves the last good payload. The last good payload is also
+written atomically to `data/weather-cache.json` (gitignored; `data/` is
+in the updater's preserve list) and loaded at startup as the stale
+fallback only: the first request after a restart still asks upstream,
+and the file is never served as fresh. `lastSuccessAt` in
+`/api/weather/status` is restored from it. Decision 0014.
 
 Payload: `{ enabled: true, current, daily[7], hourly[≤48], units,
 location, updatedAt }`. `hourly` (added for the What to Wear widget,
@@ -181,6 +187,13 @@ an older server without the field reads as not configured). When the
 upstream fetch fails with a warm cache, the last good forecast is served
 with an additive `stale: true` (its `updatedAt` says how old it is);
 fresh responses omit the field.
+
+Clients (`hooks/use-weather.ts`: header and week view) poll every 30
+minutes while weather is healthy or not configured, every minute while
+there is nothing to show (`{ enabled: false, configured: true }`, a
+request error, nothing loaded yet) and every 5 minutes while a stale
+forecast is being re-served (`lib/weather-poll.ts`). The server only
+retries upstream when a client asks, so this is also the retry cadence.
 
 ### 2.6 Environment variables
 
@@ -738,7 +751,12 @@ layout picker.
 - **Cadence:** manifest `refresh.intervalSeconds: 1800` (host-driven,
   visible + online + awake). One private 1-minute timer re-evaluates
   the day flip and footer; it runs only while visible and is cleared on
-  unmount. No other polling.
+  unmount. After an "unreachable" result that same clock fires a bounded
+  retry 1, 2 and 5 minutes after consecutive failures (`retry.ts`), then
+  waits for the host; a host-driven or initial load restarts the
+  sequence. No other polling. Fetches time out after 30 s — longer than
+  the server's 20 s upstream budget, so the browser never abandons a
+  host fetch the server is about to answer (decision 0014).
 - **Day selection:** before `schoolEnd` → today, otherwise tomorrow
   ("Today · Tuesday"). Windows: Morning = hour nearest `schoolStart`
   (range −1 h…+2 h), Afternoon = nearest `schoolEnd` (same range),
