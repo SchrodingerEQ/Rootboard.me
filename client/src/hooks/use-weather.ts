@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { WEATHER_POLL_MS, weatherRefetchIntervalMs } from "@/lib/weather-poll";
 
 export interface WeatherCurrent {
   temp: number;
@@ -17,6 +18,10 @@ export interface WeatherDaily {
 
 interface WeatherResponse {
   enabled: boolean;
+  /** On `{ enabled: false }`: weather is set up but the upstream fetch failed with a cold cache. */
+  configured?: boolean;
+  /** On an enabled payload: the last good forecast, re-served after a failed upstream fetch. */
+  stale?: boolean;
   current?: WeatherCurrent;
   daily?: WeatherDaily[];
   location?: string;
@@ -26,14 +31,16 @@ interface WeatherResponse {
 /**
  * Forecast for the kiosk. The server caches upstream calls for 30 minutes;
  * this hook polls on the same cadence so the always-on display stays fresh
- * without hammering anything. When weather is unconfigured the server returns
- * { enabled: false } and every consumer hides its weather UI.
+ * without hammering anything — except while the last answer was a failure,
+ * when it polls faster (lib/weather-poll.ts) so one lost upstream fetch does
+ * not cost half an hour of weather. When weather is unconfigured the server
+ * returns { enabled: false } and every consumer hides its weather UI.
  */
 export function useWeather() {
   const { data } = useQuery<WeatherResponse>({
     queryKey: ["/api/weather"],
-    staleTime: 30 * 60 * 1000,
-    refetchInterval: 30 * 60 * 1000,
+    staleTime: WEATHER_POLL_MS,
+    refetchInterval: (query) => weatherRefetchIntervalMs(query.state.data, query.state.status === "error"),
     refetchOnWindowFocus: false,
   });
 

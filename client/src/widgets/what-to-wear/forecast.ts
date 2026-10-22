@@ -1,6 +1,7 @@
 import type { ForecastBundle, HourPoint, ResolvedSettings } from "./types";
 import { trimHours } from "./time-windows";
 import { fToC } from "./units";
+import { WHAT_TO_WEAR_FETCH_TIMEOUT_MS } from "@shared/weather-timeouts";
 
 /**
  * Forecast acquisition for What to Wear (brief §4). Two paths produce the
@@ -38,7 +39,8 @@ export interface FetchResult {
 export const OPEN_METEO_HOURLY =
   "temperature_2m,apparent_temperature,precipitation_probability,precipitation,snowfall,weather_code,wind_speed_10m,uv_index";
 
-const FETCH_TIMEOUT_MS = 10_000;
+// Outlasts the server's upstream budget by design — see shared/weather-timeouts.ts.
+const FETCH_TIMEOUT_MS = WHAT_TO_WEAR_FETCH_TIMEOUT_MS;
 const ZIP_RE = /^\d{5}$/;
 
 export function emptyStoredState(): StoredState {

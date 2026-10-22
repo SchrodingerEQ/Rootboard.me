@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { ResolvedSettings } from "./types";
 import {
   emptyStoredState,
@@ -231,5 +231,41 @@ describe("fetchForecast", () => {
     const r = await fetchForecast(f, { ...base, zipCode: "00000" }, state, NOW);
     expect(r.status).toBe("unreachable");
     expect(r.bundle).toBeNull();
+  });
+});
+
+// The host path goes browser → /api/weather → server → Open-Meteo, and the
+// server waits up to 20 s upstream (weatherService FETCH_TIMEOUT_MS). When
+// the widget's own timeout was the same 10 s as the server's, the browser
+// could abort a request the server was milliseconds from answering: the
+// server cache filled, nothing was shown, and nothing was logged.
+describe("fetch timeout", () => {
+  test("is longer than the server's upstream budget", async () => {
+    const { WEATHER_UPSTREAM_TIMEOUT_MS, WHAT_TO_WEAR_FETCH_TIMEOUT_MS } = await import("@shared/weather-timeouts");
+    expect(WHAT_TO_WEAR_FETCH_TIMEOUT_MS).toBeGreaterThan(WEATHER_UPSTREAM_TIMEOUT_MS);
+  });
+
+  test("outlasts the server's 20 s upstream budget", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const hanging = ((_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        })) as unknown as typeof fetch;
+      let settled = false;
+      const pending = fetchForecast(hanging, base, emptyStoredState(), NOW).then((r) => {
+        settled = true;
+        return r;
+      });
+
+      await vi.advanceTimersByTimeAsync(25_000);
+      expect(settled).toBe(false); // still waiting past the server's 20 s
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(settled).toBe(true);
+      expect((await pending).status).toBe("unreachable");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
