@@ -38,7 +38,9 @@ export interface FetchResult {
 export const OPEN_METEO_HOURLY =
   "temperature_2m,apparent_temperature,precipitation_probability,precipitation,snowfall,weather_code,wind_speed_10m,uv_index";
 
-const FETCH_TIMEOUT_MS = 10_000;
+// Must outlast the server's 20 s Open-Meteo budget (weatherService FETCH_TIMEOUT_MS)
+// so the browser never abandons a host fetch the server is about to answer.
+const FETCH_TIMEOUT_MS = 30_000;
 const ZIP_RE = /^\d{5}$/;
 
 export function emptyStoredState(): StoredState {
