@@ -85,9 +85,9 @@ describe("getWeather stale flag", () => {
 
 describe("describeFetchError", () => {
   test.each([
-    [Object.assign(new Error("aborted"), { name: "AbortError" }), "Timed out — Open-Meteo didn't answer in 10 seconds"],
+    [Object.assign(new Error("aborted"), { name: "AbortError" }), "Timed out — Open-Meteo didn't answer in 20 seconds"],
     [new TypeError("fetch failed", { cause: { code: "ENOTFOUND" } }), "Couldn't look up api.open-meteo.com — no internet, or a DNS problem (ENOTFOUND)"],
-    [new TypeError("fetch failed", { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } }), "Timed out — Open-Meteo didn't answer in 10 seconds (UND_ERR_CONNECT_TIMEOUT)"],
+    [new TypeError("fetch failed", { cause: { code: "UND_ERR_CONNECT_TIMEOUT" } }), "Timed out — Open-Meteo didn't answer in 20 seconds (UND_ERR_CONNECT_TIMEOUT)"],
     [new TypeError("fetch failed", { cause: { errors: [{ code: "ENETUNREACH" }] } }), "Couldn't connect to Open-Meteo — network problem (ENETUNREACH)"],
     [new TypeError("fetch failed", { cause: { code: "CERT_NOT_YET_VALID" } }), "Secure connection failed — check the kiosk's date and time (CERT_NOT_YET_VALID)"],
     [new SyntaxError("Unexpected token <"), "Open-Meteo sent an unexpected response"],
@@ -159,5 +159,36 @@ describe("What to Wear on a long upstream outage", () => {
     expect(r.bundle).not.toBeNull();
     expect(buildAdvice(r.bundle!, settings, now)).toBeNull(); // → "The weather is out of date"
     expect(formatAsOf(r.bundle!.fetchedAt, now)).toBe("Sun 6:29 AM");
+  });
+});
+
+// The kiosk's Wi-Fi drops packets in multi-second bursts; a 10 s budget was
+// turning a single stall into a failed fetch (and, with 30-minute client
+// polling, half an hour without weather).
+describe("upstream timeout", () => {
+  test("waits 20 seconds for Open-Meteo before giving up", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.setSystemTime(new Date(2030, 2, 10, 6, 29));
+    vi.stubGlobal(
+      "fetch",
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+        }),
+    );
+    const { getWeather, getWeatherStatus } = await loadService();
+    let settled = false;
+    const pending = getWeather().then((w) => {
+      settled = true;
+      return w;
+    });
+
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(settled).toBe(false); // 10 s used to be the cut-off
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(settled).toBe(true);
+    expect(await pending).toEqual({ enabled: false, configured: true });
+    expect(getWeatherStatus().lastError?.reason).toBe("Timed out — Open-Meteo didn't answer in 20 seconds");
   });
 });

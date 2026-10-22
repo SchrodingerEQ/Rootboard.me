@@ -69,7 +69,7 @@ export interface WeatherPayload {
 export type WeatherResponse = WeatherPayload | { enabled: false; configured?: true };
 
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const FETCH_TIMEOUT_MS = 10 * 1000;
+const FETCH_TIMEOUT_MS = 20 * 1000; // the kiosk's Wi-Fi stalls for seconds at a time; 10 s lost real fetches
 const HOURLY_FIELDS =
   "temperature_2m,apparent_temperature,precipitation_probability,precipitation,snowfall,weather_code,wind_speed_10m,uv_index";
 const HOURLY_COUNT = 48;
