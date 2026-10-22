@@ -13,6 +13,9 @@
  *
  * The kiosk is a 24/7 client, so responses are cached in memory for 30
  * minutes and the last good forecast is served if an upstream fetch fails.
+ * The last good forecast is also written to data/weather-cache.json
+ * (gitignored, preserved across updates) so a restart — the kiosk gets
+ * rebooted to clear Wi-Fi trouble — still has something to fall back on.
  * Weather must never break the calendar: every failure path returns either
  * stale data or a disabled/empty payload — nothing throws into the route.
  */
@@ -68,6 +71,11 @@ export interface WeatherPayload {
  *  `{ enabled: false }` alone, which means weather is not configured. */
 export type WeatherResponse = WeatherPayload | { enabled: false; configured?: true };
 
+import fs from "fs";
+import path from "path";
+
+const CACHE_PATH = path.join(process.cwd(), "data", "weather-cache.json");
+
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const FETCH_TIMEOUT_MS = 20 * 1000; // the kiosk's Wi-Fi stalls for seconds at a time; 10 s lost real fetches
 const HOURLY_FIELDS =
@@ -80,7 +88,8 @@ let inflight: Promise<WeatherPayload | null> | null = null;
 
 /** Upstream health for the Settings → System panel, so a family can read
  *  why the weather stopped updating off the touchscreen — no terminal.
- *  Kept in memory only (resets on restart); never leaves the kiosk. */
+ *  Kept in memory (a restart keeps only `lastSuccessAt`, restored from the
+ *  persisted forecast); never leaves the kiosk. */
 export interface WeatherStatus {
   configured: boolean;
   /** When the server last got a good forecast from Open-Meteo. */
@@ -91,6 +100,72 @@ export interface WeatherStatus {
 
 let lastSuccessAt: string | null = null;
 let lastError: WeatherStatus["lastError"] = null;
+
+/** Shape check for the persisted file — it is under the kiosk's own data/
+ *  but a torn write or a hand edit must never crash the service. */
+function isPersistedPayload(v: unknown): v is WeatherPayload {
+  const p = v as Partial<WeatherPayload> | null;
+  return (
+    !!p &&
+    typeof p === "object" &&
+    p.enabled === true &&
+    !!p.current &&
+    typeof p.current === "object" &&
+    typeof p.current.temp === "number" &&
+    Array.isArray(p.daily) &&
+    Array.isArray(p.hourly) &&
+    (p.units === "celsius" || p.units === "fahrenheit") &&
+    typeof p.location === "string" &&
+    typeof p.updatedAt === "string" &&
+    !Number.isNaN(new Date(p.updatedAt).getTime())
+  );
+}
+
+function loadPersisted(): WeatherPayload | null {
+  let raw: string;
+  try {
+    raw = fs.readFileSync(CACHE_PATH, "utf-8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") console.error("Weather cache unreadable, starting cold:", (err as Error)?.message);
+    return null;
+  }
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isPersistedPayload(parsed)) {
+      console.error("Weather cache has an unexpected shape, starting cold");
+      return null;
+    }
+    const { stale: _stale, ...payload } = parsed;
+    return payload;
+  } catch {
+    console.error("Weather cache is not valid JSON, starting cold");
+    return null;
+  }
+}
+
+/** Atomic (tmp + rename) so a power cut mid-write cannot leave a torn file.
+ *  A write failure is logged, never thrown: the forecast still gets served. */
+async function persist(payload: WeatherPayload): Promise<void> {
+  const tmp = `${CACHE_PATH}.tmp`;
+  try {
+    await fs.promises.mkdir(path.dirname(CACHE_PATH), { recursive: true });
+    await fs.promises.writeFile(tmp, JSON.stringify(payload), "utf-8");
+    await fs.promises.rename(tmp, CACHE_PATH);
+  } catch (err) {
+    console.error("Weather cache write failed:", (err as Error)?.message);
+  }
+}
+
+// Warm the stale fallback from disk at startup. cachedAt stays 0 so the
+// first request still asks upstream — the file is only ever served flagged
+// stale, never as fresh.
+{
+  const persisted = loadPersisted();
+  if (persisted) {
+    cached = persisted;
+    lastSuccessAt = persisted.updatedAt;
+  }
+}
 
 const NETWORK_CODES = new Set(["ECONNREFUSED", "ECONNRESET", "ENETUNREACH", "EHOSTUNREACH", "EPIPE", "ENETDOWN"]);
 
@@ -266,6 +341,7 @@ export async function getWeather(): Promise<WeatherResponse> {
     cached = result;
     cachedAt = Date.now();
     lastSuccessAt = result.updatedAt;
+    await persist(result);
     return result;
   }
   // Fetch failed: serve last-good (stale) if we have it, flagged so

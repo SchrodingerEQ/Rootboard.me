@@ -1,3 +1,6 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { buildAdvice } from "../../client/src/widgets/what-to-wear/advice";
 import { emptyStoredState, fetchForecast } from "../../client/src/widgets/what-to-wear/forecast";
@@ -41,6 +44,11 @@ function stubUpstreamThenOutage() {
   });
 }
 
+// Every test gets its own cwd so data/weather-cache.json lands in a temp
+// dir, never in the checkout.
+let dir = "";
+const cacheFile = () => path.join(dir, "data", "weather-cache.json");
+
 async function loadService() {
   vi.resetModules(); // the service caches at module level
   return import("./weatherService");
@@ -54,6 +62,8 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date(2030, 2, 10, 6, 29));
   vi.spyOn(console, "error").mockImplementation(() => {});
+  dir = fs.mkdtempSync(path.join(os.tmpdir(), "rb-weather-"));
+  vi.spyOn(process, "cwd").mockReturnValue(dir);
 });
 
 afterEach(() => {
@@ -61,6 +71,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
+  fs.rmSync(dir, { recursive: true, force: true });
 });
 
 describe("getWeather stale flag", () => {
@@ -190,5 +201,50 @@ describe("upstream timeout", () => {
     expect(settled).toBe(true);
     expect(await pending).toEqual({ enabled: false, configured: true });
     expect(getWeatherStatus().lastError?.reason).toBe("Timed out — Open-Meteo didn't answer in 20 seconds");
+  });
+});
+
+// The kiosk is rebooted to clear Wi-Fi trouble, and the in-memory cache
+// went with it: the first fetch after boot failing meant a blank header
+// and "Can't reach the weather" with nothing to fall back on. The last
+// good forecast now survives under data/ (preserved across updates).
+describe("persisted last good forecast", () => {
+  test("a good forecast is written to data/weather-cache.json", async () => {
+    stubUpstreamThenOutage();
+    const { getWeather } = await loadService();
+    const w = await getWeather();
+    expect(JSON.parse(fs.readFileSync(cacheFile(), "utf8"))).toEqual(w);
+  });
+
+  test("after a restart with the upstream down, the persisted forecast is served flagged stale", async () => {
+    stubUpstreamThenOutage();
+    const first = await (await loadService()).getWeather();
+    const { getWeather, getWeatherStatus } = await loadService(); // "restart"; the stub is now in outage mode
+    const w = await getWeather();
+    expect(w).toMatchObject({ enabled: true, stale: true });
+    expect(w.enabled && w.updatedAt).toBe(first.enabled && first.updatedAt);
+    expect(getWeatherStatus().lastSuccessAt).toBe(first.enabled && first.updatedAt);
+  });
+
+  test("after a restart the upstream is asked before the persisted forecast is trusted", async () => {
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 }));
+    const first = await (await loadService()).getWeather();
+    vi.setSystemTime(new Date(2030, 2, 10, 6, 30));
+    const w = await (await loadService()).getWeather();
+    expect(w.enabled && w.updatedAt).toBe(new Date(2030, 2, 10, 6, 30).toISOString());
+    expect(w.enabled && w.updatedAt).not.toBe(first.enabled && first.updatedAt);
+    expect("stale" in w).toBe(false);
+  });
+
+  test("a corrupt or foreign cache file is ignored", async () => {
+    fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });
+    fs.writeFileSync(cacheFile(), "{not json");
+    vi.stubGlobal("fetch", async () => {
+      throw new Error("fetch failed");
+    });
+    expect(await (await loadService()).getWeather()).toEqual({ enabled: false, configured: true });
+
+    fs.writeFileSync(cacheFile(), JSON.stringify({ enabled: true, current: null }));
+    expect(await (await loadService()).getWeather()).toEqual({ enabled: false, configured: true });
   });
 });
