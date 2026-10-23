@@ -2,7 +2,7 @@
 
 Regenerated from the code at v1.4.1 (2026-07-23); maintained
 incrementally through the widget-system phases and current as of v1.7.3
-(2026-10-13). This documents what the app **actually does**, including
+(2026-10-22). This documents what the app **actually does**, including
 quirks. Update it when behavior changes.
 Public document — no deployment specifics (hostnames, IPs, real names).
 
