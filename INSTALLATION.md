@@ -457,9 +457,9 @@ A kiosk that lives on Wi-Fi for months will eventually hit a bad patch: a mesh s
 
 When the access point forces a reconnect and the 4-way handshake fails on the live connection, NetworkManager treats it the way it treats a wrong password: it asks a "secret agent" for new credentials. On a headless kiosk there is no desktop session to answer, so the activation fails with `no-secrets` and NetworkManager **blocks autoconnect for that profile until the next reboot**. The link itself is fine; nothing will retry.
 
-The steps below make the problem visible (persistent logs), remove a common trigger (power saving), and add a watchdog that retries the connection. The last two steps are optional tuning for mesh and multi-access-point networks.
+The steps below make the problem visible (persistent logs), remove a common trigger (power saving), and add a watchdog that retries the connection. The last two steps are for mesh and multi-access-point networks, where the forced reconnects come from.
 
-Throughout, `<connection-name>` is the name of the NetworkManager connection profile — usually the same as the network name. List it with:
+Throughout, `<connection-name>` is the name of the NetworkManager connection profile. It is often the network name, but an image configured with Raspberry Pi Imager calls it `preconfigured`, so check with:
 
 ```bash
 nmcli -t -f NAME,DEVICE con show
@@ -511,7 +511,7 @@ iw dev wlan0 get power_save
 
 This timer exists because of the `no-secrets` failure described above: once NetworkManager has blocked autoconnect on a headless box, the kiosk sits offline until someone power-cycles it. An explicit `nmcli con up` clears that block, so every minute the timer checks the Wi-Fi interface and asks NetworkManager to bring the profile back up whenever it is neither connected nor in the middle of connecting.
 
-The script:
+The script — **edit `<connection-name>` on the `CON=` line before pasting**; the heredoc is quoted, so nothing is substituted for you:
 
 ```bash
 sudo tee /usr/local/sbin/wifi-selfheal >/dev/null <<'EOF'
@@ -520,7 +520,7 @@ sudo tee /usr/local/sbin/wifi-selfheal >/dev/null <<'EOF'
 CON="<connection-name>"
 STATE=$(nmcli -t -f DEVICE,STATE dev status | awk -F: '$1 == "wlan0" { print $2 }')
 case "$STATE" in
-  connected|connecting*) exit 0 ;;
+  connected*|connecting*) exit 0 ;;
 esac
 logger -t wifi-selfheal "wlan0 is '${STATE:-missing}', bringing up $CON"
 if nmcli -w 40 con up "$CON"; then
@@ -574,7 +574,7 @@ While the link is healthy the script exits without logging, so an empty `journal
 
 ### 12.4 Optional: pin the connection to the nearest radio
 
-On a mesh system, or any network with several access points sharing one name, the Pi's Wi-Fi driver roams on its own: it background-scans and hops to whichever radio looks marginally better, and every hop is a reconnect. A wall-mounted kiosk never moves, so pin it to the radio it should always use. Find that radio's BSSID (its MAC address) — the `IN-USE` column marks the current one:
+On a mesh system, or any network with several access points sharing one name, the Pi's Wi-Fi supplicant roams on its own: it background-scans and hops to whichever radio looks marginally better, and every hop is a reconnect. A wall-mounted kiosk never moves, so pin it to the radio it should always use. Find that radio's BSSID (its MAC address) — the `IN-USE` column marks the current one:
 
 ```bash
 nmcli -f IN-USE,BSSID,SIGNAL,CHAN,SSID dev wifi list
@@ -593,9 +593,9 @@ sudo sh -c 'nohup nmcli con up <connection-name> >/dev/null 2>&1 &'
 sudo nmcli con modify <connection-name> 802-11-wireless.bssid ""
 ```
 
-### 12.5 Optional: exclude the kiosk from the router's client steering
+### 12.5 On a mesh router: exclude the kiosk from client steering
 
-Mesh systems also move clients from the router side. Features called "roaming assistance", "client steering" or "band steering" send the client an 802.11v transition request and, when the client doesn't move, disconnect it to force the hop. The Pi's Broadcom Wi-Fi firmware does not act on those requests, so it gets kicked repeatedly — exactly the forced reconnect that leads to the `no-secrets` block above. Most mesh routers let you exempt a device from steering (often a "roaming block list" or "steering exclusion", keyed by the device's Wi-Fi MAC address). Find the Pi's:
+Mesh systems also move clients from the router side. Features called "roaming assistance", "client steering" or "band steering" send the client an 802.11v transition request and, when the client doesn't move, disconnect it to force the hop. The Pi's onboard Wi-Fi firmware does not act on those requests (observed on the Pi models Rootboard has run on), so it gets kicked repeatedly — exactly the forced reconnect that leads to the `no-secrets` block above. Most mesh routers let you exempt a device from steering (often a "roaming block list" or "steering exclusion", keyed by the device's Wi-Fi MAC address). Find the Pi's:
 
 ```bash
 cat /sys/class/net/wlan0/address
@@ -687,7 +687,7 @@ sudo iw dev wlan0 set power_save off
 ```
 And confirm `/etc/NetworkManager/conf.d/wifi-powersave-off.conf` exists.
 
-If the Pi stays offline until it is rebooted — `journalctl -u NetworkManager` shows an activation failing with `no-secrets` — NetworkManager has blocked autoconnect on the profile. Section 12 explains why and sets up a `wifi-selfheal` timer that clears it: see [Wi-Fi reliability on a headless Pi](#12-wi-fi-reliability-on-a-headless-pi).
+If the Pi stays offline until it is rebooted — `journalctl -u NetworkManager` shows an activation failing with `no-secrets` — NetworkManager has blocked autoconnect on the profile. Step 12 explains why and sets up a `wifi-selfheal` timer that clears it: see [Wi-Fi reliability on a headless Pi](#12-wi-fi-reliability-on-a-headless-pi).
 
 ### App is unreadable / wrong size on a non-21.5" screen
 The UI scales fine, but you can adjust browser zoom in `kiosk.sh`:
