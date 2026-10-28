@@ -494,10 +494,10 @@ Step 3 set the global default in `/etc/NetworkManager/conf.d/`. Set it on the co
 sudo nmcli con modify <connection-name> 802-11-wireless.powersave 2
 ```
 
-The setting takes effect when the connection is re-activated. Re-activating over SSH drops your session halfway through, so detach the command before running it:
+The setting takes effect when the connection is re-activated. Re-activating over SSH drops your session halfway through, so detach the command before running it (`sudo` runs in the foreground, so it can still ask for your password; only `nmcli` is detached):
 
 ```bash
-sudo nohup nmcli con up <connection-name> >/dev/null 2>&1 &
+sudo sh -c 'nohup nmcli con up <connection-name> >/dev/null 2>&1 &'
 ```
 
 Reconnect after about 30 seconds and verify:
@@ -584,7 +584,7 @@ Then pin and re-activate (detached, as in 12.2):
 
 ```bash
 sudo nmcli con modify <connection-name> 802-11-wireless.bssid <bssid-of-nearest-radio>
-sudo nohup nmcli con up <connection-name> >/dev/null 2>&1 &
+sudo sh -c 'nohup nmcli con up <connection-name> >/dev/null 2>&1 &'
 ```
 
 **Trade-off:** if that radio disappears (the mesh node is rebooted, moved or replaced) the Pi waits for it instead of joining another. Undo with:
