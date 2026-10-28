@@ -19,8 +19,9 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
 9. [Build and first run](#9-build-and-first-run)
 10. [Set up auto-start kiosk mode](#10-set-up-auto-start-kiosk-mode)
 11. [Make the app survive crashes and updates](#11-make-the-app-survive-crashes-and-updates)
-12. [Updating the app](#12-updating-the-app)
-13. [Troubleshooting](#13-troubleshooting)
+12. [Wi-Fi reliability on a headless Pi](#12-wi-fi-reliability-on-a-headless-pi)
+13. [Updating the app](#13-updating-the-app)
+14. [Troubleshooting](#14-troubleshooting)
 
 ---
 
@@ -95,6 +96,8 @@ sudo iw dev wlan0 set power_save off
 echo -e "[connection]\nwifi.powersave = 2" | sudo tee /etc/NetworkManager/conf.d/wifi-powersave-off.conf
 sudo systemctl restart NetworkManager
 ```
+
+If the kiosk will sit on a mesh or multi-access-point network, also work through [Wi-Fi reliability on a headless Pi](#12-wi-fi-reliability-on-a-headless-pi) once the app is running.
 
 ---
 
@@ -336,7 +339,7 @@ serving on port 5000
 
 On the Pi's desktop, open Chromium and go to <http://localhost:5000>:
 1. The calendar should load and immediately start its first sync of the calendars you shared with the service account.
-2. If you instead see a "Service account key file could not be loaded" message, jump to [Troubleshooting](#13-troubleshooting) — usually the file isn't at the path in `GOOGLE_SERVICE_ACCOUNT_KEY_FILE`.
+2. If you instead see a "Service account key file could not be loaded" message, jump to [Troubleshooting](#14-troubleshooting) — usually the file isn't at the path in `GOOGLE_SERVICE_ACCOUNT_KEY_FILE`.
 3. If the calendars look empty but no error appears, you probably haven't shared them with the service account's `client_email` yet — revisit Step 7 Part F.
 
 If everything looks right, stop the server with `Ctrl+C` — we're about to make it auto-start.
@@ -448,7 +451,161 @@ The supervisor advertises itself to the app via the `MANAGED_BY_SUPERVISOR=1` en
 
 ---
 
-## 12. Updating the app
+## 12. Wi-Fi reliability on a headless Pi
+
+A kiosk that lives on Wi-Fi for months will eventually hit a bad patch: a mesh system shuffles clients between its radios, a neighbour's network changes channel, the signal dips for an hour. Most of the time the Pi reconnects on its own and you never notice. One failure mode does **not** heal itself, and it looks like an app bug (weather stops updating, calendars go stale) when the app is fine:
+
+When the access point forces a reconnect and the 4-way handshake fails on the live connection, NetworkManager treats it the way it treats a wrong password: it asks a "secret agent" for new credentials. On a headless kiosk there is no desktop session to answer, so the activation fails with `no-secrets` and NetworkManager **blocks autoconnect for that profile until the next reboot**. The link itself is fine; nothing will retry.
+
+The steps below make the problem visible (persistent logs), remove a common trigger (power saving), and add a watchdog that retries the connection. The last two steps are for mesh and multi-access-point networks, where the forced reconnects come from.
+
+Throughout, `<connection-name>` is the name of the NetworkManager connection profile. It is often the network name, but an image configured with Raspberry Pi Imager calls it `preconfigured`, so check with:
+
+```bash
+nmcli -t -f NAME,DEVICE con show
+```
+
+### 12.1 Keep logs across reboots
+
+Raspberry Pi OS keeps the system journal in RAM, so after an outage that ends in a power-cycle the evidence is gone. The OS ships `/usr/lib/systemd/journald.conf.d/40-rpi-volatile-storage.conf`, which forces `Storage=volatile`. Drop-ins apply in filename order, so the override has to sort after that file:
+
+```bash
+sudo mkdir -p /etc/systemd/journald.conf.d
+sudo tee /etc/systemd/journald.conf.d/zz-persistent.conf >/dev/null <<'EOF'
+[Journal]
+Storage=persistent
+SystemMaxUse=200M
+SystemKeepFree=1G
+EOF
+sudo systemctl restart systemd-journald && sudo journalctl --flush
+```
+
+Verify — the current boot is listed now, and earlier boots stay listed after the next reboot:
+
+```bash
+journalctl --list-boots
+```
+
+### 12.2 Turn off Wi-Fi power saving on the connection profile
+
+Step 3 set the global default in `/etc/NetworkManager/conf.d/`. Set it on the connection profile as well, so it survives the profile being re-created and shows up in `nmcli con show <connection-name>`:
+
+```bash
+sudo nmcli con modify <connection-name> 802-11-wireless.powersave 2
+```
+
+The setting takes effect when the connection is re-activated. Re-activating over SSH drops your session halfway through, so detach the command before running it (`sudo` runs in the foreground, so it can still ask for your password; only `nmcli` is detached):
+
+```bash
+sudo sh -c 'nohup nmcli con up <connection-name> >/dev/null 2>&1 &'
+```
+
+Reconnect after about 30 seconds and verify:
+
+```bash
+iw dev wlan0 get power_save
+# expect: Power save: off
+```
+
+### 12.3 Add a `wifi-selfheal` watchdog timer
+
+This timer exists because of the `no-secrets` failure described above: once NetworkManager has blocked autoconnect on a headless box, the kiosk sits offline until someone power-cycles it. An explicit `nmcli con up` clears that block, so every minute the timer checks the Wi-Fi interface and asks NetworkManager to bring the profile back up whenever it is neither connected nor in the middle of connecting.
+
+The script — **edit `<connection-name>` on the `CON=` line before pasting**; the heredoc is quoted, so nothing is substituted for you:
+
+```bash
+sudo tee /usr/local/sbin/wifi-selfheal >/dev/null <<'EOF'
+#!/bin/sh
+# Re-activate the Wi-Fi connection when NetworkManager has given up on it.
+CON="<connection-name>"
+STATE=$(nmcli -t -f DEVICE,STATE dev status | awk -F: '$1 == "wlan0" { print $2 }')
+case "$STATE" in
+  connected*|connecting*) exit 0 ;;
+esac
+logger -t wifi-selfheal "wlan0 is '${STATE:-missing}', bringing up $CON"
+if nmcli -w 40 con up "$CON"; then
+  logger -t wifi-selfheal "reconnected"
+else
+  logger -t wifi-selfheal "nmcli con up failed"
+fi
+EOF
+sudo chmod 755 /usr/local/sbin/wifi-selfheal
+```
+
+The service and timer:
+
+```bash
+sudo tee /etc/systemd/system/wifi-selfheal.service >/dev/null <<'EOF'
+[Unit]
+Description=Re-activate Wi-Fi when NetworkManager has given up on it
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/wifi-selfheal
+EOF
+
+sudo tee /etc/systemd/system/wifi-selfheal.timer >/dev/null <<'EOF'
+[Unit]
+Description=Check the Wi-Fi link every minute
+
+[Timer]
+OnBootSec=90s
+OnUnitActiveSec=60s
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now wifi-selfheal.timer
+```
+
+Check it:
+
+```bash
+systemctl list-timers wifi-selfheal.timer   # next and last run
+journalctl -t wifi-selfheal                 # every time it had to act
+```
+
+While the link is healthy the script exits without logging, so an empty `journalctl -t wifi-selfheal` is the good outcome. Entries there tell you when, and how often, the connection needed help.
+
+### 12.4 Optional: pin the connection to the nearest radio
+
+On a mesh system, or any network with several access points sharing one name, the Pi's Wi-Fi supplicant roams on its own: it background-scans and hops to whichever radio looks marginally better, and every hop is a reconnect. A wall-mounted kiosk never moves, so pin it to the radio it should always use. Find that radio's BSSID (its MAC address) — the `IN-USE` column marks the current one:
+
+```bash
+nmcli -f IN-USE,BSSID,SIGNAL,CHAN,SSID dev wifi list
+```
+
+Then pin and re-activate (detached, as in 12.2):
+
+```bash
+sudo nmcli con modify <connection-name> 802-11-wireless.bssid <bssid-of-nearest-radio>
+sudo sh -c 'nohup nmcli con up <connection-name> >/dev/null 2>&1 &'
+```
+
+**Trade-off:** if that radio disappears (the mesh node is rebooted, moved or replaced) the Pi waits for it instead of joining another. Undo with:
+
+```bash
+sudo nmcli con modify <connection-name> 802-11-wireless.bssid ""
+```
+
+### 12.5 On a mesh router: exclude the kiosk from client steering
+
+Mesh systems also move clients from the router side. Features called "roaming assistance", "client steering" or "band steering" send the client an 802.11v transition request and, when the client doesn't move, disconnect it to force the hop. The Pi's onboard Wi-Fi firmware does not act on those requests (observed on the Pi models Rootboard has run on), so it gets kicked repeatedly — exactly the forced reconnect that leads to the `no-secrets` block above. Most mesh routers let you exempt a device from steering (often a "roaming block list" or "steering exclusion", keyed by the device's Wi-Fi MAC address). Find the Pi's:
+
+```bash
+cat /sys/class/net/wlan0/address
+```
+
+Add that address to the exclusion list in the router's admin interface. Afterwards, `journalctl -u NetworkManager` should stop showing unexplained reconnects every few minutes.
+
+---
+
+## 13. Updating the app
 
 ### Built-in auto-update (recommended)
 - The app checks GitHub releases daily at 8 AM.
@@ -472,7 +629,7 @@ pkill -f "node.*calendar-app" ; bash scripts/start.sh
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### "Service account key file could not be loaded"
 The app can't find or parse the JSON key file. Check, in order:
@@ -529,6 +686,8 @@ Re-apply the power-save fix from Step 3:
 sudo iw dev wlan0 set power_save off
 ```
 And confirm `/etc/NetworkManager/conf.d/wifi-powersave-off.conf` exists.
+
+If the Pi stays offline until it is rebooted — `journalctl -u NetworkManager` shows an activation failing with `no-secrets` — NetworkManager has blocked autoconnect on the profile. Step 12 explains why and sets up a `wifi-selfheal` timer that clears it: see [Wi-Fi reliability on a headless Pi](#12-wi-fi-reliability-on-a-headless-pi).
 
 ### App is unreadable / wrong size on a non-21.5" screen
 The UI scales fine, but you can adjust browser zoom in `kiosk.sh`:
