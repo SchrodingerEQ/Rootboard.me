@@ -18,6 +18,10 @@ on the project up to date (see
   whenever behavior changes; agents are pointed here from `CLAUDE.md`.
 - **[decisions/](decisions/)** — short "why X over Y" records, numbered
   `NNNN-slug.md`. Add one whenever a non-obvious design choice is made.
+- **[plans/](plans/)** — briefs and execution plans for larger pieces of
+  work, one folder per initiative (widget system, theme system, What to
+  Wear, [beta launch](plans/beta-launch/README.md)). A brief is written so
+  a fresh session can execute it without the planning conversation.
 
 ## Decision record format
 
