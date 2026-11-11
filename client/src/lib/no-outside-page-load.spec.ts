@@ -27,7 +27,7 @@ const REMOTE = /(?:https?:)?\/\/[a-z0-9.-]+\.[a-z]{2,}/i;
 
 describe("no outside requests at page load", () => {
   test("the entry HTML loads no remote script, stylesheet, font or image", () => {
-    const loadingAttrs = Array.from(html.matchAll(/\b(?:src|href)\s*=\s*"([^"]*)"/g), (m) => m[1]);
+    const loadingAttrs = Array.from(html.matchAll(/\b(?:src|href)\s*=\s*["']?([^"'\s>]*)/g), (m) => m[1]);
     for (const url of loadingAttrs) {
       expect(url, `index.html loads ${url}`).not.toMatch(REMOTE);
     }
