@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { googleCalendarService } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
 import { getWeather, getWeatherStatus } from "./services/weatherService";
+import { lookupPostalCode } from "./services/weatherLookup";
 import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
 import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscovery";
 import { APP_VERSION } from "@shared/version";
@@ -60,7 +61,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Weather (Open-Meteo, cached server-side; { enabled: false } until a
-  // location is configured in .env — the client hides all weather UI then).
+  // location is set in Settings (dashboard.json `weather`) or, as the older
+  // fallback, in .env — the client hides all weather UI then).
   app.get("/api/weather", async (req, res) => {
     res.json(await getWeather());
   });
@@ -69,6 +71,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // the most recent failure reason (plain text + error code, no request data).
   app.get("/api/weather/status", (req, res) => {
     res.json(getWeatherStatus());
+  });
+
+  // Postal code → candidate places for Settings → System → Weather. A
+  // server-side proxy so the kiosk UI never talks to a third host; only
+  // runs when someone taps "Look up". Errors carry a generic message only.
+  app.get("/api/weather/lookup", async (req, res) => {
+    const result = await lookupPostalCode(fetch, req.query.postal, req.query.country);
+    if (result.status === "bad-input") {
+      return res.status(400).json({ message: "Enter a postal code and a two-letter country code" });
+    }
+    if (result.status === "unreachable") {
+      return res.status(502).json({ message: "Couldn't reach the postal code lookup — check the internet connection" });
+    }
+    res.json({ candidates: result.candidates });
   });
 
   // Calendar events routes
@@ -399,6 +415,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Invalid dashboard config",
         errors: parsed.error.flatten(),
       });
+    }
+    // The schema drops a malformed `weather` instead of failing (so a bad
+    // hand-edit never costs the layout); on a write that would silently
+    // erase the saved location, so refuse it.
+    if (req.body?.weather !== undefined && parsed.data.weather === undefined) {
+      return res.status(400).json({ message: "Invalid weather location" });
     }
     try {
       writeDashboardConfig(parsed.data);

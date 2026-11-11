@@ -86,3 +86,32 @@ describe("defaultDashboardConfig", () => {
     expect(b.widgets[0].enabled).toBe(true);
   });
 });
+
+describe("dashboard config `weather` field (beta-launch brief 01)", () => {
+  const weather = { postalCode: "00000", countryCode: "US", label: "Testville, TS", lat: 1.5, lon: -2.25, units: "fahrenheit" as const };
+
+  test("absent from the default config (no location until one is set)", () => {
+    expect(defaultDashboardConfig().weather).toBeUndefined();
+  });
+
+  test("accepts a well-formed location", () => {
+    const parsed = dashboardConfigSchema.parse({ ...validConfig, weather });
+    expect(parsed.weather).toEqual(weather);
+  });
+
+  test.each([
+    ["a string", "garbage"],
+    ["a lowercase country", { ...weather, countryCode: "us" }],
+    ["an out-of-range latitude", { ...weather, lat: 91 }],
+    ["an unknown unit", { ...weather, units: "kelvin" }],
+    ["a missing coordinate", { ...weather, lon: undefined }],
+    ["an empty postal code", { ...weather, postalCode: "  " }],
+  ])("%s becomes undefined and the widget layout still loads", (_name, bad) => {
+    const result = dashboardConfigSchema.safeParse({ ...validConfig, weather: bad });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.weather).toBeUndefined();
+      expect(result.data.widgets.map((w) => w.id)).toEqual(["calendar", "chores", "dinner"]);
+    }
+  });
+});

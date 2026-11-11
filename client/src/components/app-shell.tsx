@@ -35,7 +35,7 @@ import {
   withCalendarId,
   type PowerSavingChangeDetail,
 } from "@/widgets/calendar/shell-bridge";
-import { defaultDashboardConfig, type DashboardConfig } from "@shared/dashboard-config";
+import { defaultDashboardConfig, type DashboardConfig, type WeatherLocation } from "@shared/dashboard-config";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
 
@@ -702,6 +702,19 @@ export default function AppShell() {
     [updateWidgetSettings],
   );
 
+  // Settings → System → Weather (beta-launch brief 01): sets the top-level
+  // `weather` key through the same read-merge-PUT as every other write, then
+  // re-asks /api/weather so the header chip follows the new place now
+  // rather than on the next 30-minute poll.
+  const saveWeatherLocation = useCallback(
+    (location: WeatherLocation) =>
+      void writeDashboardConfig((current) => ({ ...current, weather: location }), "Couldn't save weather location")
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/weather"] }))
+        // After the forecast, so the status lines describe the new place's fetch.
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/weather/status"] })),
+    [writeDashboardConfig, queryClient],
+  );
+
   // Layout picker writes (Task 9): `mutateWidgets` receives the CURRENT
   // `widgets` array and returns the next one (reordered/toggled), or null
   // for "nothing to write" — same guard/race-safety properties as
@@ -1089,6 +1102,8 @@ export default function AppShell() {
             activeThemeId={theme.activeId}
             onSelectTheme={theme.setTheme}
             themeErrorEntries={theme.failed}
+            weatherLocation={dashboardConfig.weather}
+            onSaveWeatherLocation={configQuery.data ? saveWeatherLocation : undefined}
           />
         ) : undefined}
       />

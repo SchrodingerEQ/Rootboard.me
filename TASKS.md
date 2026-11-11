@@ -47,7 +47,7 @@
 - [ ] Adopt a real linter: `npm run lint` is a placeholder added with the PR-governance template. `tsc --noUnusedLocals --noUnusedParameters` reports 20 findings today; ESLint would be a new dev dependency. Pick one, fix its findings, and point `lint` at it so the CI lint step is real (added 2026-10-14)
 - [ ] Beta launch (single external tester, target mid-December 2026) — plan and ten briefs at `docs/plans/beta-launch/README.md`; one brief per session, in order. Sub-items (check off as each brief's PR merges):
   - [ ] 00 Google device-flow scope spike + OAuth consent-screen verification submission (founder; start first, it waits on Google)
-  - [ ] 01 Weather location becomes a Settings/config value (replaces the `.env`-only `WEATHER_*` path; env stays as fallback)
+  - [x] 01 Weather location becomes a Settings/config value (replaces the `.env`-only `WEATHER_*` path; env stays as fallback) (done 2026-11-11 — Settings → System → Weather; decision 0015; verify on the kiosk after the next release)
   - [ ] 02 Google sign-in with OAuth, tokens stored only on the unit; service account kept as the advanced option (supersedes the auth half of decision 0002)
   - [ ] 03 First-run wizard: Wi-Fi via NetworkManager + polkit, time zone, Google, weather; re-runnable from Settings
   - [ ] 04 In-product feedback (absorbs the "Add in-product feedback" item below once started; still blocked on the feedback service being live)

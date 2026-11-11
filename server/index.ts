@@ -3,10 +3,15 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storageReady } from "./storage";
+import { logWeatherConfigSource } from "./services/weatherService";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Responses whose body is personal data (the place names a postal-code
+// lookup returns) and must not reach the journal; the request line still does.
+const UNLOGGED_BODY_PATHS = new Set(["/api/weather/lookup"]);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -23,7 +28,7 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
+      if (capturedJsonResponse && !UNLOGGED_BODY_PATHS.has(path)) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
@@ -41,6 +46,7 @@ app.use((req, res, next) => {
 (async () => {
   await storageReady;
   const server = await registerRoutes(app);
+  logWeatherConfigSource();
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
