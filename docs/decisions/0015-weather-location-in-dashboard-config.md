@@ -1,6 +1,6 @@
 # 0015 — Weather location lives in `dashboard.json`, `.env` is the fallback
 Date: 2026-11-11
-Status: accepted (beta-launch brief 01, decisions locked 2026-11-08)
+Status: accepted (beta-launch brief 01, decisions locked 2026-11-08); shipped on main in #18, not yet released
 
 ## Decision
 
@@ -49,5 +49,6 @@ change — a blocker for a new owner and for the first-run wizard
   zippopotam.us. The founder decided (2026-11-11) that the Crucible
   privacy policy states this in a Rootboard-specific section, with a
   change-history entry, before this ships; the UI copy next to Look up
-  says the same.
+  says the same. As of the merge that policy section is still pending,
+  so the next release waits for it.
 - There is no "clear location" control yet; clearing it is a hand-edit.
