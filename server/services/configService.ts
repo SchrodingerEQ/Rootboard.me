@@ -50,6 +50,14 @@ export function readDashboardConfig(): ReadDashboardConfigResult {
     return { config: defaultDashboardConfig(), source: "default" };
   }
 
+  // `theme` and `weather` are lenient: a malformed value is dropped rather
+  // than failing the whole file. Say so for the weather location, or the
+  // owner only sees weather quietly fall back to .env / switch off.
+  const rawWeather = (parsedJson as { weather?: unknown } | null)?.weather;
+  if (rawWeather !== undefined && result.data.weather === undefined) {
+    console.error(`Dashboard config at ${CONFIG_PATH}: saved weather location is invalid, ignoring it`);
+  }
+
   return { config: result.data, source: "file" };
 }
 

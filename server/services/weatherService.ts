@@ -212,9 +212,12 @@ export function describeFetchError(err: unknown): string {
   return `Network error${tag}`;
 }
 
-function recordFailure(reason: string): null {
+/** `forKey` is the location the fetch was for: a failure that lands after
+ *  the location changed is logged but says nothing about the new place,
+ *  so it must not show as the new place's last error. */
+function recordFailure(reason: string, forKey: string): null {
   console.error(`Weather fetch failed: ${reason}`);
-  lastError = { at: new Date().toISOString(), reason };
+  if (forKey === cachedFor) lastError = { at: new Date().toISOString(), reason };
   return null;
 }
 
@@ -348,6 +351,7 @@ function buildHourly(raw: any, now: Date): WeatherHourly[] {
 }
 
 async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null> {
+  const key = configKey(cfg);
   const url =
     `https://api.open-meteo.com/v1/forecast` +
     `?latitude=${cfg.lat}&longitude=${cfg.lon}` +
@@ -362,11 +366,11 @@ async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null>
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) {
       const hint = res.status === 429 ? " (too many requests)" : res.status >= 500 ? " (a problem on Open-Meteo's side)" : "";
-      return recordFailure(`Open-Meteo answered HTTP ${res.status}${hint}`);
+      return recordFailure(`Open-Meteo answered HTTP ${res.status}${hint}`, key);
     }
     const data: any = await res.json();
     if (!data?.current || !data?.daily?.time) {
-      return recordFailure("Open-Meteo sent an unexpected response");
+      return recordFailure("Open-Meteo sent an unexpected response", key);
     }
 
     const currentCode = Number(data.current.weather_code ?? 0);
@@ -397,7 +401,7 @@ async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null>
       updatedAt: new Date().toISOString(),
     };
   } catch (err) {
-    return recordFailure(describeFetchError(err));
+    return recordFailure(describeFetchError(err), key);
   } finally {
     clearTimeout(timer);
   }

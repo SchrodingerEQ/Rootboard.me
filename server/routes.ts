@@ -416,6 +416,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         errors: parsed.error.flatten(),
       });
     }
+    // The schema drops a malformed `weather` instead of failing (so a bad
+    // hand-edit never costs the layout); on a write that would silently
+    // erase the saved location, so refuse it.
+    if (req.body?.weather !== undefined && parsed.data.weather === undefined) {
+      return res.status(400).json({ message: "Invalid weather location" });
+    }
     try {
       writeDashboardConfig(parsed.data);
       res.json({ success: true });

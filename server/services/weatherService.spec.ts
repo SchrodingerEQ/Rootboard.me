@@ -335,10 +335,30 @@ describe("weather from the dashboard config", () => {
     expect(await getWeather()).toMatchObject({ enabled: true, location: "Elsewhere" });
   });
 
-  test("a malformed `weather` key falls back to .env", async () => {
+  test("a malformed `weather` key falls back to .env, and says so in the log", async () => {
     stubUpstreamThenOutage();
     writeDashboard("garbage");
     const { getWeather } = await loadService();
     expect(await getWeather()).toMatchObject({ enabled: true, location: "" });
+    expect(vi.mocked(console.error).mock.calls.flat().join(" ")).toContain("saved weather location is invalid");
+  });
+
+  test("a failure for the old location that lands after a change is not shown as the new location's error", async () => {
+    let releaseOld: (() => void) | null = null;
+    vi.stubGlobal("fetch", (url: string) => {
+      if (url.includes("latitude=0&")) {
+        return new Promise<Response>((_resolve, reject) => {
+          releaseOld = () => reject(new TypeError("fetch failed"));
+        });
+      }
+      return Promise.resolve(new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 }));
+    });
+    const { getWeather, getWeatherStatus } = await loadService();
+    const oldRequest = getWeather(); // .env location, left hanging
+    writeDashboard(LOCATION);
+    expect(await getWeather()).toMatchObject({ enabled: true, location: "Testville, TS" });
+    releaseOld!();
+    await oldRequest;
+    expect(getWeatherStatus().lastError).toBeNull();
   });
 });
