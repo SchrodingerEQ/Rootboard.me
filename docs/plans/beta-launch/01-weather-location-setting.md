@@ -1,6 +1,6 @@
 # 01 — Weather location becomes a config setting
 
-**Status:** Done 2026-11-11 — implemented as specified; SPEC §2.2/2.5/2.6/3.7/3.10/5, decision 0015. Kiosk verification pending the next release. Privacy: the postal code and country code go to zippopotam.us on Look up; per the founder (2026-11-11) the Crucible privacy policy gets a Rootboard section and a change-history entry saying so before this ships. Note for 03: the Settings popover only renders once Google is connected, so the wizard (not Settings) is the first-run path to this setting.
+**Status:** Done 2026-11-11 — merged to main in #18; implemented as specified; SPEC §2.2/2.5/2.6/3.7/3.10/5, decision 0015. Not yet in a release; kiosk verification follows the next release. Privacy: the postal code and country code go to zippopotam.us on Look up; per the founder (2026-11-11) the Crucible privacy policy gets a Rootboard section and a change-history entry saying so before this ships. That policy section is still pending (its website PR is not open yet), so the next release must not go out before it is live. Note for 03: the Settings popover only renders once Google is connected, so the wizard (not Settings) is the first-run path to this setting.
 **Type:** Small server + settings change. One session.
 **Depends on:** nothing.
 **Unblocks:** 03 (the wizard needs a place to write the location).
