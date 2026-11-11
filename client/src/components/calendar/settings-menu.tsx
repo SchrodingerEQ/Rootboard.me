@@ -31,6 +31,8 @@ import { useOskMode } from "@/hooks/use-osk-mode";
 import { SETTINGS_CATEGORIES, categoryHasWarning, type SettingsView } from "./settings-nav";
 import { describeWeatherStatus, type WeatherStatus } from "@/lib/weather-status";
 import { BrightnessControl } from "./brightness-control";
+import { WeatherLocationSettings } from "./weather-location-settings";
+import type { WeatherLocation } from "@shared/dashboard-config";
 import type { OskMode } from "@/lib/osk";
 
 interface CalendarInfo {
@@ -227,6 +229,10 @@ interface SettingsMenuProps {
   onSelectTheme?: (id: string) => void;
   /** Built-ins that failed validation. Absent/empty hides the section. */
   themeErrorEntries?: readonly ThemeErrorEntry[];
+  /** The saved weather location (dashboard.json `weather`). */
+  weatherLocation?: WeatherLocation;
+  /** Saves a picked weather location. Absent hides the Weather row. */
+  onSaveWeatherLocation?: (location: WeatherLocation) => void;
 }
 
 export function SettingsMenu({
@@ -251,6 +257,8 @@ export function SettingsMenu({
   activeThemeId,
   onSelectTheme,
   themeErrorEntries = [],
+  weatherLocation,
+  onSaveWeatherLocation,
 }: SettingsMenuProps) {
   // IMPORTANT #1: only count widgets that actually RENDER a pane toward
   // the "at least one widget must stay enabled" guard — a builtin always
@@ -1114,21 +1122,30 @@ export function SettingsMenu({
                 )}
               </div>
 
-              {/* Weather status — why the weather stopped updating, readable
-                  without a terminal. Hidden when weather isn't set up. */}
-              {weatherStatus && (
+              {/* Weather — the location setting (beta-launch brief 01) plus
+                  the status lines: why the weather stopped updating, readable
+                  without a terminal. Status lines are hidden when weather
+                  isn't set up. */}
+              {(weatherStatus || onSaveWeatherLocation) && (
                 <>
                   <Separator />
-                  <div className="space-y-1" data-testid="weather-status">
+                  <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      {weatherStatus.failing && <AlertTriangle className="h-4 w-4 text-rb-warn" />}
+                      {weatherStatus?.failing && <AlertTriangle className="h-4 w-4 text-rb-warn" />}
                       <Label className="text-sm font-medium">Weather</Label>
                     </div>
-                    <p className="text-xs text-rb-muted leading-snug">Last update: {weatherStatus.lastUpdate}</p>
-                    {weatherStatus.lastError && (
-                      <p className={`text-xs leading-snug ${weatherStatus.failing ? "text-rb-warn-ink" : "text-rb-faint"}`}>
-                        Last error: {weatherStatus.lastError}
-                      </p>
+                    {onSaveWeatherLocation && (
+                      <WeatherLocationSettings location={weatherLocation} onSave={onSaveWeatherLocation} />
+                    )}
+                    {weatherStatus && (
+                      <div className="space-y-1" data-testid="weather-status">
+                        <p className="text-xs text-rb-muted leading-snug">Last update: {weatherStatus.lastUpdate}</p>
+                        {weatherStatus.lastError && (
+                          <p className={`text-xs leading-snug ${weatherStatus.failing ? "text-rb-warn-ink" : "text-rb-faint"}`}>
+                            Last error: {weatherStatus.lastError}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 </>

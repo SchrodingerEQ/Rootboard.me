@@ -10,6 +10,24 @@ const dashboardWidgetEntrySchema = z.object({
 
 export type DashboardWidgetEntry = z.infer<typeof dashboardWidgetEntrySchema>;
 
+/**
+ * The kiosk's weather location, set from Settings → System → Weather
+ * (beta-launch brief 01). Coordinates come from a postal-code lookup and are
+ * stored once; the postal code is kept so the UI can show what was typed.
+ * Device-local like the rest of data/ (gitignored, preserved across updates).
+ */
+export const weatherLocationSchema = z.object({
+  postalCode: z.string().trim().min(1).max(16),
+  /** ISO 3166-1 alpha-2, upper case (the lookup service's country key). */
+  countryCode: z.string().regex(/^[A-Z]{2}$/),
+  label: z.string().max(120),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  units: z.enum(["celsius", "fahrenheit"]),
+});
+
+export type WeatherLocation = z.infer<typeof weatherLocationSchema>;
+
 export const dashboardConfigSchema = z
   .object({
     configVersion: z.literal(1),
@@ -22,6 +40,12 @@ export const dashboardConfigSchema = z
      * (client/src/lib/theme-engine.ts resolveTheme). Decision 0009.
      */
     theme: themeIdSchema.optional().catch(undefined),
+    /**
+     * Weather location. LENIENT like `theme`: a malformed value becomes
+     * undefined (→ the WEATHER_* env fallback, else no weather) instead of
+     * invalidating the widget layout. Absent on a fresh kiosk.
+     */
+    weather: weatherLocationSchema.optional().catch(undefined),
     widgets: z
       .array(dashboardWidgetEntrySchema)
       .min(1)

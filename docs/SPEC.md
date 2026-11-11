@@ -52,6 +52,7 @@ retention sweep, which runs inside each sync.
 | GET | `/api/version` | `{version, timestamp}` — supervisor health-check target | none |
 | GET | `/api/weather` | Cached Open-Meteo forecast, or `{enabled:false}` | none |
 | GET | `/api/weather/status` | `{configured, lastSuccessAt, lastError:{at, reason}}` — server-side Open-Meteo health for Settings → System | none |
+| GET | `/api/weather/lookup?postal=&country=` | Postal code → `{candidates:[{label, lat, lon}]}` via `api.zippopotam.us` (server-side proxy, 20 s budget); 400 on bad input, 502 generic message when the lookup host is unreachable; response body is kept out of the request log | none |
 | GET | `/api/calendar/events` | Events overlapping `from`/`to` (legacy `startDate`/`endDate` accepted) | none |
 | GET | `/api/calendar/calendars` | Google calendar list | none |
 | DELETE | `/api/calendar/calendars/:calendarId` | Unsubscribe + purge local events | none |
@@ -160,9 +161,18 @@ retention sweep, which runs inside each sync.
 
 ### 2.5 Weather (`server/services/weatherService.ts`)
 
-Enabled only when `WEATHER_ENABLED="true"` and `WEATHER_LAT`/`WEATHER_LON`
-are finite numbers. `WEATHER_UNITS` is `fahrenheit` or defaults to
-celsius; `WEATHER_LOCATION_LABEL` defaults to empty. Forecast is fetched
+The location resolves on every request (`resolveWeatherConfig`, decision
+0015): the `weather` key of `data/config/dashboard.json` (set from
+Settings → System → Weather, 3.7) wins; when it is absent or malformed
+the `WEATHER_*` env vars are the fallback; with neither, weather is off.
+The env path is enabled only when `WEATHER_ENABLED="true"` and
+`WEATHER_LAT`/`WEATHER_LON` are finite numbers; `WEATHER_UNITS` is
+`fahrenheit` or defaults to celsius; `WEATHER_LOCATION_LABEL` defaults
+to empty. Startup logs one line naming the source (and that `.env` is
+ignored when both are set), never the place. A change of location or
+units takes effect on the next request without a restart: the cached
+forecast and the status fields are dropped, and a fetch still in the air
+for the old place does not fill the cache. Forecast is fetched
 from Open-Meteo (20 s budget per attempt, kept in `shared/weather-timeouts.ts`
 next to the widget's — the kiosk's Wi-Fi can stall
 for seconds at a time) and cached server-side for 30 minutes; a failed
@@ -178,9 +188,14 @@ location, updatedAt }`. `hourly` (added for the What to Wear widget,
 3.10) carries `time, temp, feelsLike, precipChance, precipMm, snowCm,
 code, windKmh, uv` from the first hour of the current local day;
 `temp`/`feelsLike` follow `WEATHER_UNITS` (reported in `units`), wind is
-km/h, precipitation mm, snowfall cm. The kiosk's coordinates never reach
-the client — only the derived forecast does. The weather service
-contacts only `api.open-meteo.com` (HTTPS, keyless). When weather is not
+km/h, precipitation mm, snowfall cm. `/api/weather` never carries the
+coordinates — only the derived forecast. A location set from Settings
+is stored in `dashboard.json`, so its postal code, label and
+postal-code-centroid coordinates are returned by `/api/config/dashboard`
+to the kiosk UI; `.env` coordinates never reach the client. The weather
+service contacts only `api.open-meteo.com` (HTTPS, keyless); the
+Settings lookup (`server/services/weatherLookup.ts`) contacts only
+`api.zippopotam.us`, on a tap, and never logs the postal code. When weather is not
 configured the response is `{ enabled: false }`; when it is configured
 but the upstream fetch failed with a cold cache it is
 `{ enabled: false, configured: true }` (an outage, not a setup problem;
@@ -205,7 +220,7 @@ retries upstream when a client asks, so this is also the retry cadence.
 | `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | `SchrodingerEQ` / `Rootboard.me` |
 | `MANAGED_BY_SUPERVISOR` / `SUPERVISED` | `1` → self-restart after update allowed |
 | `PM2_HOME`, `INVOCATION_ID` | presence implies supervised (pm2/systemd) |
-| `WEATHER_*` | see 2.5 |
+| `WEATHER_*` | fallback only when `dashboard.json` has no `weather` key — see 2.5; deprecated for kiosks (use Settings → System → Weather), still fine for hosted use |
 | `NODE_ENV` | `development` → Vite middleware; else static `dist/public` |
 
 ## 3. Client
@@ -589,6 +604,17 @@ per-calendar visibility switches + unsubscribe, add-calendar-by-ID
 copy button (or a "key file not found" warning linking `/setup`),
 Check-for-Updates and Roll Back buttons, and the current `APP_VERSION`.
 
+System → **Weather** (`weather-location-settings.tsx`): postal code and
+two-letter country (default: the browser locale's region, else US), a
+°F/°C toggle (default °F for US-style countries, else °C), and **Look up**
+(`GET /api/weather/lookup`), which lists up to 8 candidate places; tapping
+one saves `{postalCode, countryCode, label, lat, lon, units}` as
+`dashboard.json` `weather` through the shell's read-merge-PUT, then
+re-asks `/api/weather` and its status so the header chip follows at
+once. With a place saved, the unit toggle saves immediately. The status
+lines (last update, last error) sit under it once weather is configured.
+Clearing a saved location is not offered yet (hand-edit the file).
+
 Update flow (client side): auto-check if not checked since today 8 AM,
 then re-check every 24 h. Dismissals persist per-day (localStorage
 `update-dismissed-date`). The update dialog has Available → In-Progress
@@ -734,7 +760,8 @@ decision 0012. Disabled in the default config; enable it from the
 layout picker.
 
 - **Settings** (manifest, edited in the host Settings UI, persisted in
-  `dashboard.json`): `zipCode` (blank = use the kiosk's `/api/weather`),
+  `dashboard.json`): `zipCode` (blank = use the kiosk's `/api/weather`,
+  i.e. the Settings location, else `.env` — 2.5),
   `units` (`celsius` default / `fahrenheit`), `schoolStart` / `schoolEnd`
   (`"HH:MM"`, fall back to `08:00` / `15:00` when unparsable or
   inverted). Evening is fixed at 18:00. The zip is treated as personal
@@ -871,7 +898,9 @@ identifies the restored version, then `npm install` + `npm run build`
   ≤ 64,000 chars, written atomically as whole-blob upserts; server
   treats them as opaque.
 - `data/config/dashboard.json`: nav order/enabled-state/per-widget
-  settings source of truth. Zod-validated on both read and write;
+  settings, theme, and weather location source of truth. `theme` and
+  `weather` are lenient (a malformed value becomes undefined, never
+  invalidating the widget layout). Zod-validated on both read and write;
   writes are atomic (`.tmp` + rename); a missing, unparseable, or
   schema-invalid file degrades to `defaultDashboardConfig()` on read
   rather than ever failing to boot. Gitignored — never tracked, and on

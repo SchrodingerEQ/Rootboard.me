@@ -3,8 +3,11 @@
  * so there is nothing secret to leak through this public repo or the
  * auto-update tarball.
  *
- * Config comes from .env (gitignored — coordinates are treated as PII and
- * never live in source):
+ * The location comes from data/config/dashboard.json's `weather` key, set
+ * from Settings → System → Weather (beta-launch brief 01). When that key is
+ * absent, the older .env variables are the fallback (still fine for hosted
+ * use; deprecated for kiosks). Both are gitignored — coordinates are
+ * treated as PII and never live in source:
  *   WEATHER_ENABLED=true
  *   WEATHER_LAT=…            decimal degrees
  *   WEATHER_LON=…
@@ -23,6 +26,8 @@
 import fs from "fs";
 import path from "path";
 import { WEATHER_UPSTREAM_TIMEOUT_MS } from "@shared/weather-timeouts";
+import type { WeatherLocation } from "@shared/dashboard-config";
+import { readDashboardConfig } from "./configService";
 
 export interface WeatherCurrent {
   temp: number;
@@ -85,7 +90,12 @@ const HOURLY_COUNT = 48;
 
 let cached: WeatherPayload | null = null;
 let cachedAt = 0;
+/** Which location `cached` belongs to (configKey). A Settings change takes
+ *  effect on the next request without a restart: a different key drops the
+ *  cached forecast instead of serving the old place's weather. */
+let cachedFor = "";
 let inflight: Promise<WeatherPayload | null> | null = null;
+let inflightFor = "";
 
 /** Upstream health for the Settings → System panel, so a family can read
  *  why the weather stopped updating off the touchscreen — no terminal.
@@ -171,6 +181,7 @@ function warmFromDisk(cfg: WeatherConfig): void {
   const persisted = loadPersisted();
   if (persisted && persisted.units === cfg.units && persisted.location === cfg.label) {
     cached = persisted;
+    cachedFor = configKey(cfg);
     lastSuccessAt = persisted.updatedAt;
   }
 }
@@ -209,25 +220,85 @@ function recordFailure(reason: string): null {
 
 export function getWeatherStatus(): WeatherStatus {
   const cfg = getConfig();
-  if (cfg) warmFromDisk(cfg);
+  if (cfg) {
+    warmFromDisk(cfg);
+    dropCacheIfLocationChanged(cfg);
+  }
   return { configured: cfg !== null, lastSuccessAt, lastError };
 }
 
-interface WeatherConfig {
+export interface WeatherConfig {
   lat: number;
   lon: number;
   units: "celsius" | "fahrenheit";
   label: string;
+  /** Where this config came from — for the startup log line only. */
+  source: "config" | "env";
 }
 
-function getConfig(): WeatherConfig | null {
-  if (process.env.WEATHER_ENABLED !== "true") return null;
-  const lat = Number(process.env.WEATHER_LAT);
-  const lon = Number(process.env.WEATHER_LON);
+function envWeatherConfig(env: NodeJS.ProcessEnv): WeatherConfig | null {
+  if (env.WEATHER_ENABLED !== "true") return null;
+  const lat = Number(env.WEATHER_LAT);
+  const lon = Number(env.WEATHER_LON);
   if (!isFinite(lat) || !isFinite(lon)) return null;
-  const units = process.env.WEATHER_UNITS === "fahrenheit" ? "fahrenheit" : "celsius";
-  const label = process.env.WEATHER_LOCATION_LABEL || "";
-  return { lat, lon, units, label };
+  const units = env.WEATHER_UNITS === "fahrenheit" ? "fahrenheit" : "celsius";
+  const label = env.WEATHER_LOCATION_LABEL || "";
+  return { lat, lon, units, label, source: "env" };
+}
+
+/** Precedence: the dashboard config's `weather` key, then the WEATHER_*
+ *  env vars, then null (weather off). Pure, so the precedence is testable. */
+export function resolveWeatherConfig(
+  configured: WeatherLocation | undefined,
+  env: NodeJS.ProcessEnv,
+): WeatherConfig | null {
+  if (configured) {
+    const { lat, lon, units, label } = configured;
+    return { lat, lon, units, label, source: "config" };
+  }
+  return envWeatherConfig(env);
+}
+
+/** Re-read on every call (the file is tiny): a Settings save or an SSH
+ *  hand-edit takes effect on the next refresh, no restart. */
+function getConfig(): WeatherConfig | null {
+  return resolveWeatherConfig(readDashboardConfig().config.weather, process.env);
+}
+
+/** One startup line naming where the weather location comes from — and,
+ *  when both are set, that the Settings value wins over .env. Never logs
+ *  the coordinates or the label. */
+export function weatherConfigStartupLine(
+  configured: WeatherLocation | undefined,
+  env: NodeJS.ProcessEnv,
+): string {
+  const fromEnv = envWeatherConfig(env);
+  if (configured && fromEnv) return "Weather: using the location set in Settings; WEATHER_* in .env is ignored while it is set";
+  if (configured) return "Weather: using the location set in Settings";
+  if (fromEnv) return "Weather: using WEATHER_* from .env";
+  return "Weather: no location set (Settings → System → Weather)";
+}
+
+export function logWeatherConfigSource(): void {
+  console.log(weatherConfigStartupLine(readDashboardConfig().config.weather, process.env));
+}
+
+function configKey(cfg: WeatherConfig): string {
+  return `${cfg.lat},${cfg.lon},${cfg.units},${cfg.label}`;
+}
+
+function dropCacheIfLocationChanged(cfg: WeatherConfig): void {
+  const key = configKey(cfg);
+  if (cachedFor === key) return;
+  if (cachedFor !== "") {
+    // A different place or unit: its forecast and health say nothing about
+    // the new one.
+    cached = null;
+    cachedAt = 0;
+    lastSuccessAt = null;
+    lastError = null;
+  }
+  cachedFor = key;
 }
 
 /** Map WMO weather codes to an icon name the client understands. */
@@ -336,6 +407,8 @@ export async function getWeather(): Promise<WeatherResponse> {
   const cfg = getConfig();
   if (!cfg) return { enabled: false };
   warmFromDisk(cfg);
+  dropCacheIfLocationChanged(cfg);
+  const key = cachedFor;
 
   const fresh = cached && Date.now() - cachedAt < CACHE_TTL_MS;
   if (cached && fresh) return cached;
@@ -343,10 +416,14 @@ export async function getWeather(): Promise<WeatherResponse> {
   // Deduplicate concurrent refreshes (header + week view mount together).
   // The cache update and the disk write live inside the shared promise so
   // they happen once per upstream fetch, however many requests joined it.
-  if (!inflight) {
-    inflight = fetchForecast(cfg)
+  // A fetch in the air for a location that has since changed is not
+  // joined: this request starts its own for the new place.
+  if (!inflight || inflightFor !== key) {
+    const fetching: Promise<WeatherPayload | null> = fetchForecast(cfg)
       .then(async (result) => {
-        if (result) {
+        // The location changed while this fetch was in the air: its answer
+        // is for the old place, so it must not become the new cache.
+        if (result && cachedFor === key) {
           cached = result;
           cachedAt = Date.now();
           lastSuccessAt = result.updatedAt;
@@ -355,8 +432,10 @@ export async function getWeather(): Promise<WeatherResponse> {
         return result;
       })
       .finally(() => {
-        inflight = null;
+        if (inflight === fetching) inflight = null;
       });
+    inflight = fetching;
+    inflightFor = key;
   }
   const result = await inflight;
   if (result) return result;

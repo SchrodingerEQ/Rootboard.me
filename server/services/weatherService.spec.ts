@@ -270,3 +270,75 @@ describe("persistence under concurrent requests and config changes", () => {
     expect(getWeatherStatus().lastSuccessAt).toBeNull();
   });
 });
+
+// Beta-launch brief 01: the location moves into data/config/dashboard.json.
+const LOCATION = { postalCode: "00000", countryCode: "US", label: "Testville, TS", lat: 1.5, lon: -2.25, units: "fahrenheit" as const };
+
+function writeDashboard(weather: unknown) {
+  fs.mkdirSync(path.join(dir, "data", "config"), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, "data", "config", "dashboard.json"),
+    JSON.stringify({ configVersion: 1, defaultWidget: "calendar", widgets: [{ id: "calendar", enabled: true, settings: {} }], weather }),
+  );
+}
+
+describe("resolveWeatherConfig precedence", () => {
+  const env = { WEATHER_ENABLED: "true", WEATHER_LAT: "10", WEATHER_LON: "20", WEATHER_UNITS: "celsius", WEATHER_LOCATION_LABEL: "Envtown" };
+
+  test("the config key wins over .env", async () => {
+    const { resolveWeatherConfig } = await loadService();
+    expect(resolveWeatherConfig(LOCATION, env)).toEqual({ lat: 1.5, lon: -2.25, units: "fahrenheit", label: "Testville, TS", source: "config" });
+  });
+
+  test("without the config key, .env is the fallback (unchanged behaviour)", async () => {
+    const { resolveWeatherConfig } = await loadService();
+    expect(resolveWeatherConfig(undefined, env)).toEqual({ lat: 10, lon: 20, units: "celsius", label: "Envtown", source: "env" });
+  });
+
+  test("neither set → weather off", async () => {
+    const { resolveWeatherConfig } = await loadService();
+    expect(resolveWeatherConfig(undefined, {})).toBeNull();
+  });
+
+  test("the startup line says when the config overrides .env, and never names the place", async () => {
+    const { weatherConfigStartupLine } = await loadService();
+    const both = weatherConfigStartupLine(LOCATION, env);
+    expect(both).toMatch(/Settings.*ignored/);
+    expect(both).not.toMatch(/Testville|Envtown|1\.5|10/);
+    expect(weatherConfigStartupLine(undefined, env)).toMatch(/\.env/);
+    expect(weatherConfigStartupLine(undefined, {})).toMatch(/no location/);
+  });
+});
+
+describe("weather from the dashboard config", () => {
+  test("a fresh install with no .env keys gets weather once a location is saved, without a restart", async () => {
+    vi.stubEnv("WEATHER_ENABLED", "");
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 });
+    });
+    const { getWeather } = await loadService();
+    expect(await getWeather()).toEqual({ enabled: false });
+    writeDashboard(LOCATION);
+    expect(await getWeather()).toMatchObject({ enabled: true, location: "Testville, TS", units: "fahrenheit" });
+    expect(urls[0]).toContain("latitude=1.5&longitude=-2.25");
+  });
+
+  test("changing the location drops the cached forecast instead of serving the old place", async () => {
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify(openMeteoJson("2030-03-10")), { status: 200 }));
+    const { getWeather } = await loadService();
+    expect(await getWeather()).toMatchObject({ enabled: true, location: "" }); // from .env
+    writeDashboard(LOCATION);
+    expect(await getWeather()).toMatchObject({ enabled: true, location: "Testville, TS" });
+    writeDashboard({ ...LOCATION, label: "Elsewhere", lat: 3 });
+    expect(await getWeather()).toMatchObject({ enabled: true, location: "Elsewhere" });
+  });
+
+  test("a malformed `weather` key falls back to .env", async () => {
+    stubUpstreamThenOutage();
+    writeDashboard("garbage");
+    const { getWeather } = await loadService();
+    expect(await getWeather()).toMatchObject({ enabled: true, location: "" });
+  });
+});
