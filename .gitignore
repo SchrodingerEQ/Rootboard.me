@@ -36,7 +36,7 @@ data/
 .update-backups/
 .update-temp/
 
-# Replit/agent debugging artifacts (contain personal screenshots, hostnames, IPs, OAuth screenshots)
+# Agent debugging artifacts (contain personal screenshots, hostnames, IPs, OAuth screenshots)
 # Exclude the entire folder EXCEPT the one logo image actually imported by the app
 # (the @assets alias in vite.config.ts points to attached_assets/).
 attached_assets/*

@@ -48,9 +48,9 @@ export default function SetupPage() {
                 Best for beginners - no coding knowledge required!
               </p>
               <ol className="list-decimal list-inside space-y-2 text-gray-700 text-sm">
-                <li>On your regular computer, visit the Replit project page</li>
-                <li>Click the three-dot menu (⋮) in the top right corner</li>
-                <li>Select <strong>"Download as zip"</strong></li>
+                <li>On your regular computer, open <code className="bg-green-100 px-1 rounded">github.com/SchrodingerEQ/Rootboard.me/releases/latest</code></li>
+                <li>Scroll to the <strong>Assets</strong> list at the bottom of the release</li>
+                <li>Click <strong>"Source code (zip)"</strong></li>
                 <li>Copy the downloaded zip file to a USB drive</li>
                 <li>Plug the USB drive into your Raspberry Pi</li>
                 <li>Open File Manager on the Pi and navigate to the USB drive</li>
@@ -74,8 +74,8 @@ export default function SetupPage() {
               </p>
               <ol className="list-decimal list-inside space-y-2 text-gray-700 text-sm">
                 <li>Open the web browser (Chromium) on your Raspberry Pi</li>
-                <li>Go to the Replit project page</li>
-                <li>Click the three-dot menu (⋮) → "Download as zip"</li>
+                <li>Go to <code className="bg-gray-100 px-1 rounded">github.com/SchrodingerEQ/Rootboard.me/releases/latest</code></li>
+                <li>Under <strong>Assets</strong>, click "Source code (zip)"</li>
                 <li>The file will download to your Downloads folder</li>
                 <li>Open File Manager and extract the zip file</li>
                 <li>Move the extracted folder to <code className="bg-gray-100 px-1 rounded">/home/pi/calendar-app</code></li>
@@ -95,10 +95,10 @@ export default function SetupPage() {
               <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
                 <div># Open Terminal on your Raspberry Pi and run:</div>
                 <div>cd /home/pi</div>
-                <div>git clone [REPLIT_GIT_URL] calendar-app</div>
+                <div>git clone https://github.com/SchrodingerEQ/Rootboard.me.git calendar-app</div>
               </div>
               <p className="text-xs text-gray-500">
-                To find the Git URL: On Replit, click "Git" in the left sidebar, then copy the clone URL.
+                This is the public Rootboard repository on GitHub — the same place the app's automatic updates come from.
               </p>
             </div>
 
