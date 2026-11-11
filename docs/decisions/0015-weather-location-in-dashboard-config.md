@@ -45,4 +45,9 @@ change — a blocker for a new owner and for the first-run wizard
   network until brief 05's pairing work lands.
 - `data/` is gitignored and on both updater preserve lists, so the
   location stays on the device and survives updates.
+- Look up sends the postal code and two-letter country code to
+  zippopotam.us. The founder decided (2026-11-11) that the Crucible
+  privacy policy states this in a Rootboard-specific section, with a
+  change-history entry, before this ships; the UI copy next to Look up
+  says the same.
 - There is no "clear location" control yet; clearing it is a hand-edit.

@@ -140,8 +140,9 @@ export function WeatherLocationSettings({ location, onSave }: WeatherLocationSet
         </div>
       )}
       <p className="text-xs text-rb-faint leading-snug">
-        A postal code is enough — no street address needed. Look up sends it
-        to zippopotam.us to find the place; it is saved only on this kiosk.
+        A postal code is enough — no street address needed. Look up sends the
+        postal code and country code to zippopotam.us to find the place; your
+        choice is saved only on this kiosk.
       </p>
     </div>
   );
