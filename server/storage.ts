@@ -148,7 +148,7 @@ export class MemStorage implements IStorage {
 
 async function createStorage(): Promise<IStorage> {
   if (process.env.DATABASE_URL) {
-    console.log('Using MemStorage with PostgreSQL session store (Replit environment)');
+    console.log('DATABASE_URL is set: using in-memory MemStorage (hosted deployment; data is not persisted)');
     return new MemStorage();
   } else {
     console.log('Using SQLite storage (self-hosted environment)');

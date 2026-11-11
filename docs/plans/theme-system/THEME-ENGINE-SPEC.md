@@ -357,9 +357,9 @@ One small release, per the project's release workflow:
 
 ## Out of scope (later slices)
 
-- Fonts (and fixing the existing remote Google Fonts loads in
-  `client/index.html` and `index.css`, which contradict the plan's
-  local-fonts rule — tracked in TASKS.md).
+- Theme fonts. (The app's own fonts are already local: the remote
+  Google Fonts loads were replaced by bundled woff2 files in
+  `client/src/fonts.css` — decision 0016.)
 - Logo, screensaver and background imagery; confetti shapes.
 - Confetti colors (`CONFETTI_COLORS` const still shadows the
   `--rb-confetti-*` tokens).

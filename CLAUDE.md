@@ -50,7 +50,7 @@ These are gitignored — confirm none are staged or force-added:
 - `calendar.db`, `*.db`, `*.db-wal`, `*.db-shm` — contain **real family calendar events** (titles, locations, descriptions).
 - `attached_assets/*` except the one whitelisted logo — this folder has historically held **personal screenshots, hostnames, and IPs**.
 - `*.log` (e.g. `firefox-kiosk.log`) — can contain IPs/hostnames.
-- `.local/`, `.agents/`, `.cache/`, `.upm/` — agent/Replit artifacts that may contain personal data.
+- `.local/`, `.agents/`, `.cache/`, `.upm/` — agent artifacts that may contain personal data.
 
 ### 3. No identifying info hardcoded in source, docs, comments, commit messages, or release notes
 - Real email addresses (the service-account `client_email`, personal Gmail).

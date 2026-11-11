@@ -49,7 +49,7 @@ while true; do
                         case "$basename" in
                             # Preserve list mirrors PRESERVE_PATHS in
                             # updateService.ts — keep in sync.
-                            .env|data|node_modules|.update-backups|.update-temp|.git|.replit|replit.nix|replit.md|service-account.json|google_credentials.json|calendar.db*|widgets)
+                            .env|data|node_modules|.update-backups|.update-temp|.git|service-account.json|google_credentials.json|calendar.db*|widgets)
                                 continue
                                 ;;
                             *)

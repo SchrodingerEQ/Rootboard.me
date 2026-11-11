@@ -142,8 +142,8 @@ retention sweep, which runs inside each sync.
 ### 2.4 Storage (`server/storage.ts`, `server/sqlite-storage.ts`)
 
 - Selection at startup: **if `DATABASE_URL` is set → `MemStorage`
-  (in-memory, non-persistent — the log line says "PostgreSQL" but no
-  Postgres app-data storage is actually wired)**; otherwise →
+  (in-memory, non-persistent — no Postgres app-data storage is wired,
+  and the startup log line says so)**; otherwise →
   `SQLiteStorage('./calendar.db')`. Real persistence exists only on the
   SQLite path.
 - SQLite: WAL mode. Tables:
@@ -632,6 +632,12 @@ failure during polling is *assumed to be the restart* and reloads after
   `::-webkit-scrollbar` and shrink the bars.
 - **Fullscreen** comes from launching the browser with `--kiosk` — the
   client never calls `requestFullscreen`.
+- **Fonts are bundled, never fetched.** `client/src/fonts.css` declares
+  Nunito (the body face) and Google Sans (declared, unused) from woff2
+  files in `client/src/assets/fonts/`, with the subsets and
+  unicode-ranges Google Fonts served; each family's `OFL.txt` sits beside
+  its files. The page loads nothing from outside the device at load
+  time — no font CDN, no third-party script.
 - **No browser zoom.** `html, body { touch-action: pan-x pan-y }` (and
   the same value on `.touch-button`) disables pinch and double-tap zoom
   while keeping touch scrolling. Never use `touch-action: manipulation`
@@ -854,7 +860,7 @@ install or build fails, the updater sets an error status, auto-runs
   `service-account.json`, `google_credentials.json`, `calendar.db` (+
   `-shm`/`-wal`).
 - **Repo-metadata exclusion** (`isRepoMetadata`): `*.md`, `.claude`,
-  `docs`, `.github`, `setup` (with `replit.md` exempt) are excluded from
+  `docs`, `.github`, `setup` are excluded from
   *applied files* and *backups*, but deliberately **not** from the
   stale-file deletion pass — so docs already on a device get cleaned up
   and are not re-applied. Consequence: **tracked docs never land on
@@ -917,7 +923,7 @@ identifies the restored version, then `npm install` + `npm run build`
 
 - Error middleware re-throws after responding (`server/index.ts`).
 - `reusePort` only off-Windows (`ENOTSUP` on win32).
-- `DATABASE_URL` branch = in-memory storage, not Postgres (misleading log).
+- `DATABASE_URL` branch = in-memory storage, not Postgres.
 - Localhost guard trusts the raw socket IP; no `trust proxy` — re-verify
   if a reverse proxy is ever introduced.
 - Update `check`/`status`/`backups` endpoints are unguarded; only

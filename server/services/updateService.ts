@@ -66,10 +66,7 @@ const PRESERVE_PATHS = [
 // the stale-file deletion pass, so metadata already on devices from old
 // releases gets cleaned up). scripts/start.sh applies the same set when
 // restoring from backup — keep the two in sync.
-// replit.md is exempt: the existing filters preserve it on-device and the
-// *.md rule must not change that.
 function isRepoMetadata(name: string): boolean {
-  if (name === 'replit.md') return false;
   return name.endsWith('.md') ||
          name === '.claude' ||
          name === 'docs' ||
@@ -305,10 +302,7 @@ function applyFiles(sourceDir: string): void {
     return !PRESERVE_PATHS.includes(f) &&
            !f.startsWith('.update-') &&
            f !== 'node_modules' &&
-           f !== '.git' &&
-           f !== '.replit' &&
-           f !== 'replit.nix' &&
-           f !== 'replit.md';
+           f !== '.git';
   });
 
   for (const file of currentFiles) {
@@ -321,9 +315,6 @@ function applyFiles(sourceDir: string): void {
            f !== 'node_modules' &&
            f !== '.git' &&
            f !== '.env' &&
-           f !== '.replit' &&
-           f !== 'replit.nix' &&
-           f !== 'replit.md' &&
            f !== 'data' &&
            !isRepoMetadata(f);
   });
@@ -377,10 +368,7 @@ export async function rollback(): Promise<{ success: boolean; restoredVersion: s
     return !PRESERVE_PATHS.includes(f) &&
            !f.startsWith('.update-') &&
            f !== 'node_modules' &&
-           f !== '.git' &&
-           f !== '.replit' &&
-           f !== 'replit.nix' &&
-           f !== 'replit.md';
+           f !== '.git';
   });
 
   for (const file of currentFiles) {
