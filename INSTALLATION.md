@@ -317,7 +317,7 @@ Save with `Ctrl+O`, `Enter`, then `Ctrl+X`.
 
 > **Weather is not set here.** Once the app is running and Google is connected, set the weather location on the touchscreen: **Settings → System → Weather**, type a postal code, tap **Look up**, pick your place. The older `WEATHER_*` keys in `.env.example` still work as a fallback but are no longer needed on a kiosk.
 
-> **Database:** leave `DATABASE_URL` commented out. With it unset, the app automatically uses SQLite (`calendar.db` in the project folder), which is the right choice for self-hosted Pi installs.
+> **Database:** nothing to set. The app stores its data in SQLite (`calendar.db` in the project folder).
 
 > **`NODE_ENV=production` is required.** Without it, Express defaults to development mode and tries to start the Vite dev server, causing a "Failed to load url /src/main.tsx" error.
 

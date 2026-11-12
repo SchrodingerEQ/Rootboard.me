@@ -1,7 +1,7 @@
 # 0002 — SQLite + Google service account for the self-hosted default
 
 Date: 2026-07-23 (reconstructed as-built rationale)
-Status: accepted
+Status: accepted; amended 2026-11-11 — the `DATABASE_URL` path was removed, see the update at the end
 
 ## Decision
 
@@ -36,3 +36,16 @@ no-account, client/self-hosted products.
   gitignored, server-side only, and must be rotated if ever exposed.
 - Calendar access is read via one identity; per-user Google features are out
   of scope by design.
+
+## Update 2026-11-11 — `DATABASE_URL` path removed
+
+The founder ruled: "drop the unused Google Sans font and remove the
+database storage path" (founder, 2026-11-11). SQLite is now the only
+storage. The hosted "Postgres" option never stored app data: with
+`DATABASE_URL` set, the server used non-persistent in-memory storage
+and lost everything on restart. That branch, `drizzle.config.ts`,
+`npm run db:push`, and the unused `@neondatabase/serverless`,
+`connect-pg-simple`, `@types/connect-pg-simple` and `drizzle-kit`
+packages are gone. A leftover `DATABASE_URL` is ignored with a startup
+log line. `shared/schema.ts` keeps its Drizzle table declarations only
+as the source of the row types.
