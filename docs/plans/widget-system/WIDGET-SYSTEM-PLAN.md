@@ -181,8 +181,9 @@ widget auto-updates — only if a community materializes.
   point may a phase lose or reformat a kiosk's chores/dinner data.
 - Existing related tasks to settle alongside: the dead
   `screensaver-overlay.tsx` question and the misleading
-  `DATABASE_URL`/MemStorage log (tracked separately in TASKS.md; not
-  blockers, but Phase 2 touches neighboring files).
+  `DATABASE_URL`/MemStorage log (since removed with that path,
+  2026-11-11; tracked separately in TASKS.md; not blockers, but Phase 2
+  touches neighboring files).
 
 ## Effort read
 

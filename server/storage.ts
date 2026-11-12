@@ -24,12 +24,10 @@ export interface IStorage {
   setAppState(key: string, value: string): Promise<void>;
 }
 
-// Storage is always SQLite (calendar.db next to the app). The old
-// DATABASE_URL branch, which silently used non-persistent in-memory storage,
-// was removed by founder ruling on 2026-11-11 (decision 0002, update).
+// DATABASE_URL path (in-memory MemStorage) removed 2026-11-11; see decision 0002.
 async function createStorage(): Promise<IStorage> {
   if (process.env.DATABASE_URL) {
-    console.log('DATABASE_URL is set but no longer used: storage is always SQLite (calendar.db)');
+    console.warn('DATABASE_URL is set but no longer used: storage is always SQLite (calendar.db)');
   }
   console.log('Using SQLite storage (self-hosted environment)');
   const { SQLiteStorage } = await import('./sqlite-storage');
