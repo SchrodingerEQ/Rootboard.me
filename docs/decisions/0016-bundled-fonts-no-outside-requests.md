@@ -1,6 +1,6 @@
 # 0016 — Fonts are bundled woff2 files; the page loads nothing from outside the device
 Date: 2026-11-11
-Status: accepted (founder-directed 2026-11-11)
+Status: accepted (founder-directed 2026-11-11); amended 2026-11-11 — Google Sans dropped, see the update at the end
 
 ## Decision
 
