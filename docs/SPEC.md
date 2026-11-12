@@ -633,10 +633,9 @@ failure during polling is *assumed to be the restart* and reloads after
 - **Fullscreen** comes from launching the browser with `--kiosk` — the
   client never calls `requestFullscreen`.
 - **Fonts are bundled, never fetched.** `client/src/fonts.css` declares
-  Nunito (the body face) and Google Sans (declared, unused) from woff2
-  files in `client/src/assets/fonts/`, with the subsets and
-  unicode-ranges Google Fonts served; each family's `OFL.txt` sits beside
-  its files. The page loads nothing from outside the device at load
+  Nunito (the body face) from woff2 files in `client/src/assets/fonts/`,
+  with the subsets and unicode-ranges Google Fonts served; the family's
+  `OFL.txt` sits beside its files. The page loads nothing from outside the device at load
   time — no font CDN, no third-party script.
 - **No browser zoom.** `html, body { touch-action: pan-x pan-y }` (and
   the same value on `.touch-button`) disables pinch and double-tap zoom

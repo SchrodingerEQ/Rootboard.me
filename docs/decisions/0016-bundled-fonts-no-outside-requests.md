@@ -52,3 +52,11 @@ out and asked for the two fonts to be bundled on the device.
   for both fonts; dropping it is a one-line founder call.
 - Updating a font means re-fetching the files and the `@font-face`
   blocks by hand; nothing updates them automatically.
+
+## Update 2026-11-11 — Google Sans dropped
+
+The founder ruled: "drop the unused Google Sans font and remove the
+database storage path" (founder, 2026-11-11). Google Sans was removed
+from `client/src/fonts.css` and `client/src/assets/fonts/`; Nunito is
+now the only bundled family (~140 KB). No CSS rule ever used Google
+Sans, so nothing renders differently.
