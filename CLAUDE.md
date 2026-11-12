@@ -29,7 +29,7 @@ Guidance for any AI agent (Claude Code, etc.) working in this repository.
 
 - A touchscreen **Google Calendar kiosk** ("Rootboard"), designed to run 24/7 on a Raspberry Pi in Firefox kiosk mode.
 - Stack: Express + React/Vite (TypeScript), `better-sqlite3` for storage (native module — must be `npm install`ed on the target, never copied between architectures).
-- Self-hosted default: SQLite (`calendar.db`); Google auth via a **service-account JSON key**. `DATABASE_URL` is only used for hosted (Postgres) deployments.
+- Storage: SQLite (`calendar.db`) only; Google auth via a **service-account JSON key**. There is no `DATABASE_URL`/Postgres path (removed 2026-11-11, decision 0002); a leftover `DATABASE_URL` in `.env` is ignored with a startup log line.
 - Ships an **auto-update** feature (`server/services/updateService.ts`) that downloads the latest GitHub **release source tarball**, applies it, runs `npm install && npm run build`, and restarts under a supervisor (`scripts/start.sh` / systemd).
 - Has a **community widget system** (contract: `docs/plans/widget-system/CONTRACT.md`; sideloaded folders in `/widgets/`, gitignored + update-preserved). Three companion public repos live under the same GitHub account: `rootboard-widget-template` (starter + tutorial + contribution guide, MIT), `rootboard-widget-grocery-list` (reference widget, MIT), `awesome-rootboard` (community list, CC0). Changes to the contract or host must keep those repos' docs in sync.
 - Has a **theme engine** (spec: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009). One token layer: the shadcn tokens in `client/src/index.css` `:root` are `var(--rb-*)` aliases — never add a literal color there. Themes are bundled modules in `client/src/themes/` validated by `shared/theme-manifest.ts` (every token required); `default.ts` is the copyable authoring reference. Active theme id lives in `data/config/dashboard.json`; a localStorage cache plus an inline script in `client/index.html` prevent a light flash at boot.
@@ -43,7 +43,7 @@ Guidance for any AI agent (Claude Code, etc.) working in this repository.
 These are gitignored — confirm none are staged or force-added:
 - `service-account.json` (Google service-account **private key**)
 - `google_credentials.json` (legacy OAuth creds)
-- `.env`, `.env.*` (may hold `DATABASE_URL` with passwords)
+- `.env`, `.env.*` (may hold credentials, e.g. a leftover `DATABASE_URL` with a password)
 - Any hardcoded API key, token, password, or `BEGIN ... PRIVATE KEY` block in source.
 
 ### 2. No personal data / PII

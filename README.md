@@ -17,7 +17,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 
 - **Frontend**: React 18 + TypeScript + Vite, Tailwind CSS, Radix UI / shadcn
 - **Backend**: Node.js + Express + TypeScript
-- **Database**: SQLite (self-hosted) or PostgreSQL (hosted)
+- **Database**: SQLite (`calendar.db`, on the device)
 - **Auth**: Google Service Account (JSON key file)
 
 ## Quick Start

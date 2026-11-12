@@ -141,20 +141,21 @@ retention sweep, which runs inside each sync.
 
 ### 2.4 Storage (`server/storage.ts`, `server/sqlite-storage.ts`)
 
-- Selection at startup: **if `DATABASE_URL` is set → `MemStorage`
-  (in-memory, non-persistent — no Postgres app-data storage is wired,
-  and the startup log line says so)**; otherwise →
-  `SQLiteStorage('./calendar.db')`. Real persistence exists only on the
-  SQLite path.
+- Storage is always `SQLiteStorage('./calendar.db')`. There is no
+  other backend: the old `DATABASE_URL` → in-memory `MemStorage` branch
+  was removed on 2026-11-11 (decision 0002). If `DATABASE_URL` is still
+  set, the server logs that it is ignored and uses SQLite.
 - SQLite: WAL mode. Tables:
   - `users(id, username UNIQUE, password)` — defined, unused by routes.
   - `calendar_events(…, UNIQUE(google_event_id, calendar_id))` with
     indexes on `(start_time, end_time)` and `google_event_id`; timestamps
     are ISO text; overlap query is `start_time < ? AND end_time > ?`.
   - `app_state(key PRIMARY KEY, value, updated_at)` — upsert on conflict.
-- Drizzle (`shared/schema.ts`, `drizzle.config.ts`) targets Postgres and
-  is used only by `npm run db:push`; **it has no `app_state` table**, so
-  chores/dinner persistence exists only in SQLite/Mem.
+- `shared/schema.ts` declares the `users` and `calendar_events` row
+  types with Drizzle's Postgres table helpers; only the TypeScript types
+  and insert schemas are used. No Drizzle client, config or migration
+  runs (`drizzle.config.ts` and `npm run db:push` were removed with the
+  `DATABASE_URL` path).
 - Chores and dinner are **opaque JSON blobs** under app-state keys
   `chores` and `dinner`; the server never parses them. There are no
   dedicated tables or endpoints for them.
@@ -216,7 +217,7 @@ retries upstream when a client asks, so this is also the retry cadence.
 | Var | Default / behavior |
 |---|---|
 | `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | `./service-account.json` |
-| `DATABASE_URL` | unset → SQLite; set → in-memory MemStorage (see 2.4) |
+| `DATABASE_URL` | no longer used; if set, a startup log line says it is ignored (see 2.4) |
 | `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | `SchrodingerEQ` / `Rootboard.me` |
 | `MANAGED_BY_SUPERVISOR` / `SUPERVISED` | `1` → self-restart after update allowed |
 | `PM2_HOME`, `INVOCATION_ID` | presence implies supervised (pm2/systemd) |
@@ -922,15 +923,12 @@ identifies the restored version, then `npm install` + `npm run build`
 
 - Error middleware re-throws after responding (`server/index.ts`).
 - `reusePort` only off-Windows (`ENOTSUP` on win32).
-- `DATABASE_URL` branch = in-memory storage, not Postgres.
 - Localhost guard trusts the raw socket IP; no `trust proxy` — re-verify
   if a reverse proxy is ever introduced.
 - Update `check`/`status`/`backups` endpoints are unguarded; only
   `apply`/`rollback` are localhost-only.
 - No server-side scheduler: sync cadence, update checks, and state
   refresh are all client timers.
-- Drizzle/Postgres schema lacks `app_state`; `db:push` covers events/users
-  only.
 - `better-sqlite3` is a native module — always `npm install` on the target
   device, never copy `node_modules` across architectures.
 - Chores/Dinner are not routes — section state lives in AppShell, not a

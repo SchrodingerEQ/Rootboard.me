@@ -359,7 +359,7 @@ export default function SetupPage() {
             <Separator />
 
             <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800">
-              <strong>Tip:</strong> When running locally without a DATABASE_URL, the app automatically uses SQLite for storage. Your calendar data is stored in <code className="bg-green-100 px-1 rounded">calendar.db</code> in the project folder.
+              <strong>Tip:</strong> The app uses SQLite for storage, with nothing to set up. Your calendar data is stored in <code className="bg-green-100 px-1 rounded">calendar.db</code> in the project folder.
             </div>
 
             <div className="bg-red-50 border border-red-200 rounded-md p-4 text-sm text-red-800 space-y-2">
