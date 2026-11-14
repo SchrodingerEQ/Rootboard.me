@@ -11,7 +11,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 - **Auto-Updates** — Daily check for new GitHub releases with one-tap install
 - **Safe Rollback** — Automatic backup before every update with manual rollback option
 - **Brightness Control** — Dim the screen from 30–100 % in the settings menu (set the monitor's own brightness for the daytime maximum — see [INSTALLATION.md](INSTALLATION.md#set-the-monitors-own-brightness-now))
-- **What to Wear** — A kid-friendly section that reads the weather forecast for the school day and suggests what to wear in the morning, what changes in the afternoon, and what to pack. Off by default: turn it on from the layout picker. It needs a weather location (Settings → System → Weather) or a zip code in its own settings
+- **What to Wear** — A kid-friendly section that reads the weather forecast for the school day and suggests what to wear in the morning, what changes in the afternoon, and what to pack. Off by default: turn it on in Settings → Widgets. It needs a weather location (Settings → System → Weather) or a zip code in its own settings
 - **Themes** — Built-in Default and Deep Space looks, switchable from the settings menu; the Default manifest is written to be copied as the starting point for new themes
 
 ## Tech Stack
