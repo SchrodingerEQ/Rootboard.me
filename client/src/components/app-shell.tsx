@@ -526,8 +526,8 @@ export default function AppShell() {
   // Power saving is active if manually triggered OR auto-triggered by inactivity
   const isPowerSavingActive = isPowerSaving || screensaver.isActive;
 
-  // SettingsMenu (rendered here in the nav rail) needs authStatus to gate
-  // its trigger button. This used to come from the calendar's useCalendar()
+  // SettingsMenu (rendered here in the nav rail) needs authStatus to hide
+  // its Google-only rows while signed out. This used to come from the calendar's useCalendar()
   // instance; now the shell owns a small, independent query for it (same
   // queryKey, so it shares cache/network with the calendar widget's own
   // auth-status query via react-query — note the widget runs its own React
@@ -1093,9 +1093,14 @@ export default function AppShell() {
         items={navItems}
         active={section}
         onNavigate={setSection}
-        settingsButton={authStatus?.authenticated ? (
+        settingsButton={
+          // Every auth state (beta-launch brief 05, goal 3): a unit that has
+          // lost Google is the one that most needs Diagnostics and pairing.
           <SettingsMenu
             compactTrigger
+            // Unknown (still loading, or paused offline) reads as connected,
+            // so a working unit never flashes "not connected".
+            googleConnected={authStatus ? authStatus.authenticated : true}
             hiddenCalendars={hiddenCalendars}
             onCalendarToggle={handleCalendarVisibilityToggle}
             setBrightness={screensaver.setBrightness}
@@ -1123,7 +1128,7 @@ export default function AppShell() {
             updateChannel={dashboardConfig.update?.channel}
             onSaveUpdateChannel={configQuery.data ? saveUpdateChannel : undefined}
           />
-        ) : undefined}
+        }
       />
 
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">

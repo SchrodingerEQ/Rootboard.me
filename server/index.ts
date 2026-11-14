@@ -1,17 +1,26 @@
 import "dotenv/config";
+import "./install-log-ring";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { storageReady } from "./storage";
 import { logWeatherConfigSource } from "./services/weatherService";
+import { isLanApiOpen } from "./middleware/lanAuth";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Responses whose body is personal data (the place names a postal-code
-// lookup returns) and must not reach the journal; the request line still does.
-const UNLOGGED_BODY_PATHS = new Set(["/api/weather/lookup"]);
+// Responses whose body must not reach the journal; the request line still
+// does. Personal data (the place names a postal-code lookup returns), the
+// pairing code and token, and the full diagnostics view (SSID, IP, hostname).
+const UNLOGGED_BODY_PATHS = new Set([
+  "/api/weather/lookup",
+  "/api/pair",
+  "/api/system/pairing-code",
+  "/api/system/diagnostics",
+  "/api/system/paired-devices",
+]);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -28,7 +37,7 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse && !UNLOGGED_BODY_PATHS.has(path)) {
+      if (capturedJsonResponse && !UNLOGGED_BODY_PATHS.has(path.toLowerCase().replace(/\/+$/, ""))) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
@@ -47,6 +56,12 @@ app.use((req, res, next) => {
   await storageReady;
   const server = await registerRoutes(app);
   logWeatherConfigSource();
+  if (isLanApiOpen()) {
+    console.warn(
+      "LAN_API_OPEN=true: the API accepts calls from any device on the network without pairing. " +
+      "Use this for hosted or development setups only, never on a kiosk on a shared Wi-Fi."
+    );
+  }
 
   app.use((err: { status?: number; statusCode?: number; message?: string }, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

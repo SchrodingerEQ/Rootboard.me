@@ -10,10 +10,15 @@ import { Calendar, Keyboard, LayoutGrid, Palette, RefreshCw, type LucideIcon } f
  * predicate here so the structure is unit-testable without a React renderer.
  */
 
-export type SettingsView = "main" | "display" | "calendars" | "widgets" | "keyboard" | "system";
+export type SettingsCategoryId = "display" | "calendars" | "widgets" | "keyboard" | "system";
+
+/** Screens one level below a category (beta-launch brief 05); Back returns to the parent. */
+export type SettingsSubView = "system-diagnostics" | "system-pairing";
+
+export type SettingsView = "main" | SettingsCategoryId | SettingsSubView;
 
 export interface SettingsCategory {
-  id: Exclude<SettingsView, "main">;
+  id: SettingsCategoryId;
   label: string;
   /** One muted line under the label on the main screen. */
   summary: string;
@@ -25,8 +30,26 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   { id: "calendars", label: "Calendars", summary: "Share email, show/hide, remove, add by ID", icon: Calendar },
   { id: "widgets", label: "Widgets", summary: "Built-in layout + settings, community, folder errors", icon: LayoutGrid },
   { id: "keyboard", label: "Keyboard", summary: "On-screen keyboard: Auto/Always/Off", icon: Keyboard },
-  { id: "system", label: "System", summary: "Check for updates, roll back, weather status", icon: RefreshCw },
+  { id: "system", label: "System", summary: "Updates, weather, diagnostics, pair a device", icon: RefreshCw },
 ];
+
+export const SETTINGS_SUBVIEWS: Readonly<Record<SettingsSubView, { label: string; parent: SettingsCategoryId }>> = {
+  "system-diagnostics": { label: "Diagnostics", parent: "system" },
+  "system-pairing": { label: "Pair a device", parent: "system" },
+};
+
+/** Where Back goes from `view`. */
+export function parentView(view: SettingsView): SettingsView {
+  if (view === "main") return "main";
+  if (view in SETTINGS_SUBVIEWS) return SETTINGS_SUBVIEWS[view as SettingsSubView].parent;
+  return "main";
+}
+
+/** The header label for `view` (the Back button's text). */
+export function viewLabel(view: SettingsView): string {
+  if (view in SETTINGS_SUBVIEWS) return SETTINGS_SUBVIEWS[view as SettingsSubView].label;
+  return SETTINGS_CATEGORIES.find((c) => c.id === view)?.label ?? "Settings";
+}
 
 /** Problems the main screen must surface so they are never hidden inside a closed category. */
 export interface SettingsProblems {

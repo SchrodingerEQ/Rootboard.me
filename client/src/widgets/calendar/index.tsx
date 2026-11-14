@@ -29,6 +29,7 @@ import {
   type PowerSavingChangeDetail,
 } from "./shell-bridge";
 import rawManifest from "./manifest.json";
+import { createCalendarKeyHandler, stepCalendarDate } from "./keyboard";
 
 /**
  * Calendar as a contract widget (CONTRACT.md §3-§5) — the whole of the old
@@ -285,53 +286,18 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
   useEffect(() => {
     if (!isVisible) return;
 
+    const handleKey = createCalendarKeyHandler(currentView, setCurrentDate, setCurrentView);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          navigateCalendar(-1);
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          navigateCalendar(1);
-          break;
-        case 't':
-        case 'T':
-          setCurrentDate(new Date());
-          break;
-        case '1':
-          setCurrentView('day');
-          break;
-        case '2':
-          setCurrentView('week');
-          break;
-        case '3':
-          setCurrentView('month');
-          break;
-      }
+      handleKey(e);
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-    // Known stale-date bug (TASKS.md): navigateCalendar reads currentDate,
-    // which is not a dependency. Fixed in its own PR (pre-beta cleanup 4a).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, isVisible]);
 
   const navigateCalendar = (direction: number) => {
-    const newDate = new Date(currentDate);
-
-    if (currentView === 'month') {
-      newDate.setMonth(newDate.getMonth() + direction);
-    } else if (currentView === 'week') {
-      newDate.setDate(newDate.getDate() + (direction * 7));
-    } else if (currentView === 'day') {
-      newDate.setDate(newDate.getDate() + direction);
-    }
-
-    setCurrentDate(newDate);
+    setCurrentDate((date) => stepCalendarDate(date, currentView, direction));
   };
 
   const goToToday = () => {
@@ -419,12 +385,13 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
         )}
       </main>
 
-      {/* The sync indicator is screen-level chrome, not calendar content: it
-          used to show while any section was on screen. The widget container
-          is display:none'd when another section is active, so it is portaled
-          to document.body to keep exactly that behavior. The dialogs below
-          need no such treatment — Radix already portals them. */}
-      {createPortal(<LoadingIndicator isVisible={isRefreshing} />, document.body)}
+      {/* The sync indicator shows only while the calendar is the visible
+          section. Its fixed top-right spot is the same spot other sections
+          use for their own header (What to Wear's weather summary), so
+          showing it over them covered their content. It stays portaled to
+          document.body so it keeps its screen-level position. The dialogs
+          below need no such treatment — Radix already portals them. */}
+      {createPortal(<LoadingIndicator isVisible={isRefreshing && isVisible} />, document.body)}
 
       <EventDetailsDialog
         event={selectedEvent}

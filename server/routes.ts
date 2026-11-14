@@ -1,4 +1,4 @@
-import type { Express, Request } from "express";
+import type { Express } from "express";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -11,6 +11,10 @@ import { getWeather, getWeatherStatus } from "./services/weatherService";
 import { lookupPostalCode } from "./services/weatherLookup";
 import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
 import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscovery";
+import { pairingService as defaultPairingService, type PairingService } from "./services/pairingService";
+import { getDiagnostics } from "./services/diagnosticsService";
+import { createLanAuthGuard, isLocalRequest, sendPairingRequired } from "./middleware/lanAuth";
+import { logPrivate } from "./services/logRing";
 import { APP_VERSION } from "@shared/version";
 import { dashboardConfigSchema } from "@shared/dashboard-config";
 
@@ -51,7 +55,17 @@ const appStateBodySchema = z.object({
   value: z.any().refine((v) => v !== undefined, { message: "value is required" }),
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export interface RegisterRoutesOptions {
+  /** Injected by tests; the server uses data/paired-devices.json. */
+  pairing?: PairingService;
+}
+
+export async function registerRoutes(app: Express, options: RegisterRoutesOptions = {}): Promise<Server> {
+  const pairing = options.pairing ?? defaultPairingService;
+
+  // Must stay first: every /api route below sits behind it (lanAuth.ts).
+  app.use("/api", createLanAuthGuard(pairing));
+
   // Version endpoint for update checking
   app.get("/api/version", (req, res) => {
     res.json({
@@ -151,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Purge all locally cached events for this calendar so they stop
       // appearing in views immediately, without waiting for the next sync.
       const removed = await storage.deleteCalendarEventsByCalendarNotIn(calendarId, []);
-      console.log(`Purged ${removed} local events for removed calendar: ${calendarId}`);
+      console.log(`Purged ${removed} local events for removed calendar: ${logPrivate(calendarId)}`);
       res.json({ success: true });
     } catch (error) {
       console.error('Failed to unsubscribe from calendar:', error);
@@ -297,11 +311,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  const isLocalRequest = (req: Request): boolean => {
-    const ip = req.ip || req.connection?.remoteAddress || '';
-    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
-  };
-
   app.get("/api/update/check", async (req, res) => {
     try {
       const result = await checkForUpdate();
@@ -354,6 +363,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Failed to get backups:', error);
       res.status(500).json({ message: "Failed to get backups list" });
     }
+  });
+
+  // Diagnostics bundle (shared/diagnostics.ts). The guard lets an unpaired
+  // LAN caller through to this one route; it gets the redacted view only.
+  app.get("/api/system/diagnostics", async (req, res) => {
+    const view = req.query.view === "full" ? "full" : "redacted";
+    if (view === "full" && res.locals.apiAccess === "unpaired") {
+      return sendPairingRequired(res);
+    }
+    try {
+      res.set("Cache-Control", "no-store");
+      res.json(await getDiagnostics(view));
+    } catch (error) {
+      console.error("Failed to build diagnostics:", error);
+      res.status(500).json({ message: "Failed to build diagnostics" });
+    }
+  });
+
+  // LAN pairing (pairingService.ts, decision 0020). Issuing and cancelling
+  // a code is kiosk-screen only: the code must be read off the screen.
+  app.post("/api/system/pairing-code", (req, res) => {
+    if (!isLocalRequest(req)) {
+      return res.status(403).json({ message: "A pairing code can only be shown on the kiosk screen" });
+    }
+    res.set("Cache-Control", "no-store");
+    res.status(201).json(pairing.issueCode());
+  });
+
+  // Whether the code the kiosk is showing still works (it is cancelled by
+  // 5 wrong tries, a newer code, a pairing or a restart). Never returns a code.
+  app.get("/api/system/pairing-code", (req, res) => {
+    if (!isLocalRequest(req)) {
+      return res.status(403).json({ message: "Pairing codes can only be read on the kiosk screen" });
+    }
+    res.set("Cache-Control", "no-store");
+    res.json({ active: typeof req.query.code === "string" && pairing.isCodeActive(req.query.code) });
+  });
+
+  app.delete("/api/system/pairing-code", (req, res) => {
+    if (!isLocalRequest(req)) {
+      return res.status(403).json({ message: "A pairing code can only be cancelled on the kiosk screen" });
+    }
+    pairing.cancelCode(typeof req.query.code === "string" ? req.query.code : undefined);
+    res.status(204).send();
+  });
+
+  app.post("/api/pair", (req, res) => {
+    const result = pairing.pair(req.body?.code, req.body?.name);
+    switch (result.status) {
+      case "paired":
+        console.log(`Paired a new device: "${logPrivate(result.device.name)}"`);
+        res.set("Cache-Control", "no-store");
+        return res.status(201).json({ token: result.token, device: result.device });
+      case "no-code":
+        return res.status(410).json({ message: "No pairing code is showing. Open Settings → System → Pair a device on the kiosk." });
+      case "expired":
+        return res.status(410).json({ message: "That pairing code has expired. Show a new one on the kiosk." });
+      case "wrong-code":
+        return res.status(403).json({
+          message: result.attemptsLeft > 0
+            ? "Wrong pairing code"
+            : "Wrong pairing code. Too many tries: that code no longer works, show a new one on the kiosk.",
+          attemptsLeft: result.attemptsLeft,
+        });
+      case "bad-name":
+        return res.status(400).json({ message: "name is required (1–64 characters)" });
+      case "too-many-devices":
+        return res.status(409).json({ message: "Too many paired devices. Revoke one in Settings → System → Pair a device." });
+    }
+  });
+
+  app.get("/api/system/paired-devices", (req, res) => {
+    res.set("Cache-Control", "no-store");
+    res.json({ devices: pairing.listDevices() });
+  });
+
+  app.delete("/api/system/paired-devices/:id", (req, res) => {
+    if (!pairing.revoke(req.params.id)) {
+      return res.status(404).json({ message: "No paired device with that id" });
+    }
+    res.status(204).send();
   });
 
   // App-state key-value store (whole-JSON-blob persistence for the Chores
