@@ -1,4 +1,4 @@
-import { google } from 'googleapis';
+import { google, type calendar_v3 } from 'googleapis';
 import { GoogleAuth } from 'google-auth-library';
 import { existsSync, readFileSync } from 'fs';
 import { storage } from '../storage';
@@ -6,8 +6,18 @@ import { normalizeGoogleEventTimes } from './googleEventTimes';
 import { logPrivate } from './logRing';
 import type { CalendarEvent, InsertCalendarEvent } from '@shared/schema';
 
+// The parts of a googleapis (gaxios) error this file reads. Every field is
+// optional because the status sits in different places across versions.
+type GoogleApiError = {
+  code?: number | string;
+  status?: number;
+  response?: { status?: number };
+  errors?: { reason?: string }[];
+  cause?: { errors?: { reason?: string }[] };
+};
+
 export class GoogleCalendarService {
-  private calendar: any;
+  private calendar: calendar_v3.Calendar | null;
   private isInitialized: boolean = false;
   private initError: string | null = null;
   private initPromise: Promise<void>;
@@ -18,6 +28,15 @@ export class GoogleCalendarService {
   constructor() {
     this.calendar = null;
     this.initPromise = this.initialize();
+  }
+
+  // `calendar` is non-null exactly when `isInitialized` is true; callers check
+  // that first, so this only narrows the type.
+  private requireClient(): calendar_v3.Calendar {
+    if (!this.calendar) {
+      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
+    }
+    return this.calendar;
   }
 
   private async initialize(): Promise<void> {
@@ -84,13 +103,13 @@ export class GoogleCalendarService {
     };
   }
 
-  async getCalendarList(): Promise<any[]> {
+  async getCalendarList(): Promise<calendar_v3.Schema$CalendarListEntry[]> {
     await this.initPromise;
     if (!this.isInitialized) {
       throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
     }
     try {
-      const response = await this.calendar.calendarList.list();
+      const response = await this.requireClient().calendarList.list();
       return response.data.items || [];
     } catch (error) {
       console.error('Failed to fetch calendar list:', error);
@@ -98,17 +117,18 @@ export class GoogleCalendarService {
     }
   }
 
-  async subscribeToCalendar(calendarId: string): Promise<any> {
+  async subscribeToCalendar(calendarId: string): Promise<calendar_v3.Schema$CalendarListEntry> {
     await this.initPromise;
     if (!this.isInitialized) {
       throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
     }
     try {
-      const response = await this.calendar.calendarList.insert({
+      const response = await this.requireClient().calendarList.insert({
         requestBody: { id: calendarId.trim() },
       });
       return response.data;
-    } catch (error: any) {
+    } catch (caught) {
+      const error = caught as GoogleApiError | undefined;
       const status = error?.code ?? error?.status ?? error?.response?.status;
       const reason = error?.errors?.[0]?.reason ?? error?.cause?.errors?.[0]?.reason ?? '';
       if (status === 409) {
@@ -130,8 +150,9 @@ export class GoogleCalendarService {
       throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
     }
     try {
-      await this.calendar.calendarList.delete({ calendarId });
-    } catch (error: any) {
+      await this.requireClient().calendarList.delete({ calendarId });
+    } catch (caught) {
+      const error = caught as GoogleApiError | undefined;
       const status = error?.code ?? error?.status ?? error?.response?.status;
       if (status === 404) {
         return;
@@ -168,16 +189,16 @@ export class GoogleCalendarService {
 
       // Fetch events from each calendar
       for (const calendar of calendars) {
+        const calendarId = calendar.id!;
         try {
           let pageToken: string | undefined = undefined;
           let totalEventsForCalendar = 0;
-          let response: any;
           const syncedGoogleIds: string[] = [];
 
           // Paginate through all events for this calendar
           do {
-            response = await this.calendar.events.list({
-              calendarId: calendar.id,
+            const response: { data: calendar_v3.Schema$Events } = await this.requireClient().events.list({
+              calendarId,
               timeMin: startDate.toISOString(),
               timeMax: endDate.toISOString(),
               singleEvents: true,
@@ -190,18 +211,18 @@ export class GoogleCalendarService {
             totalEventsForCalendar += googleEvents.length;
 
             for (const googleEvent of googleEvents) {
-              const existingEvent = await storage.getCalendarEventByGoogleIdAndCalendar(googleEvent.id!, calendar.id);
+              const existingEvent = await storage.getCalendarEventByGoogleIdAndCalendar(googleEvent.id!, calendarId);
               syncedGoogleIds.push(googleEvent.id!);
 
               const eventData: InsertCalendarEvent = {
                 googleEventId: googleEvent.id!,
-                calendarId: calendar.id,
+                calendarId,
                 calendarName: calendar.summary || 'Unknown Calendar',
                 title: googleEvent.summary || 'Untitled Event',
                 description: googleEvent.description || '',
                 ...normalizeGoogleEventTimes(googleEvent.start, googleEvent.end),
                 location: googleEvent.location || '',
-                color: calendar.backgroundColor || this.getCalendarColorById(calendar.id),
+                color: calendar.backgroundColor || this.getCalendarColorById(calendarId),
               };
 
               let event: CalendarEvent;
@@ -214,11 +235,11 @@ export class GoogleCalendarService {
               syncedEvents.push(event);
             }
 
-            pageToken = response.data.nextPageToken;
+            pageToken = response.data.nextPageToken ?? undefined;
           } while (pageToken);
 
           // Clean up events that were deleted/cancelled in Google Calendar
-          const removedCount = await storage.deleteCalendarEventsByCalendarNotIn(calendar.id, syncedGoogleIds);
+          const removedCount = await storage.deleteCalendarEventsByCalendarNotIn(calendarId, syncedGoogleIds);
           if (removedCount > 0) {
             console.log(`Removed ${removedCount} stale events from calendar: ${logPrivate(calendar.summary)}`);
           }
@@ -269,8 +290,8 @@ export class GoogleCalendarService {
     startTime: Date;
     endTime: Date;
     isAllDay: boolean;
-  }): any {
-    const body: any = {
+  }): calendar_v3.Schema$Event {
+    const body: calendar_v3.Schema$Event = {
       summary: input.title,
       description: input.description || undefined,
       location: input.location || undefined,
@@ -298,7 +319,7 @@ export class GoogleCalendarService {
   private async getCalendarMeta(calendarId: string): Promise<{ summary: string; color: string }> {
     try {
       const list = await this.getCalendarList();
-      const found = list.find((c: any) => c.id === calendarId);
+      const found = list.find((c) => c.id === calendarId);
       if (found) {
         return {
           summary: found.summary || 'Unknown Calendar',
@@ -311,7 +332,7 @@ export class GoogleCalendarService {
     return { summary: 'Unknown Calendar', color: this.getCalendarColorById(calendarId) };
   }
 
-  private parseGoogleEventTimes(googleEvent: any): { startTime: Date; endTime: Date; isAllDay: boolean } {
+  private parseGoogleEventTimes(googleEvent: calendar_v3.Schema$Event): { startTime: Date; endTime: Date; isAllDay: boolean } {
     return normalizeGoogleEventTimes(googleEvent.start, googleEvent.end);
   }
 
@@ -330,7 +351,7 @@ export class GoogleCalendarService {
     }
 
     const body = this.buildGoogleEventBody(input);
-    const response = await this.calendar.events.insert({
+    const response = await this.requireClient().events.insert({
       calendarId: input.calendarId,
       requestBody: body,
     });
@@ -376,7 +397,7 @@ export class GoogleCalendarService {
     }
 
     const body = this.buildGoogleEventBody(input);
-    const response = await this.calendar.events.patch({
+    const response = await this.requireClient().events.patch({
       calendarId: existing.calendarId,
       eventId: existing.googleEventId,
       requestBody: body,
@@ -410,12 +431,13 @@ export class GoogleCalendarService {
     }
 
     try {
-      await this.calendar.events.delete({
+      await this.requireClient().events.delete({
         calendarId: existing.calendarId,
         eventId: existing.googleEventId,
       });
-    } catch (err: any) {
+    } catch (caught) {
       // 410 Gone = already deleted upstream; still prune locally.
+      const err = caught as GoogleApiError | undefined;
       const code = err?.code || err?.response?.status;
       if (code !== 410 && code !== 404) {
         throw err;

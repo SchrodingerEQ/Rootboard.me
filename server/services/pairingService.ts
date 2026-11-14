@@ -63,7 +63,13 @@ function safeEqual(a: string, b: string): boolean {
 /** Trim, drop control characters, and cap the length; null when nothing is left. */
 export function cleanDeviceName(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
-  const cleaned = raw.replace(/[\u0000-\u001f\u007f]/g, "").trim();
+  const cleaned = Array.from(raw)
+    .filter((ch) => {
+      const code = ch.codePointAt(0) ?? 0;
+      return code > 0x1f && code !== 0x7f;
+    })
+    .join("")
+    .trim();
   if (cleaned.length === 0 || cleaned.length > DEVICE_NAME_MAX_LENGTH) return null;
   return cleaned;
 }

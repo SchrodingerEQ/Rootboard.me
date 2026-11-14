@@ -25,7 +25,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useOskMode } from "@/hooks/use-osk-mode";
 import { SETTINGS_CATEGORIES, categoryHasWarning, parentView, viewLabel, type SettingsView } from "./settings-nav";
@@ -353,7 +352,7 @@ export function SettingsMenu({
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/sync-status'] });
       onSubscribeSuccess?.();
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       const msg = error?.message ?? 'Failed to subscribe to calendar.';
       setSubscribeError(msg);
     },
@@ -387,7 +386,7 @@ export function SettingsMenu({
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/calendars'] });
       queryClient.invalidateQueries({ queryKey: ['/api/calendar/events'] });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       setCalendarToRemove(null);
       toast({ title: 'Failed to remove calendar', description: error?.message ?? 'Unknown error', variant: 'destructive' });
     },

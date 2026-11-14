@@ -17,6 +17,7 @@ import { validateBuiltinManifest } from "@/widgets/validate-manifest";
 import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/types";
 import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/lib/app-types";
+import type { CalendarInfo } from "@/lib/calendar-meta";
 import {
   CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
   DISABLED_CALENDARS_KEY,
@@ -116,7 +117,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
 
   // Get calendars for dialog metadata, the chip row, and the visibility
   // derivations below (this is the "subscribed" set).
-  const { data: calendars } = useQuery<any[]>({
+  const { data: calendars } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
     enabled: true,
     staleTime: 5 * 60 * 1000,
@@ -177,7 +178,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
   );
 
   const subscribedIds = useMemo<string[]>(
-    () => (calendars ?? []).map((cal: any) => cal.id as string),
+    () => (calendars ?? []).map((cal) => cal.id),
     [calendars],
   );
 
@@ -314,6 +315,8 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
+    // Known stale-date bug (TASKS.md): navigateCalendar reads currentDate,
+    // which is not a dependency. Fixed in its own PR (pre-beta cleanup 4a).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, isVisible]);
 
@@ -428,7 +431,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
         onEdit={handleEditEvent}
-        calendarName={selectedEvent ? calendars?.find((cal: any) => cal.id === selectedEvent.calendarId)?.summary : undefined}
+        calendarName={selectedEvent ? calendars?.find((cal) => cal.id === selectedEvent.calendarId)?.summary : undefined}
         calendarColor={selectedEvent?.color ?? undefined}
       />
 

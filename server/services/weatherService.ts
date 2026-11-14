@@ -318,6 +318,32 @@ function iconForCode(code: number): { icon: string; label: string } {
   return { icon: "cloud", label: "Cloudy" };
 }
 
+// Open-Meteo's response, as far as this file reads it. Fields may be
+// missing; values go through num()/Number(), and a malformed shape throws
+// inside fetchForecast's try, which records it as a failure.
+type Series = readonly unknown[] | undefined;
+type OpenMeteoHourly = {
+  time?: unknown;
+  temperature_2m?: Series;
+  apparent_temperature?: Series;
+  precipitation_probability?: Series;
+  precipitation?: Series;
+  snowfall?: Series;
+  weather_code?: Series;
+  wind_speed_10m?: Series;
+  uv_index?: Series;
+};
+type OpenMeteoResponse = {
+  current?: { temperature_2m?: number; weather_code?: number };
+  daily?: {
+    time?: string[];
+    weather_code?: Series;
+    temperature_2m_max?: (number | undefined)[];
+    temperature_2m_min?: (number | undefined)[];
+  };
+  hourly?: OpenMeteoHourly;
+};
+
 function num(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -327,7 +353,7 @@ function num(v: unknown): number {
  *  hour of the current local day (Open-Meteo returns local times with
  *  timezone=auto; the kiosk runs in its location's timezone). Missing or
  *  malformed hourly data yields [] — never a throw. */
-function buildHourly(raw: any, now: Date): WeatherHourly[] {
+function buildHourly(raw: OpenMeteoHourly | undefined, now: Date): WeatherHourly[] {
   if (!raw || !Array.isArray(raw.time)) return [];
   const pad = (n: number) => String(n).padStart(2, "0");
   const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -368,19 +394,20 @@ async function fetchForecast(cfg: WeatherConfig): Promise<WeatherPayload | null>
       const hint = res.status === 429 ? " (too many requests)" : res.status >= 500 ? " (a problem on Open-Meteo's side)" : "";
       return recordFailure(`Open-Meteo answered HTTP ${res.status}${hint}`, key);
     }
-    const data: any = await res.json();
+    const data = (await res.json()) as OpenMeteoResponse | null;
     if (!data?.current || !data?.daily?.time) {
       return recordFailure("Open-Meteo sent an unexpected response", key);
     }
 
     const currentCode = Number(data.current.weather_code ?? 0);
     const cur = iconForCode(currentCode);
+    const rawDaily = data.daily;
     const daily: WeatherDaily[] = data.daily.time.map((date: string, i: number) => {
-      const code = Number(data.daily.weather_code?.[i] ?? 0);
+      const code = Number(rawDaily.weather_code?.[i] ?? 0);
       return {
         date,
-        hi: Math.round(data.daily.temperature_2m_max?.[i] ?? 0),
-        lo: Math.round(data.daily.temperature_2m_min?.[i] ?? 0),
+        hi: Math.round(rawDaily.temperature_2m_max?.[i] ?? 0),
+        lo: Math.round(rawDaily.temperature_2m_min?.[i] ?? 0),
         code,
         icon: iconForCode(code).icon,
       };

@@ -51,6 +51,7 @@ export function PairDeviceSettings() {
     retry: false,
   });
   const devices = devicesQuery.data?.devices ?? [];
+  const refetchDevices = devicesQuery.refetch;
 
   // Ask the server whether the shown code still works: it can end early
   // (5 wrong tries, a restart), and the countdown alone wouldn't know.
@@ -61,6 +62,8 @@ export function PairDeviceSettings() {
     retry: false,
   });
 
+  const refetchCodeStatus = codeStatus.refetch;
+
   const outcome = issued ? pairingOutcome(issued.expiresAt, codeStatus.data?.active, devices) : null;
   const remaining = issued ? secondsLeft(issued.expiresAt, now) : 0;
   const waiting = outcome?.kind === "waiting" && remaining > 0;
@@ -70,15 +73,15 @@ export function PairDeviceSettings() {
     if (!waiting) return;
     const timer = setInterval(() => {
       setNow(Date.now());
-      devicesQuery.refetch();
-      codeStatus.refetch();
+      refetchDevices();
+      refetchCodeStatus();
     }, POLL_MS);
     const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => {
       clearInterval(timer);
       clearInterval(tick);
     };
-  }, [waiting, devicesQuery.refetch, codeStatus.refetch]);
+  }, [waiting, refetchDevices, refetchCodeStatus]);
 
   // The kiosk screen may read the full view; it is the one place the LAN
   // address is shown, so the owner can type it on the other device.

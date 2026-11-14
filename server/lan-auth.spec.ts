@@ -153,6 +153,17 @@ interface CallOptions {
   headers?: Record<string, string>;
 }
 
+/** The response fields these tests read; every route's body fits this loose shape. */
+interface ResponseBody {
+  code?: string;
+  token?: string;
+  pairing?: string;
+  version?: string;
+  attemptsLeft?: number;
+  active?: boolean;
+  devices?: Array<{ id: string; name: string }>;
+}
+
 async function call(method: string, urlPath: string, opts: CallOptions = {}) {
   const headers: Record<string, string> = { "x-test-peer": opts.peer ?? LAN, ...opts.headers };
   if (opts.token) headers.authorization = `Bearer ${opts.token}`;
@@ -164,11 +175,11 @@ async function call(method: string, urlPath: string, opts: CallOptions = {}) {
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
   });
   const text = await res.text();
-  let json: any = null;
+  let json: ResponseBody = {};
   try {
     json = JSON.parse(text);
   } catch {
-    json = null;
+    json = {};
   }
   return { status: res.status, json, headers: res.headers };
 }
@@ -192,7 +203,9 @@ async function pairDevice(name = "laptop"): Promise<string> {
 }
 
 function routeTable(): string[] {
-  const stack = (app as any)._router.stack as Array<{ route?: { path: string; methods: Record<string, boolean> } }>;
+  // Express 4 keeps its route table on a private field; read-only here.
+  type Layer = { route?: { path: string; methods: Record<string, boolean> } };
+  const stack = (app as unknown as { _router: { stack: Layer[] } })._router.stack;
   return stack
     .filter((layer) => layer.route && layer.route.path.startsWith("/api"))
     .flatMap((layer) =>
@@ -339,11 +352,11 @@ describe("pairing flow (brief 05 §5 acceptance)", () => {
     expect((await call("GET", events, { token })).status).toBe(200);
 
     const listed = await call("GET", "/api/system/paired-devices", { peer: LOOPBACK });
-    const device = listed.json.devices.find((d: { name: string }) => d.name === "acceptance-laptop");
+    const device = listed.json.devices?.find((d: { name: string }) => d.name === "acceptance-laptop");
     expect(device).toBeTruthy();
     expect(JSON.stringify(listed.json)).not.toContain(token);
 
-    expect((await call("DELETE", `/api/system/paired-devices/${device.id}`, { peer: LOOPBACK })).status).toBe(204);
+    expect((await call("DELETE", `/api/system/paired-devices/${device!.id}`, { peer: LOOPBACK })).status).toBe(204);
     expect((await call("GET", events, { token })).status).toBe(401);
   });
 
@@ -384,7 +397,7 @@ describe("pairing flow (brief 05 §5 acceptance)", () => {
 
   test("the kiosk can ask whether its code still works; it never gets a code back", async () => {
     const issued = await call("POST", "/api/system/pairing-code", { peer: LOOPBACK });
-    const status = (code: string) => call("GET", `/api/system/pairing-code?code=${code}`, { peer: LOOPBACK });
+    const status = (code: string | undefined) => call("GET", `/api/system/pairing-code?code=${code}`, { peer: LOOPBACK });
     expect((await status(issued.json.code)).json).toEqual({ active: true });
     const wrong = issued.json.code === "000000" ? "000001" : "000000";
     for (let i = 0; i < 5; i++) await call("POST", "/api/pair", { body: { code: wrong, name: "guess" } });
@@ -403,7 +416,7 @@ describe("pairing flow (brief 05 §5 acceptance)", () => {
     for (let i = 0; i < 5; i++) {
       const res = await call("POST", "/api/pair", { body: { code: wrong, name: "guess" } });
       expect(res.status).toBe(403);
-      left.push(res.json.attemptsLeft);
+      left.push(res.json.attemptsLeft ?? -1);
     }
     expect(left).toEqual([4, 3, 2, 1, 0]);
     expect((await call("POST", "/api/pair", { body: { code: issued.json.code, name: "real" } })).status).toBe(410);
@@ -429,6 +442,6 @@ describe("pairing flow (brief 05 §5 acceptance)", () => {
     await pairDevice("after-damage");
     expect(fs.readFileSync(`${devicesFile}.damaged`, "utf-8")).toBe("{not json");
     const listed = await call("GET", "/api/system/paired-devices", { peer: LOOPBACK });
-    expect(listed.json.devices.map((d: { name: string }) => d.name)).toEqual(["after-damage"]);
+    expect(listed.json.devices?.map((d) => d.name)).toEqual(["after-damage"]);
   });
 });
