@@ -38,7 +38,7 @@ stays as the documented advanced option for self-hosters.
 
 - `server/services/googleCalendar.ts`: today constructs `GoogleAuth` from a
   key file in `initialize()` (lines ~23–50) and reads `client_email` for
-  display (~68). Introduce an auth-provider seam: `getAuthClient()` returns
+  display (~72). Introduce an auth-provider seam: `getAuthClient()` returns
   either the service-account client or an `OAuth2Client` loaded from the
   token file; everything below that seam (sync, create, patch, delete) is
   unchanged.
@@ -61,8 +61,12 @@ stays as the documented advanced option for self-hosters.
   Sign out action instead of (or beside) the service-account email row.
 - Kiosk browser: Firefox kiosk mode follows the redirect to Google and
   back without leaving kiosk. Verify the back-navigation path: after
-  `/api/google/callback` the server must redirect to `/` so the app
-  reloads with the new auth status. The Google session cookie left in
+  `/api/google/callback` the server must redirect to the absolute
+  `http://localhost:5000/` (not a relative `/`) so the app reloads with
+  the new auth status. The callback arrives on `127.0.0.1`, and a
+  relative redirect would leave the kiosk on that origin: the theme
+  cache and any saved feedback draft would split by origin, and feedback
+  requests would carry an Origin the feedback service does not allow. The Google session cookie left in
   Firefox is acceptable; note it in SPEC §3.8.
 
 **Folded in from the backlog (2026-11-14):**
@@ -101,7 +105,8 @@ stays as the documented advanced option for self-hosters.
 
 ## 5. Docs
 
-- `docs/decisions/0017-oauth-over-service-account.md` (started by 00; this
+- `docs/decisions/0017-oauth-over-service-account.md` (whichever of 00 and
+  02 lands first creates it, leaving the other's section to fill; this
   brief fills the implementation consequences).
 - `docs/SPEC.md` §2.2 endpoint table, §2.3 Google service, §2.6 env, §3.7
   settings, §3.8 kiosk quirk about the Google cookie.

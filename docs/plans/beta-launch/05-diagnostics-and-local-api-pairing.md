@@ -42,7 +42,7 @@ through. Pairing keeps the door and adds a lock the owner controls.
 
 | # | Decision | Choice |
 |---|---|---|
-| 1 | Loopback is trusted | Requests from the kiosk's own browser (`isLocalRequest`) need no token, exactly as today. Nothing about the kiosk UI changes. |
+| 1 | Loopback is trusted | Requests from the kiosk's own browser (`isLocalRequest`) need no token, exactly as today. Nothing about the kiosk UI changes, except that Settings now opens while signed out (goal 3). |
 | 2 | LAN requires a bearer token | Any non-loopback request to `/api/*` (except `GET /api/version`, the supervisor health check, and `GET /api/system/diagnostics` *redacted view*, see 5) must carry `Authorization: Bearer <token>`; otherwise 401 with a body that says how to pair. |
 | 3 | Pairing flow | Settings → System → **Pair a device** shows a 6-digit code for 5 minutes. The caller does `POST /api/pair { code, name }` from the LAN and receives a long random token, stored hashed in `data/paired-devices.json` with the name and created-at. Settings lists paired devices with Revoke. |
 | 4 | Existing deployments | Default **on**. The reference kiosk has no LAN callers today, so nothing breaks; the only effect is closing the open-write hole. A `LAN_API_OPEN=true` env escape hatch exists for hosted/dev use and logs a warning at boot. |
@@ -71,7 +71,8 @@ through. Pairing keeps the door and adds a lock the owner controls.
 - From a laptop on the LAN: `GET /api/calendar/events` → 401 with a
   pairing hint; pair with the on-screen code; same call → 200; revoke on
   the kiosk; same call → 401.
-- Kiosk UI: unchanged behaviour in every flow (run the SPEC §3 smoke list).
+- Kiosk UI: unchanged behaviour in every flow apart from goal 3 (run the
+  SPEC §3 smoke list).
 - Redacted bundle contains no `@`, no SSID, no IPv4 literal, no token; a
   test asserts this with a fixture full of each.
 - Supervisor health check (`scripts/start.sh` → `/api/version`) still
@@ -91,8 +92,8 @@ through. Pairing keeps the door and adds a lock the owner controls.
 ## 7. PR tier
 
 **Safe zone (verified)** for pairing (no new outbound calls; permissions
-tighten, not loosen). The diagnostics bundle is only *sent* by brief 04,
-which carries the privacy flag.
+tighten, not loosen). The app never sends the diagnostics bundle
+anywhere: it is read on the screen or fetched by a paired caller.
 
 ## 8. Out of scope
 

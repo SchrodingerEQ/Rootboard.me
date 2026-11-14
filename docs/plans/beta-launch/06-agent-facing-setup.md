@@ -72,7 +72,7 @@ while keeping the finger-only path (brief 03) complete on its own.
 - The fresh-agent test in §3.1 completes all three tasks with no human
   hints beyond the pairing code.
 - `provision.sh --check` on the reference kiosk reports its actual state
-  (expect a few `changed` the first time; record them).
+  (expect a few would-change lines the first time; record them).
 
 ## 5. Docs
 

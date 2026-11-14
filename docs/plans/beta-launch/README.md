@@ -34,7 +34,7 @@ found these gaps:
 | Local network exposure | The server listens on every interface and only update/rollback are localhost-only; any device on the tester's Wi-Fi can edit events and config. | 05 |
 | Widgets | Contract and tutorial are solid; getting a folder onto the Pi and seeing a widget's errors are not. | 07 |
 | Updates | One release channel. A fix cannot be tested on the reference kiosk before it reaches the tester, or the other way round. | 08 |
-| Shipping | No checklist for a factory-fresh image; `INSTALLATION.md` step 10 still describes Chromium while the kiosk runs Firefox. | 09 |
+| Shipping | No checklist for a factory-fresh image; `INSTALLATION.md` step 10 still describes Chromium while the kiosk runs Firefox. | 06, 09 |
 
 ## Principles for every brief
 
@@ -72,8 +72,8 @@ After 05:                        06  Agent-facing setup
 After 05 and 06:                 07  Widget developer loop
 After 00 §3.0 (founder):         02  Google sign-in (flow B; flow A if 00 §3.1 allows)
 After 02 and 03 session 1:       03  session 2: the Google step
-After the feedback service and its shared React client are live:  04
-After 02, 03, 05, 06, 08 (and 04 if live):                         09
+After 05, the feedback service and its shared React client:      04
+After 02, 03, 05, 06, 07, 08 released, 00 §3.2 step 3 (and 04 if live):  09
 ```
 
 | Brief | Before brief 00? | Waits on | Needs hardware or the founder |
@@ -82,12 +82,12 @@ After 02, 03, 05, 06, 08 (and 04 if live):                         09
 | 01 | done | — | kiosk check after the next release |
 | 02 | no: needs 00 §3.0 (≈30 min) | 00 §3.0 | kiosk check after merge |
 | 03 | session 1 yes, session 2 no | s1: nothing; s2: 02 | a Pi with NetworkManager for the system steps |
-| 04 | no: blocked outside this repo | the feedback service and its React client | kiosk check |
+| 04 | no: blocked outside this repo | the feedback service and its React client; 05 | kiosk check |
 | 05 | yes | nothing | a laptop on the kiosk's network for the pairing check |
 | 06 | yes, after 05 | 05 | a spare Pi or card; the reference kiosk's launch files |
 | 07 | yes, after 05 and 06 | 05, 06 | a USB stick; push access to the three companion repos |
 | 08 | yes | nothing | the founder publishes one test prerelease |
-| 09 | no | 02, 03, 05, 06, 08 released; 04 if live | two cards, a second network |
+| 09 | no | 02, 03, 05, 06, 07, 08 released; 00 §3.2 step 3; 04 if live | two cards, a second network |
 
 00 and 04's external dependency should still be started on day one,
 because they wait on other parties.
@@ -97,7 +97,7 @@ because they wait on other parties.
 1. Brief 00 §3.0: consent screen in Testing and a Desktop OAuth client.
    Unblocks 02.
 2. Brief 00 §3.1–3.3: the device-flow test and the verification
-   submission.
+   submission. §3.2 step 3 (In production) must be done before 09.
 3. The feedback service going live (private planning records). Unblocks 04.
 4. For 06: a spare Pi or SD card, and copies of the reference kiosk's
    launch script and labwc autostart file with the username and hostname

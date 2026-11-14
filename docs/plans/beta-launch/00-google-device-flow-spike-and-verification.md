@@ -70,7 +70,10 @@ spike's answer nor the verification outcome. It needs only:
 3. That client's id and the installed-app secret Google issues with it,
    handed to the brief-02 session. Brief 02 commits both on purpose (its
    decision 2): for this client type they are not confidential. Nothing
-   else from the console goes into the repo or a chat.
+   else from the console goes into the repo or a chat. If you create a
+   fresh client when moving to production (§2 suggests it), its id and
+   secret replace these in `shared/google-oauth-client.ts` in a small PR
+   before brief 09 builds the image.
 
 Record the date in this brief's Status line. §3.1 to §3.3 can follow at
 their own pace, but §3.2 step 3 (In production) must be done before the
@@ -126,7 +129,8 @@ Brief 02 is written to build **B** and add **A** on top if available.
 
 ## 4. Deliverables
 
-- `docs/decisions/0017-oauth-over-service-account.md` — supersedes the
+- `docs/decisions/0017-oauth-over-service-account.md` (whichever of 00 and
+  02 lands first creates it; 00 fills in the spike results) — supersedes the
   auth half of 0002 (leave the SQLite half untouched; note it in the
   record). Must include the spike's scope results and the Testing-vs-
   production token finding, since that is the "why now" of the reversal.

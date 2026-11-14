@@ -6,8 +6,8 @@ crucible-feedback repo) exists; private planning records track both.
 Rewritten 2026-11-14 to follow the Crucible feedback contract v1 (see the
 note under §2).
 **Type:** Client dialog built on the shared reference client. One session.
-**Depends on:** the two external items above; 05 for a Settings entry
-point that opens before Google is connected.
+**Depends on:** the two external items above, and 05 (merged), which
+makes the Settings entry point open before Google is connected.
 **Unblocks:** the beta itself — without this, feedback arrives by text message.
 **Closes in `TASKS.md`:** the beta sub-item 04 and "Add in-product feedback".
 
@@ -34,7 +34,7 @@ the founder's decision, never this brief's.
 |---|---|---|
 | 1 | Entry point | Settings popover → **Send feedback** row, visible in every auth state (a tester who cannot sign in to Google needs it most). Brief 05 makes the popover open before sign-in. |
 | 2 | Steps | Kind (**great** · **broken** · **idea**, sent as `praise` / `bug` / `idea`) → Message (OSK, multiline, up to 4000 characters) with an optional contact address → Review → Sent (ticket code, Copy, Done). These are the contract's words and limits. |
-| 3 | What is sent | Exactly the contract's v1 payload: `product: "rootboard"`, `version` (`shared/version.ts`), `platform: "kiosk"`, `os` ("Raspberry Pi OS"), `locale`, `kind`, `message`, `client_time`, `contact` only if the owner typed one, and a `context` object holding `widgets` (the enabled widgets as `"<widget>@<version>"` strings from `dashboard.json`), `theme` (the active theme as a value) and, optionally, one word each for `calendar_sync`, `weather` and `update` (`ok` / `failing` / `off`). `context` stays under 2 KB, and its **keys** must pass the contract's identifier rule: no key may be or contain `id`, `name`, `user`, `device`, `token` or the rest of that list. That is why widgets go in as plain strings, not as objects with an `id` key. **No** account email, **no** calendar content, **no** coordinates, no network name or address. The Review step lists every field; nothing that is not shown is sent. |
+| 3 | What is sent | Exactly the contract's v1 payload: `schema_version: "1"`, `ticket` (issued by the service when Send is tapped, so the Review step shows it as "issued when you tap Send"), `product: "rootboard"`, `version` (`shared/version.ts`), `platform: "kiosk"`, `os` ("Raspberry Pi OS"), `locale`, `kind`, `message`, `client_time`, `contact` only if the owner typed one, and a `context` object holding `widgets` (the enabled widgets as `"<widget>@<version>"` strings: which ones are enabled comes from `dashboard.json`, their versions from the widget manifests via `GET /api/widgets`), `theme` (the active theme as a value) and, optionally, one word each for `calendar_sync`, `weather` and `update` (`ok` / `failing` / `off`). `context` stays under 2 KB, and its **keys** must pass the contract's identifier rule: no key may be or contain `id`, `name`, `user`, `device`, `token` or the rest of that list. That is why widgets go in as plain strings, not as objects with an `id` key. **No** account email, **no** calendar content, **no** coordinates, no network name or address. The Review step lists every field; nothing that is not shown is sent. |
 | 4 | Transport | The kiosk's browser calls the feedback service directly, through the shared React client. The service already lists the kiosk's origin (`http://localhost:5000`) and needs no Turnstile check for Rootboard. If the `/add-feedback` skill exists when this runs, use it to install the client. HTTPS only. |
 | 5 | Protocol | `POST /v1/ticket`, then `POST /v1/feedback` with the issued ticket; show the ticket code the service returns. If the service's API docs change, follow them. |
 | 6 | No connection | Keep the draft on the kiosk (the client's own draft storage; it must survive a page reload) and say plainly that sending needs a connection. **Never send later in the background:** the owner comes back and taps Send again. The contract is explicit that a background send is a send without a tap. |
@@ -61,7 +61,8 @@ that every Crucible product is built on.
   `data-osk-open` mechanism (SPEC §3.3), theme tokens only, touch targets
   of 48 px or more (SPEC §3.8).
 - `client/src/lib/feedback-context.ts`: builds `context` from the
-  dashboard config, the active theme and the existing status queries.
+  dashboard config, the widget manifests, the active theme and the
+  existing status queries.
   Unit-tested against the identifier-key rule and the 2 KB cap.
 - The service's base URL in one constant, `shared/feedback-endpoint.ts`.
 - `settings-menu.tsx`: the **Send feedback** row, and a small marker
@@ -77,8 +78,10 @@ that every Crucible product is built on.
 - Wi-Fi off before Send: the "needs a connection" message shows, the
   draft survives a page reload, and nothing is sent until Send is tapped
   again after the connection returns.
-- The Review step lists every field on the wire (a test diffs the request
-  body the client builds against the rendered list).
+- The Review step lists every field on the wire. A test diffs the request
+  body the client builds against the rendered list; `ticket` is the one
+  field filled in after the tap, so the test checks it is the only
+  difference.
 - `context`: a test feeds it a community widget whose name contains a
   forbidden word (for example `user-notes`) and shows the payload still
   passes the key rule, because widget names are values, never keys.

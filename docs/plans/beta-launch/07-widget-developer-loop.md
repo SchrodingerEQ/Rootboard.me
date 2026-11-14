@@ -8,10 +8,9 @@ Runs before brief 00 once both have merged.
 (rootboard-widget-template, rootboard-widget-grocery-list,
 awesome-rootboard).
 **Unblocks:** a tester who wants to write widgets.
-**Closes in `TASKS.md`:** the beta sub-item 07, plus three items folded in
-on 2026-11-14 (§2a): the React unmount warning, the companion repos'
-`theme.subscribe` wording, and What to Wear in awesome-rootboard and
-`README.md`.
+**Closes in `TASKS.md`:** the beta sub-item 07, plus two items folded in
+on 2026-11-14 (§2a): the React unmount warning and the companion repos'
+`theme.subscribe` wording.
 
 ---
 
@@ -53,8 +52,6 @@ terminal.
    same pass as decision 6, update all three repos: callbacks must stay
    idempotent, and document the `--rb-person-N-*` convention and its
    fallback rule.
-3. **What to Wear in the lists.** It shipped in v1.7.0: add it to
-   awesome-rootboard's first-party list and to `README.md`'s widgets.
 
 ## 3. Where the code goes
 
