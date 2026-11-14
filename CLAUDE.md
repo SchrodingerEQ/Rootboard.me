@@ -137,6 +137,10 @@ ad-hoc notes.
 
 ## Pull requests and merging
 
+Code in this repo follows `CODING-STANDARDS.md`: the Crucible kernel, the
+same in every repo, plus this project's additions. Read it before writing
+code. `/crucible-code-standards-review` reviews every diff against it.
+
 This repo follows the company PR policy (`Crucible-HQ/PR-POLICY.md`, loaded
 via the HQ import). Before any branch goes to main: run `/crucible-code-standards-review`
 against `main`, then `/pr`. Never open a PR with red checks. Never apply a
