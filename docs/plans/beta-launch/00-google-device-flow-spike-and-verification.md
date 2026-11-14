@@ -3,7 +3,8 @@
 **Status:** Not started.
 **Type:** Spike + founder actions outside the repo. Produces a decision, not shipped code.
 **Depends on:** nothing. Start on day one — verification waits on Google.
-**Unblocks:** 02 (which sign-in flow to build first), 09 (what the tester will see).
+**Unblocks:** 02 (§3.0 alone is enough to start it; §3.1 decides whether
+it also gets the device flow), 09 (what the tester will see).
 
 ---
 
@@ -44,9 +45,39 @@ Answer two questions so brief 02 can be built without guessing:
   privacy policy page linked from it, the app's logo, and a short screen
   recording of the consent flow. The privacy policy must state what the
   app does with calendar data (reads and writes events on the kiosk;
-  nothing leaves the device except to Google's own API).
+  nothing leaves the device except to Google's own API). The Rootboard
+  section of the Crucible privacy policy has been live since 2026-11-11;
+  check it says this before submitting. Any wording change to it is a
+  change to a published legal page, so it is the founder's.
+- Every domain the consent screen links to (homepage, privacy policy)
+  has to be listed as an authorized domain and verified as yours in
+  Google Search Console before Google will review the app. Check this
+  first; it is the step most likely to add days.
 
 ## 3. Work
+
+### 3.0 Minimum to unblock brief 02 (founder, ≈30 minutes, do this first)
+
+Brief 02's main sign-in path (B, sign in on the kiosk) needs neither the
+spike's answer nor the verification outcome. It needs only:
+
+1. The OAuth consent screen created (External) and left in **Testing**,
+   with the scopes from §3.2 step 2, and your own test Google account
+   added as a **test user**. In Testing only listed test users can sign
+   in, and refresh tokens expire after 7 days; both are fine while 02 is
+   being built.
+2. An OAuth client of type **Desktop app** in the same project.
+3. That client's id and the installed-app secret Google issues with it,
+   handed to the brief-02 session. Brief 02 commits both on purpose (its
+   decision 2): for this client type they are not confidential. Nothing
+   else from the console goes into the repo or a chat. If you create a
+   fresh client when moving to production (§2 suggests it), its id and
+   secret replace these in `shared/google-oauth-client.ts` in a small PR
+   before brief 09 builds the image.
+
+Record the date in this brief's Status line. §3.1 to §3.3 can follow at
+their own pace, but §3.2 step 3 (In production) must be done before the
+tester's unit ships, or their sign-in expires after a week.
 
 ### 3.1 Device-flow scope test (≈30 minutes)
 
@@ -77,7 +108,11 @@ spike. Use a scratch directory.
    edits events but never creates or deletes calendars.
 3. Publish to **In production**.
 4. Submit for verification with the screen recording and scope
-   justification. Keep the submission text in private planning records.
+   justification. The recording has to show Rootboard's own sign-in
+   asking for calendar access, so steps 3 and 4 wait until brief 02's
+   flow B works on the kiosk. Steps 1 and 2, and the domain verification
+   in Search Console (§2), can and should start now: they are the slow
+   part. Keep the submission text in private planning records.
 5. Record the submission date in this brief's Status line.
 
 ### 3.3 Decide the primary sign-in surface
@@ -98,7 +133,8 @@ Brief 02 is written to build **B** and add **A** on top if available.
 
 ## 4. Deliverables
 
-- `docs/decisions/0015-oauth-over-service-account.md` — supersedes the
+- `docs/decisions/0017-oauth-over-service-account.md` (whichever of 00 and
+  02 lands first creates it; 00 fills in the spike results) — supersedes the
   auth half of 0002 (leave the SQLite half untouched; note it in the
   record). Must include the spike's scope results and the Testing-vs-
   production token finding, since that is the "why now" of the reversal.

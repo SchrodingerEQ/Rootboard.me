@@ -3,7 +3,14 @@
 **Status:** Not started.
 **Type:** Server + client + companion-repo docs. One session.
 **Depends on:** 05 (paired API for the upload path), 06 (`AGENTS.md`).
+Runs before brief 00 once both have merged.
+**Needs:** push access to the three companion repos
+(rootboard-widget-template, rootboard-widget-grocery-list,
+awesome-rootboard).
 **Unblocks:** a tester who wants to write widgets.
+**Closes in `TASKS.md`:** the beta sub-item 07, plus two items folded in
+on 2026-11-14 (§2a): the React unmount warning and the companion repos'
+`theme.subscribe` wording.
 
 ---
 
@@ -27,6 +34,24 @@ terminal.
 | 4 | Visible errors | The widget host error boundary (`client/src/components/widget-host-error-boundary.tsx`) and the mount/import catch paths in `app-shell.tsx` surface the error **text and stack head** in the widget's own fallback panel behind a "Show details" toggle, and in the diagnostics bundle (brief 05) under `widgets[].lastError`. Import failures (bad ESM, 404 on `entry`) are reported the same way instead of only on the server console. |
 | 5 | Reload without reboot | A "Reload widgets" action in Settings re-runs discovery and re-imports changed manifests, so an author iterates without toggling. Keep the existing `id+version` module-cache rule from SPEC §3.1: bumping `version` is what invalidates the cache, and the UI says so when it detects an unchanged version after reload. |
 | 6 | Companion repos | The template's `TUTORIAL.md` gains a "Put it on your Rootboard" section with the USB path, the paired-upload path (`npm run deploy -- --host rootboard.local --token …`), and how to read the error panel. `CONTRIBUTING.md` and `awesome-rootboard` are checked for anything that still says "copy over SSH" as the only way. |
+
+## 2a. Folded in from the backlog (2026-11-14)
+
+1. **Root-cause the unmount warning before building Reload.** A cold
+   boot in dev logs React's "Attempted to synchronously unmount a root
+   while React was already rendering", with a stack rooted at
+   `WidgetHostMount`. The leading suspect, unconfirmed, is the nested
+   `createRoot()` roots inside widget `mount()` meeting Vite dev-mode
+   module updates (`TASKS.md`, added 2026-08-19). Reload widgets
+   (decision 5) unmounts and remounts every widget root on demand, which
+   turns a dev-only oddity into a path owners use. Find the cause first,
+   fix it (deferring the unmount out of the render phase is one
+   candidate), and record what it was in the PR.
+2. **Companion repos: theme wording.** The theme engine shipped in
+   v1.6.0, so `theme.subscribe` now fires on every theme switch. In the
+   same pass as decision 6, update all three repos: callbacks must stay
+   idempotent, and document the `--rb-person-N-*` convention and its
+   fallback rule.
 
 ## 3. Where the code goes
 
@@ -52,6 +77,8 @@ terminal.
 - From a laptop: `npm run deploy` in the template repo with a paired token
   installs and the kiosk picks it up on Reload.
 - Discovery service tests extended for the new candidate-inspection path.
+- Reload widgets five times in a row: no React unmount warning in the
+  console (§2a.1).
 
 ## 5. Docs
 
