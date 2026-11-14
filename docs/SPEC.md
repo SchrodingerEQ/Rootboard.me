@@ -75,8 +75,8 @@ retention sweep, which runs inside each sync.
 | PUT | `/api/config/dashboard` | Zod-validate + atomic write of the whole config | none |
 | GET | `/api/widgets` | Discover `widgets/*/widget.json`; `{widgets, invalid}`, no-store | none |
 | GET | `/widgets/*` | Static community-widget assets (`express.static`) | realpath containment |
-| GET | `/api/system/network/status` | `{managed, timezoneManaged, connected, connection:{type, device, name, ip}, hasWifiDevice, uptimeSeconds}`; `?internet=1` adds `internet: "reachable"\|"unreachable"` (one HEAD to `www.googleapis.com`, answer reused for 15 s), no-store (3.11) | none |
-| POST | `/api/system/network/scan` | Rescan → `{networks:[{ssid, signal, secured, inUse}]}`; 409 when NetworkManager is absent | **localhost-only** |
+| GET | `/api/system/network/status` | `{managed, connected, connection:{type: wifi\|ethernet\|other, device, name, ip}, hasWifiDevice, uptimeSeconds}` (shapes in `shared/system-network.ts`; the nmcli read is reused for 3 s); `?internet=1` adds `internet: "reachable"\|"unreachable"` (one HEAD to `www.googleapis.com`, answer reused for 15 s), no-store (3.11) | none |
+| POST | `/api/system/network/scan` | Rescan → `{networks:[{ssid, signal, secured, inUse}]}`; 502 when the scan is refused, 409 when NetworkManager is absent | **localhost-only** |
 | POST | `/api/system/network/connect` | `{ssid, password?, hidden?}` → `{status:"connected"}` or `{status:"failed", reason}` (`bad-password`, `not-found`, `timeout`, `failed`); 400 for a bad SSID or a password of impossible length | **localhost-only** |
 | POST | `/api/system/network/forget` | `{ssid}` → deletes every saved Wi-Fi profile for that SSID (no UI yet) | **localhost-only** |
 | GET | `/api/system/timezone` | `{managed:false}` or `{managed:true, current, zones}`, no-store | none |
@@ -86,7 +86,10 @@ retention sweep, which runs inside each sync.
   `127.0.0.1`, `::1`, `::ffff:127.0.0.1`, `localhost`; violations get 403.
   Applied to `apply`, `rollback` and the four `/api/system/*` mutations
   (`server/local-request.ts`, `server/system-routes.ts`) — `check`,
-  `status`, `backups` and the two system GETs are open. No `trust proxy` is configured, so the guard checks
+  `status`, `backups` and the two system GETs are open. The system
+  mutations also require a JSON body and refuse `Sec-Fetch-Site:
+  cross-site`/`same-site`, so a web page open in the kiosk's own browser
+  cannot form-POST to localhost (update/rollback do not have this yet). No `trust proxy` is configured, so the guard checks
   the direct socket peer; a reverse proxy would break/bypass semantics —
   re-verify if one is ever added.
 - **Validation:** Zod. Event writes coerce `startTime`/`endTime` to Date,
@@ -916,8 +919,10 @@ is a placeholder until brief 02 (session 2).
   and pass (Network on its own after 2.5 s). This is the `npm run dev`
   path on a laptop and in CI.
 - **Server** (`server/services/networkService.ts`): `execFile` (never a
-  shell) with a 30 s timeout and `LC_ALL=C`; nmcli connect gets
-  `--wait 25`. Presence is the binary (looked up once) **and** a daemon
+  shell) with a 30 s timeout and `LC_ALL=C.UTF-8` (English messages,
+  non-ASCII SSIDs intact); nmcli connect gets `--wait 25`. "Connected"
+  is any `connected…` device state (including `connected (externally)`)
+  on anything but loopback and Wi-Fi P2P; wired beats Wi-Fi. Presence is the binary (looked up once) **and** a daemon
   answering (`nmcli -t -f RUNNING general`, `timedatectl show`, asked each
   time). Terse output is parsed with `\:`/`\\` unescaping; tests run
   against hand-written fixtures (`networkService.fixtures.ts`, to refresh

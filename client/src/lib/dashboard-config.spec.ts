@@ -123,6 +123,12 @@ describe("dashboardConfigSchema setup record (first-run wizard)", () => {
     expect(result.success && result.data.setup).toEqual(setup);
   });
 
+  test("a timestamp with an offset (a hand-edit, `date -Iseconds`) is valid", () => {
+    const setup = { completedAt: "2026-11-14T20:00:00+00:00", version: 1 };
+    const result = dashboardConfigSchema.safeParse({ ...validConfig, setup });
+    expect(result.success && result.data.setup).toEqual(setup);
+  });
+
   test("a malformed record is dropped, never the layout", () => {
     const result = dashboardConfigSchema.safeParse({ ...validConfig, setup: { completedAt: "yesterday" } });
     expect(result.success).toBe(true);

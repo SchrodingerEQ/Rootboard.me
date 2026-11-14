@@ -39,7 +39,7 @@ export const SETUP_WIZARD_VERSION = 1;
  * absence is what makes the wizard open at boot.
  */
 export const setupStateSchema = z.object({
-  completedAt: z.string().datetime(),
+  completedAt: z.string().datetime({ offset: true }),
   version: z.number().int().positive(),
 });
 

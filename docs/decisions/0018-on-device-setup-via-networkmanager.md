@@ -16,7 +16,9 @@ Status: accepted (beta-launch brief 03, decisions locked 2026-11-08); session 1 
    Wi-Fi scan, set time zone — to a `rootboard-system` group that the
    service user joins. No sudo, no root, no setuid helper.
 3. Every endpoint that changes the system or drives the radio is
-   localhost-only (`isLocalRequest`, like update/rollback). Read-only
+   localhost-only (`isLocalRequest`, like update/rollback), and also
+   requires a JSON body and no cross-site `Sec-Fetch-Site`, because "from
+   localhost" includes any web page the kiosk's own browser opens. Read-only
    status stays open to the LAN until brief 05 decides on pairing.
 4. Wi-Fi passwords travel only from the touchscreen to the local server
    in a POST body, to `nmcli`, and into NetworkManager's system profile.

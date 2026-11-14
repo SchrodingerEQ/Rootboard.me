@@ -9,13 +9,12 @@ function fakeService(): NetworkService {
   return {
     status: vi.fn(async () => ({
       managed: true,
-      timezoneManaged: true,
       connected: false,
       connection: null,
       hasWifiDevice: true,
       uptimeSeconds: 10,
     })),
-    scan: vi.fn(async () => ({ managed: true as const, networks: [] })),
+    scan: vi.fn(async () => ({ status: "ok" as const, networks: [] })),
     connect: vi.fn(async () => ({ status: "connected" as const })),
     forget: vi.fn(async () => ({ status: "forgotten" as const, removed: 1 })),
     listTimezones: vi.fn(async () => ({ managed: true as const, current: "UTC", zones: ["UTC"] })),
@@ -99,6 +98,28 @@ describe("system routes", () => {
   test.each([[""], ["-x"], ["x".repeat(33)]])("SSID %j is rejected", async (ssid) => {
     expect((await post("/api/system/network/connect", { ssid })).status).toBe(400);
     expect(service.connect).not.toHaveBeenCalled();
+  });
+
+  test("a form POST from a web page in the kiosk's own browser is refused", async () => {
+    const form = await fetch(base + "/api/system/network/connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "ssid=Evil&password=12345678",
+    });
+    expect(form.status).toBe(403);
+    const crossSite = await fetch(base + "/api/system/timezone", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Sec-Fetch-Site": "cross-site" },
+      body: JSON.stringify({ timezone: "UTC" }),
+    });
+    expect(crossSite.status).toBe(403);
+    expect(service.connect).not.toHaveBeenCalled();
+    expect(service.setTimezone).not.toHaveBeenCalled();
+  });
+
+  test("a failed scan is a 502, not an empty list", async () => {
+    vi.mocked(service.scan).mockResolvedValueOnce({ status: "failed" });
+    expect((await post("/api/system/network/scan", {})).status).toBe(502);
   });
 
   test("unmanaged systems answer 409", async () => {

@@ -6,8 +6,10 @@ import {
   parseDeviceStatus,
   parseFirstIpv4,
   parseWifiConnections,
+  parseSingleValue,
   parseWifiList,
   splitTerseLine,
+  STATUS_REUSE_MS,
   type CommandResult,
   type RunCommand,
 } from "./networkService";
@@ -103,7 +105,6 @@ describe("status", () => {
     const svc = createNetworkService({ run, uptime: () => 42.7 });
     expect(await svc.status()).toEqual({
       managed: true,
-      timezoneManaged: true,
       connected: true,
       connection: { type: "wifi", device: "wlan0", name: "ExampleHome", ip: "192.0.2.23" },
       hasWifiDevice: true,
@@ -124,6 +125,29 @@ describe("status", () => {
   });
 
   test.each([
+    ["a link configured outside NetworkManager", "eth0:ethernet:connected (externally):eth0\nlo:loopback:connected (externally):lo\n", "ethernet"],
+    ["a bridge", "br0:bridge:connected:br0\nwlan0:wifi:disconnected:\n", "other"],
+  ])("%s counts as connected", async (_name, out, type) => {
+    const { run } = fakeRun({ ...NMCLI_VERSION, [DEVICE_STATUS]: ok(out), "nmcli -t -f IP4.ADDRESS device show *": ok("") });
+    const status = await createNetworkService({ run, uptime: () => 1 }).status();
+    expect(status.connected).toBe(true);
+    expect(status.connection?.type).toBe(type);
+  });
+
+  test("repeat asks within a few seconds reuse one nmcli read", async () => {
+    let t = 0;
+    const { run, calls } = fakeRun({ ...NMCLI_VERSION, [DEVICE_STATUS]: ok(fx.DEVICE_STATUS_NOTHING_CONNECTED) });
+    const svc = createNetworkService({ run, uptime: () => 1, now: () => t });
+    await svc.status();
+    await svc.status();
+    const reads = () => calls.filter((c) => c.join(" ") === DEVICE_STATUS).length;
+    expect(reads()).toBe(1);
+    t = STATUS_REUSE_MS;
+    await svc.status();
+    expect(reads()).toBe(2);
+  });
+
+  test.each([
     ["nothing saved", fx.DEVICE_STATUS_NOTHING_CONNECTED],
     ["still connecting", fx.DEVICE_STATUS_WIFI_CONNECTING],
   ])("%s is not connected (loopback never counts)", async (_name, out) => {
@@ -138,13 +162,12 @@ describe("status", () => {
     const svc = createNetworkService({ run, uptime: () => 5 });
     expect(await svc.status()).toEqual({
       managed: false,
-      timezoneManaged: false,
       connected: false,
       connection: null,
       hasWifiDevice: false,
       uptimeSeconds: 5,
     });
-    expect(await svc.scan()).toEqual({ managed: false });
+    expect(await svc.scan()).toEqual({ status: "unmanaged" });
     expect(await svc.connect("x", "password1")).toEqual({ status: "unmanaged" });
     expect(await svc.listTimezones()).toEqual({ managed: false });
     expect(await svc.setTimezone("UTC")).toEqual({ status: "unmanaged" });
@@ -158,7 +181,7 @@ describe("status", () => {
       "timedatectl show --property=Timezone --value": fail(1, "System has not been booted with systemd as init system (PID 1).\n"),
     });
     const svc = createNetworkService({ run, uptime: () => 5 });
-    expect(await svc.status()).toMatchObject({ managed: false, timezoneManaged: false });
+    expect(await svc.status()).toMatchObject({ managed: false });
     expect(await svc.listTimezones()).toEqual({ managed: false });
   });
 
@@ -183,8 +206,18 @@ describe("Wi-Fi actions", () => {
   test("scan rescans and parses", async () => {
     const { run } = fakeRun({ ...NMCLI_VERSION, [WIFI_LIST_RESCAN]: ok(fx.WIFI_LIST) });
     const result = await createNetworkService({ run }).scan();
-    expect(result).toMatchObject({ managed: true });
-    expect(result.managed && result.networks.map((n) => n.ssid)).toEqual(["Neighbor 5G", "ExampleHome", "Cafe:Guest", "Back\\Slash"]);
+    expect(result.status === "ok" && result.networks.map((n) => n.ssid)).toEqual(["Neighbor 5G", "ExampleHome", "Cafe:Guest", "Back\\Slash"]);
+  });
+
+  test("a refused scan is a failure, not an empty neighbourhood", async () => {
+    const { run } = fakeRun({ ...NMCLI_VERSION, [WIFI_LIST_RESCAN]: fail(1, "Error: Scanning not allowed.\n") });
+    expect(await createNetworkService({ run }).scan()).toEqual({ status: "failed" });
+  });
+
+  test("runs nmcli in a UTF-8 locale so non-ASCII SSIDs survive", async () => {
+    const { runCommand } = await import("./networkService");
+    const r = await runCommand("sh", ["-c", "printf %s \"$LC_ALL\""]);
+    expect(r.stdout).toBe("C.UTF-8");
   });
 
   test("connect passes SSID and password as separate argv entries, hidden on request", async () => {
@@ -212,10 +245,16 @@ describe("Wi-Fi actions", () => {
       "nmcli -t -f NAME,UUID,TYPE connection show": ok(fx.CONNECTION_SHOW),
       "nmcli -g 802-11-wireless.ssid connection show uuid 00000000-0000-4000-8000-000000000001": ok("ExampleHome\n"),
       "nmcli -g 802-11-wireless.ssid connection show uuid 00000000-0000-4000-8000-000000000003": ok("ExampleHome\n"),
+      "nmcli -g 802-11-wireless.ssid connection show uuid 00000000-0000-4000-8000-000000000004": ok("Example\\:Home \n"),
       "nmcli connection delete uuid *": ok(),
     });
     expect(await createNetworkService({ run }).forget("ExampleHome")).toEqual({ status: "forgotten", removed: 2 });
     expect(calls.filter((c) => c.includes("delete")).length).toBe(2);
+  });
+
+  test("forget reads the stored SSID unescaped and untrimmed", () => {
+    expect(parseSingleValue("Example\\:Home \n")).toBe("Example:Home ");
+    expect(parseSingleValue("Back\\\\Slash\n")).toBe("Back\\Slash");
   });
 });
 

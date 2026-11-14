@@ -13,6 +13,13 @@ import {
   CalendarDays,
 } from "lucide-react";
 import type { WeatherLocation } from "@shared/dashboard-config";
+import {
+  isPlausibleWifiPassword,
+  type ConnectResponse,
+  type NetworkStatus,
+  type TimezoneInfo,
+  type WifiNetwork,
+} from "@shared/system-network";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
@@ -25,7 +32,6 @@ import {
   filterTimezones,
   formatTimeIn,
   isOpenedFromSettings,
-  isPlausibleWifiPassword,
   signalBars,
   stepsFor,
   type SetupMode,
@@ -54,27 +60,6 @@ export interface SetupWizardProps {
    *  step), false when they closed it from Settings part-way. */
   onClose: (finished: boolean) => void;
 }
-
-// --- Server types (server/services/networkService.ts) ----------------------
-
-interface NetworkStatus {
-  managed: boolean;
-  timezoneManaged: boolean;
-  connected: boolean;
-  connection: { type: "wifi" | "ethernet"; device: string; name: string; ip: string | null } | null;
-  hasWifiDevice: boolean;
-  internet?: "reachable" | "unreachable";
-  uptimeSeconds: number;
-}
-
-interface WifiNetwork {
-  ssid: string;
-  signal: number;
-  secured: boolean;
-  inUse: boolean;
-}
-
-type TimezoneInfo = { managed: false } | { managed: true; current: string | null; zones: string[] };
 
 async function getJson<T>(url: string, init?: RequestInit): Promise<{ ok: boolean; status: number; body: T | null }> {
   const res = await fetch(url, { credentials: "include", ...init });
@@ -245,6 +230,9 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
   const [password, setPassword] = useState("");
   const [join, setJoin] = useState<JoinState>({ kind: "idle" });
   const passedRef = useRef(false);
+  // A ref, not state: two Enter taps in one tick would both still see the
+  // state from before the first.
+  const joinInFlight = useRef(false);
 
   const readStatus = useCallback(async (checkInternet = false) => {
     try {
@@ -303,16 +291,23 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
     return () => window.clearTimeout(timer);
   }, [unmanaged, autoPass, connected, busy, onNext]);
 
+  const joining = join.kind === "joining";
+  const canJoin = (t: JoinTarget) => !joining && t.ssid !== "" && isPlausibleWifiPassword(t.secured ? password : "", t.secured);
+
   const doJoin = async (t: JoinTarget) => {
+    // One nmcli connect at a time: a second would cancel the first.
+    if (joinInFlight.current) return;
+    joinInFlight.current = true;
     setJoin({ kind: "joining" });
     try {
-      const r = await postJson<{ status: string; reason?: string }>("/api/system/network/connect", {
+      const r = await postJson<ConnectResponse>("/api/system/network/connect", {
         ssid: t.ssid,
         password: t.secured ? password : "",
         hidden: t.hidden || undefined,
       });
       if (r.body?.status !== "connected") {
-        setJoin({ kind: "failed", sentence: r.status >= 500 && !r.body?.reason ? FAILURE_COPY.server : connectFailureSentence(r.body?.reason) });
+        const reason = r.body?.status === "failed" ? r.body.reason : undefined;
+        setJoin({ kind: "failed", sentence: r.status >= 500 && !reason ? FAILURE_COPY.server : connectFailureSentence(reason) });
         return;
       }
       // The password has done its job; drop it from memory now.
@@ -323,6 +318,8 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
       setJoin({ kind: "joined", internet: s?.internet === "reachable" ? "reachable" : "unreachable" });
     } catch {
       setJoin({ kind: "failed", sentence: FAILURE_COPY.server });
+    } finally {
+      joinInFlight.current = false;
     }
   };
 
@@ -384,7 +381,7 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
         <div className="flex items-center gap-3 p-4 rounded-md border border-rb-grid-line bg-rb-surface" data-testid="setup-network-connected">
           <CheckCircle2 className="h-6 w-6 text-rb-success shrink-0" />
           <p className="flex-1 text-lg">
-            {ethernet ? "Connected by Ethernet." : `Connected to ${s.connection.name}.`}
+            {ethernet ? "Connected by Ethernet." : s.connection.type === "wifi" ? `Connected to ${s.connection.name}.` : "Connected."}
             {autoPass && !busy && <span className="text-rb-muted"> Moving on…</span>}
           </p>
           {(!autoPass || holdForInternet) && (
@@ -425,7 +422,7 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && isPlausibleWifiPassword(password, true) && target.ssid && void doJoin(target)}
+              onKeyDown={(e) => e.key === "Enter" && canJoin(target) && void doJoin(target)}
               placeholder="Password"
               aria-label="Wi-Fi password"
               autoComplete="off"
@@ -452,7 +449,7 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
           <div className="flex gap-3">
             <PrimaryButton
               onClick={() => void doJoin(target)}
-              disabled={join.kind === "joining" || !target.ssid || !isPlausibleWifiPassword(password, target.secured)}
+              disabled={!canJoin(target)}
               data-testid="setup-join"
             >
               {join.kind === "joining" ? "Connecting…" : join.kind === "failed" ? "Retry" : "Connect"}

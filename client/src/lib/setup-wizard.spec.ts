@@ -10,12 +10,12 @@ import {
   filterTimezones,
   formatTimeIn,
   isOpenedFromSettings,
-  isPlausibleWifiPassword,
   needsFirstRun,
   recordsCompletion,
   signalBars,
   stepsFor,
 } from "./setup-wizard";
+import { isPlausibleWifiPassword } from "@shared/system-network";
 
 describe("steps", () => {
   test("first run and run-again go through every step in order", () => {
@@ -88,6 +88,7 @@ describe("failure copy", () => {
 
   test("password length is checked before asking nmcli", () => {
     expect(isPlausibleWifiPassword("", false)).toBe(true);
+    expect(isPlausibleWifiPassword("leftover", false)).toBe(false);
     expect(isPlausibleWifiPassword("short", true)).toBe(false);
     expect(isPlausibleWifiPassword("eightchr", true)).toBe(true);
     expect(isPlausibleWifiPassword("a".repeat(64), true)).toBe(true);

@@ -13,6 +13,7 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import type { NetworkService } from "./services/networkService";
+import { isPlausibleWifiPassword } from "@shared/system-network";
 
 export const SYSTEM_ROUTE_PATHS = {
   networkStatus: "/api/system/network/status",
@@ -33,7 +34,7 @@ const ssidSchema = z
 /** WPA-PSK: 8–63 characters, or 64 hex digits. Absent/empty = open network. */
 const pskSchema = z
   .string()
-  .refine((p) => p === "" || (p.length >= 8 && p.length <= 63) || /^[0-9a-fA-F]{64}$/.test(p), "bad password length")
+  .refine((p) => isPlausibleWifiPassword(p, p !== ""), "bad password length")
   .optional();
 
 const connectBodySchema = z.object({ ssid: ssidSchema, password: pskSchema, hidden: z.boolean().optional() });
@@ -47,8 +48,15 @@ export function registerSystemRoutes(
   deps: { service: NetworkService; isLocalRequest: (req: Request) => boolean },
 ): void {
   const { service, isLocalRequest } = deps;
+  // Two checks. The socket peer must be this machine. And the body must be
+  // JSON: any web page the kiosk's own browser happens to open could
+  // otherwise auto-submit an HTML form (urlencoded, no CORS preflight) to
+  // localhost and re-point the Wi-Fi. A cross-site fetch with a JSON body
+  // needs a preflight this server never grants, and Sec-Fetch-Site, where
+  // the browser sends it, rules out the rest.
   const localOnly = (req: Request, res: Response): boolean => {
-    if (isLocalRequest(req)) return true;
+    const site = req.get("Sec-Fetch-Site");
+    if (isLocalRequest(req) && req.is("application/json") && (!site || site === "same-origin" || site === "none")) return true;
     res.status(403).json({ message: "System settings can only be changed on the kiosk itself" });
     return false;
   };
@@ -73,7 +81,8 @@ export function registerSystemRoutes(
     noStore(res);
     try {
       const result = await service.scan();
-      if (!result.managed) return res.status(409).json({ message: UNMANAGED_MESSAGE });
+      if (result.status === "unmanaged") return res.status(409).json({ message: UNMANAGED_MESSAGE });
+      if (result.status === "failed") return res.status(502).json({ message: "Couldn't scan for networks" });
       res.json({ networks: result.networks });
     } catch {
       console.error("[network] scan failed");

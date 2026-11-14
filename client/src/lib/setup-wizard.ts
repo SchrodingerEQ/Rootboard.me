@@ -97,8 +97,6 @@ export function bootNetworkDecision(status: NetworkStatusLike | null, firstUptim
 
 // --- Failure copy (decision 9: one plain sentence and a Retry) --------------------
 
-export type ConnectFailureReason = "bad-password" | "not-found" | "timeout" | "failed";
-
 export const FAILURE_COPY = {
   badPassword: "That password didn't work.",
   notFound: "Rootboard can't see that network from here.",
@@ -121,13 +119,6 @@ export function connectFailureSentence(reason: string | undefined): string {
     default:
       return FAILURE_COPY.failed;
   }
-}
-
-/** The client-side length check nmcli would fail anyway: WPA-PSK is 8–63
- *  characters or 64 hex digits; empty means an open network. */
-export function isPlausibleWifiPassword(password: string, secured: boolean): boolean {
-  if (!secured) return true;
-  return (password.length >= 8 && password.length <= 63) || /^[0-9a-fA-F]{64}$/.test(password);
 }
 
 // --- Time zone -----------------------------------------------------------------
