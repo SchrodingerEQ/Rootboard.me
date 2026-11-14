@@ -385,12 +385,13 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
         )}
       </main>
 
-      {/* The sync indicator is screen-level chrome, not calendar content: it
-          used to show while any section was on screen. The widget container
-          is display:none'd when another section is active, so it is portaled
-          to document.body to keep exactly that behavior. The dialogs below
-          need no such treatment — Radix already portals them. */}
-      {createPortal(<LoadingIndicator isVisible={isRefreshing} />, document.body)}
+      {/* The sync indicator shows only while the calendar is the visible
+          section. Its fixed top-right spot is the same spot other sections
+          use for their own header (What to Wear's weather summary), so
+          showing it over them covered their content. It stays portaled to
+          document.body so it keeps its screen-level position. The dialogs
+          below need no such treatment — Radix already portals them. */}
+      {createPortal(<LoadingIndicator isVisible={isRefreshing && isVisible} />, document.body)}
 
       <EventDetailsDialog
         event={selectedEvent}
