@@ -1,6 +1,6 @@
 # Pre-beta cleanup — dependencies, a real linter, two small bugs
 
-**Status:** In progress (started 2026-11-14): step 1 merged (#27); step 3 (ESLint) merged (#29), taken ahead of step 2 so other briefs got a real lint step sooner; step 2 merged (#30); step 4a (arrow-key stale date) in its own PR; 4b next.
+**Status:** In progress (started 2026-11-14): step 1 merged (#27); step 3 (ESLint) merged (#29), taken ahead of step 2 so other briefs got a real lint step sooner; step 2 merged (#30); step 4a merged (#31); step 4b (sync indicator) in its own PR; 5 and 6 next.
 **Type:** One session, a short series of small PRs (one thing each, per
 `CODING-STANDARDS.md` kernel 3), in the order below. Each is safe zone
 unless its review says otherwise; merge each on green before starting
