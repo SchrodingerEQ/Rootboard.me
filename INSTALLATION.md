@@ -22,6 +22,7 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
 12. [Wi-Fi reliability on a headless Pi](#12-wi-fi-reliability-on-a-headless-pi)
 13. [Updating the app](#13-updating-the-app)
 14. [Troubleshooting](#14-troubleshooting)
+15. [Use the API from a laptop on your network (pairing)](#15-use-the-api-from-a-laptop-on-your-network-pairing)
 
 ---
 
@@ -633,8 +634,25 @@ pkill -f "node.*calendar-app" ; bash scripts/start.sh
 
 ## 14. Troubleshooting
 
+### Read the diagnostics screen first
+Before opening a terminal, tap **Settings → System → Diagnostics** on the kiosk. It works even when Google Calendar isn't connected (if a "Google Calendar Not Connected" box is covering the screen, tap **Close** first). Rows that probably need fixing have a warning mark:
+
+| Row | What it tells you |
+|---|---|
+| Google Calendar | Whether the key file is there and loaded, and the error if not |
+| Calendar sync | When events last synced, and the last sync error |
+| Weather | When the forecast last updated, and why it failed |
+| Network / Internet | Whether the Pi has a network address, and whether its last weather or calendar request reached the internet |
+| Wi-Fi self-heal (24 h) | How many times the [`wifi-selfheal` timer](#123-add-a-wifi-selfheal-watchdog-timer) had to reconnect. "Not available" means the timer isn't installed, or the app's user can't read the system journal (fix: `sudo usermod -aG systemd-journal <service-user>`, then restart the service) |
+| Updates / Supervisor | The last update check, and whether the app can restart itself after an update |
+| Disk free, Widgets, Config | Low disk, widget folders that failed to load, a damaged `data/config/dashboard.json` |
+
+**Show details** shows the app's last log lines. **Copy** copies the whole screen as text you can paste to whoever is helping you, or to your own AI assistant: it never contains your Wi-Fi name, the kiosk's name or IPv4 address, email addresses or tokens.
+
+The entries below are the terminal steps for when the diagnostics screen points at a problem.
+
 ### "Service account key file could not be loaded"
-The app can't find or parse the JSON key file. Check, in order:
+Diagnostics shows **Google Calendar: Not set up (no key file)** or **Not connected** with the reason. The app can't find or parse the JSON key file. Check, in order:
 ```bash
 # 1. Does the file actually exist where .env says it does?
 grep GOOGLE_SERVICE_ACCOUNT_KEY_FILE /home/pi/calendar-app/.env
@@ -646,7 +664,7 @@ node -e "JSON.parse(require('fs').readFileSync('/home/pi/calendar-app/service-ac
 If the path in `.env` is relative (like `./service-account.json`), it's resolved against the app folder — the file must live at `/home/pi/calendar-app/service-account.json`.
 
 ### Calendars load but show no events
-The service account doesn't have access to those calendars yet. Re-do Step 7 Part F: share each calendar in Google Calendar with the `client_email` from the JSON key file. After sharing, refresh the calendar in the kiosk (the header refresh button).
+If Diagnostics shows a **Calendar sync** error, that error says why. Otherwise the service account doesn't have access to those calendars yet. Re-do Step 7 Part F: share each calendar in Google Calendar with the `client_email` from the JSON key file. After sharing, refresh the calendar in the kiosk (the header refresh button).
 
 ### `EADDRINUSE: address already in use :::5000`
 A previous instance is still running:
@@ -683,7 +701,7 @@ grep -i blank /etc/lightdm/lightdm.conf
 And run `sudo raspi-config` → Display Options → Screen Blanking → **No** to make it permanent.
 
 ### Wi-Fi disconnects after hours of idle
-Re-apply the power-save fix from Step 3:
+Diagnostics shows **Wi-Fi self-heal (24 h)**: a few reconnects a day means the timer from Step 12 is doing its job; many means the link itself needs attention. Re-apply the power-save fix from Step 3:
 ```bash
 sudo iw dev wlan0 set power_save off
 ```
@@ -705,12 +723,37 @@ sudo reboot
 ```
 
 ### Need to access the Pi remotely
-With SSH enabled (Step 2):
+To read the app's state or call its API from a laptop, [pair the laptop](#15-use-the-api-from-a-laptop-on-your-network-pairing); no SSH needed. For the operating system itself, with SSH enabled (Step 2):
 ```bash
 ssh pi@<PI_IP>
 # logs:
 tail -f /home/pi/calendar-app.log
 ```
+
+---
+
+## 15. Use the API from a laptop on your network (pairing)
+
+The kiosk's own screen can always use the app. Any other device on your Wi-Fi has to be paired first, so nothing else on the network can read or change your calendar.
+
+1. On the kiosk, tap **Settings → System → Pair a device**. It shows a 6-digit code for 5 minutes and the address to send it to.
+2. On the laptop (or tell your AI assistant to do this):
+   ```bash
+   curl -X POST http://<KIOSK_IP>:5000/api/pair \
+     -H 'Content-Type: application/json' \
+     -d '{"code": "123456", "name": "my-laptop"}'
+   ```
+   The reply contains a `token` that starts with `rbp_`. Keep it private: whoever has it can read and change the kiosk's calendar and settings.
+3. Send the token on every call:
+   ```bash
+   curl http://<KIOSK_IP>:5000/api/system/diagnostics?view=full \
+     -H 'Authorization: Bearer rbp_...'
+   ```
+4. To remove a device, tap **Revoke** next to it on the same screen. To remove every device at once over SSH, delete `data/paired-devices.json`.
+
+Without pairing, a device on the network can only read the app version and the redacted diagnostics (the same text the **Copy** button gives). A wrong code 5 times cancels the code; show a new one on the kiosk. Updates and roll-backs can only be started from the kiosk screen, paired or not.
+
+For a hosted or development install with no touchscreen, `LAN_API_OPEN=true` in `.env` turns pairing off (the app logs a warning at startup). Don't set it on a kiosk on a shared Wi-Fi.
 
 ---
 
@@ -723,6 +766,7 @@ tail -f /home/pi/calendar-app.log
 | `/home/pi/calendar-app/calendar.db` | SQLite database (events) |
 | `/home/pi/calendar-app/service-account.json` | Google service account JSON key (gitignored, never leaves the Pi) |
 | `/home/pi/calendar-app/.update-backups/` | Auto-update rollback snapshots |
+| `/home/pi/calendar-app/data/paired-devices.json` | Paired laptops/agents (token hashes only; delete to revoke all) |
 | `/home/pi/kiosk.sh` | Launches server + Chromium |
 | `/home/pi/.config/autostart/calendar-kiosk.desktop` | Boot autostart entry |
 | `/home/pi/calendar-app.log` | Server stdout/stderr |

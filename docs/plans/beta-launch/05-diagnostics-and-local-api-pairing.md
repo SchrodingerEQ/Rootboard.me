@@ -1,6 +1,6 @@
 # 05 — Diagnostics bundle and local-network API pairing
 
-**Status:** Not started.
+**Status:** Built 2026-11-14 (pairing guard, diagnostics bundle, Settings in every auth state; decision 0020). Founder kiosk checks pending: LAN laptop pairing, the redacted bundle on the real kiosk, the self-heal count from the kiosk's journal.
 **Type:** Server endpoints + Settings panel + a small auth layer. One to two sessions.
 **Depends on:** nothing, so it can run now, before brief 00. 03's network
 service makes the bundle richer when it lands.

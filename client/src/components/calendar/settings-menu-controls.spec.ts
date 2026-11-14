@@ -74,4 +74,19 @@ describe("settings-menu.tsx keeps every existing control", () => {
     expect(css).toMatch(/html\[data-osk-open\] \[data-radix-popper-content-wrapper\] \[data-settings-panel\] \{\s*min-height:/);
     expect(osk).toContain('window.dispatchEvent(new Event("resize"));');
   });
+
+  test("Settings opens in every auth state; only Google rows hide (brief 05 goal 3)", () => {
+    const shell = fs.readFileSync(path.resolve(import.meta.dirname, "../app-shell.tsx"), "utf-8");
+    // the shell no longer gates the whole popover on authentication
+    expect(shell).not.toMatch(/authStatus\?\.authenticated \? \(\s*<SettingsMenu/);
+    expect(shell).toContain("googleConnected={authStatus?.authenticated ?? false}");
+    // the calendar list query and the add-by-ID row need Google
+    expect(src).toContain("enabled: googleConnected,");
+    expect(src).toContain("{googleConnected && (");
+    expect(src).toContain('data-testid="calendars-signed-out"');
+    // Diagnostics and Pair a device under System, reachable while signed out
+    expect(src).toContain("<SystemDiagnostics />");
+    expect(src).toContain("<PairDeviceSettings />");
+    expect(src).toContain("setView(parentView(view))");
+  });
 });
