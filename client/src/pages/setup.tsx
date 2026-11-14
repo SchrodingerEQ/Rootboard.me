@@ -1,4 +1,4 @@
-import { ArrowLeft, Download, Monitor, Key, Play, RefreshCw, ExternalLink, Cpu, Terminal, Star, Usb, Wifi, HardDrive } from "lucide-react";
+import { ArrowLeft, Download, Monitor, Key, Play, RefreshCw, ExternalLink, Cpu, Terminal, Star, Wifi, HardDrive } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
