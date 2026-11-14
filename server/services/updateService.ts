@@ -142,6 +142,20 @@ function getGitHubConfig(): { owner: string; repo: string } {
   return { owner, repo };
 }
 
+/** The most recent update check, for the diagnostics bundle. In memory only. */
+export interface LastUpdateCheck {
+  at: string;
+  ok: boolean;
+  latestVersion: string | null;
+  updateAvailable: boolean;
+}
+
+let lastCheck: LastUpdateCheck | null = null;
+
+export function getLastUpdateCheck(): LastUpdateCheck | null {
+  return lastCheck ? { ...lastCheck } : null;
+}
+
 export async function checkForUpdate(): Promise<UpdateCheckResult> {
   const { owner, repo } = getGitHubConfig();
   const apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
@@ -150,9 +164,11 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
     const data = await httpsGet(apiUrl);
     const release: GitHubRelease = JSON.parse(data);
     const latestVersion = release.tag_name.replace(/^v/, '');
+    const updateAvailable = compareVersions(APP_VERSION, latestVersion);
+    lastCheck = { at: new Date().toISOString(), ok: true, latestVersion, updateAvailable };
 
     return {
-      updateAvailable: compareVersions(APP_VERSION, latestVersion),
+      updateAvailable,
       currentVersion: APP_VERSION,
       latestVersion,
       releaseNotes: release.body || 'No release notes available.',
@@ -163,6 +179,7 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
     };
   } catch (error) {
     console.error('Failed to check for updates:', error);
+    lastCheck = { at: new Date().toISOString(), ok: false, latestVersion: null, updateAvailable: false };
     return {
       updateAvailable: false,
       currentVersion: APP_VERSION,
@@ -463,12 +480,17 @@ function runStreamed(
  * supervisor (no MANAGED_BY_SUPERVISOR env var and not a child of init/systemd),
  * we surface a clear warning instead of silently exit-locking the kiosk.
  */
-function scheduleRestart(reason: string) {
-  const supervised =
+export function isSupervised(): boolean {
+  return (
     process.env.MANAGED_BY_SUPERVISOR === '1' ||
     process.env.SUPERVISED === '1' ||
     process.env.PM2_HOME !== undefined ||
-    process.env.INVOCATION_ID !== undefined; // systemd sets this
+    process.env.INVOCATION_ID !== undefined // systemd sets this
+  );
+}
+
+function scheduleRestart(reason: string) {
+  const supervised = isSupervised();
 
   if (!supervised) {
     const warn = `Update applied (${reason}), but no supervisor detected (MANAGED_BY_SUPERVISOR not set). ` +

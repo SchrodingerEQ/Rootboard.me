@@ -2,8 +2,9 @@
  * /api/system/* — Wi-Fi and time zone for the first-run wizard (beta-launch
  * brief 03, decision 0018). Everything that changes the system, or makes the
  * radio do something (a scan), is localhost-only: a phone on the LAN must not
- * be able to re-point the kiosk's Wi-Fi. The two read-only GETs stay open to
- * the LAN like every other read route today (brief 05 decides on pairing).
+ * be able to re-point the kiosk's Wi-Fi, paired or not. The two read-only
+ * GETs sit behind the LAN pairing guard like every other /api route
+ * (middleware/lanAuth.ts, brief 05).
  *
  * Request bodies here can hold a Wi-Fi password. It is passed to nmcli and
  * dropped; no handler logs a body, and the request logger in server/index.ts
