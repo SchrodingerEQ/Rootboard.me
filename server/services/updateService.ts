@@ -4,8 +4,20 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import { APP_VERSION } from '@shared/version';
+import {
+  DEFAULT_UPDATE_CHANNEL,
+  compareParsedVersions,
+  isNewerVersion,
+  isPrereleaseVersion,
+  isUpdateChannel,
+  parseVersion,
+  stripTagPrefix,
+  type ParsedVersion,
+  type UpdateChannel,
+} from '@shared/release-version';
+import { readDashboardConfig } from './configService';
 
-interface GitHubRelease {
+export interface GitHubRelease {
   tag_name: string;
   name: string;
   body: string;
@@ -13,9 +25,12 @@ interface GitHubRelease {
   zipball_url: string;
   tarball_url: string;
   html_url: string;
+  draft: boolean;
+  prerelease: boolean;
 }
 
 interface UpdateCheckResult {
+  channel: UpdateChannel;
   updateAvailable: boolean;
   currentVersion: string;
   latestVersion: string;
@@ -27,6 +42,7 @@ interface UpdateCheckResult {
 }
 
 interface UpdateStatus {
+  channel: UpdateChannel;
   status: 'idle' | 'checking' | 'downloading' | 'backing-up' | 'extracting' | 'installing' | 'restarting' | 'complete' | 'error' | 'rolling-back';
   message: string;
   progress: number;
@@ -74,7 +90,7 @@ function isRepoMetadata(name: string): boolean {
          name === 'setup';
 }
 
-let currentStatus: UpdateStatus = {
+let currentStatus: Omit<UpdateStatus, 'channel'> = {
   status: 'idle',
   message: 'No update in progress',
   progress: 0,
@@ -82,18 +98,6 @@ let currentStatus: UpdateStatus = {
 
 function setStatus(status: UpdateStatus['status'], message: string, progress: number, error?: string) {
   currentStatus = { status, message, progress, error };
-}
-
-function compareVersions(current: string, latest: string): boolean {
-  const c = current.replace(/^v/, '').split('.').map(Number);
-  const l = latest.replace(/^v/, '').split('.').map(Number);
-  for (let i = 0; i < Math.max(c.length, l.length); i++) {
-    const cv = c[i] || 0;
-    const lv = l[i] || 0;
-    if (lv > cv) return true;
-    if (lv < cv) return false;
-  }
-  return false;
 }
 
 function httpsGet(url: string): Promise<string> {
@@ -142,17 +146,96 @@ function getGitHubConfig(): { owner: string; repo: string } {
   return { owner, repo };
 }
 
-export async function checkForUpdate(): Promise<UpdateCheckResult> {
+// The status endpoint is polled every second during an update; say a bad
+// env value once, not on every poll.
+let warnedEnvChannel: string | undefined;
+
+/**
+ * The channel this kiosk follows: `update.channel` in dashboard.json, else
+ * the UPDATE_CHANNEL env var (in .env; brief 06's provision script will
+ * write it), else stable. Read on every call, so a Settings change or an
+ * SSH hand-edit applies to the next check without a restart.
+ */
+export function resolveUpdateChannel(): UpdateChannel {
+  const fromConfig = readDashboardConfig().config.update?.channel;
+  if (fromConfig) return fromConfig;
+  const rawEnv = process.env.UPDATE_CHANNEL;
+  const fromEnv = rawEnv?.trim().toLowerCase();
+  if (fromEnv) {
+    if (isUpdateChannel(fromEnv)) return fromEnv;
+    if (warnedEnvChannel !== rawEnv) {
+      warnedEnvChannel = rawEnv;
+      console.warn(`UPDATE_CHANNEL="${rawEnv}" is not "stable" or "beta"; using ${DEFAULT_UPDATE_CHANNEL}`);
+    }
+  }
+  return DEFAULT_UPDATE_CHANNEL;
+}
+
+/**
+ * Beta: the highest version among the newest releases, prereleases
+ * included. Drafts are skipped (the API only lists them to repo
+ * collaborators, but never act on one), and so are tags that are not
+ * versions. Exported for tests.
+ */
+export function pickNewestRelease(releases: GitHubRelease[]): GitHubRelease | null {
+  let best: { release: GitHubRelease; version: ParsedVersion } | null = null;
+  for (const release of releases) {
+    if (release.draft) continue;
+    const version = parseVersion(release.tag_name);
+    if (!version) {
+      console.warn(`Ignoring release with an unreadable tag: ${JSON.stringify(release.tag_name)}`);
+      continue;
+    }
+    if (!best || compareParsedVersions(best.version, version) < 0) {
+      best = { release, version };
+    }
+  }
+  return best?.release ?? null;
+}
+
+/**
+ * Stable reads `releases/latest`, which GitHub defines as the newest
+ * non-prerelease, non-draft release (unchanged from before channels). Beta
+ * reads the ten newest releases and picks by version, so a prerelease
+ * published after a stable one is offered and a stable release published
+ * later outranks its own betas.
+ */
+export async function fetchLatestRelease(channel: UpdateChannel): Promise<GitHubRelease> {
   const { owner, repo } = getGitHubConfig();
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/releases/latest`;
+  const base = `https://api.github.com/repos/${owner}/${repo}/releases`;
+  if (channel === 'stable') {
+    const latest = JSON.parse(await httpsGet(`${base}/latest`)) as GitHubRelease;
+    // Belt and braces: a beta tag published without GitHub's Pre-release
+    // tick comes back from releases/latest. Stable never takes it.
+    if (isPrereleaseVersion(latest.tag_name)) {
+      throw new Error(`Latest release ${latest.tag_name} is a beta tag but not marked Pre-release on GitHub; stable ignores it`);
+    }
+    if (!parseVersion(latest.tag_name)) {
+      throw new Error(`Latest release tag ${JSON.stringify(latest.tag_name)} is not a version`);
+    }
+    return latest;
+  }
+  const releases = JSON.parse(await httpsGet(`${base}?per_page=10`));
+  if (!Array.isArray(releases)) {
+    throw new Error('GitHub releases list was not an array');
+  }
+  const newest = pickNewestRelease(releases as GitHubRelease[]);
+  if (!newest) {
+    throw new Error('No published release with a version tag found');
+  }
+  return newest;
+}
+
+export async function checkForUpdate(): Promise<UpdateCheckResult> {
+  const channel = resolveUpdateChannel();
 
   try {
-    const data = await httpsGet(apiUrl);
-    const release: GitHubRelease = JSON.parse(data);
-    const latestVersion = release.tag_name.replace(/^v/, '');
+    const release = await fetchLatestRelease(channel);
+    const latestVersion = stripTagPrefix(release.tag_name);
 
     return {
-      updateAvailable: compareVersions(APP_VERSION, latestVersion),
+      channel,
+      updateAvailable: isNewerVersion(APP_VERSION, latestVersion),
       currentVersion: APP_VERSION,
       latestVersion,
       releaseNotes: release.body || 'No release notes available.',
@@ -162,8 +245,9 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
       releaseUrl: release.html_url,
     };
   } catch (error) {
-    console.error('Failed to check for updates:', error);
+    console.error(`Failed to check for updates (${channel} channel):`, error);
     return {
+      channel,
       updateAvailable: false,
       currentVersion: APP_VERSION,
       latestVersion: APP_VERSION,
@@ -177,7 +261,7 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
 }
 
 export function getUpdateStatus(): UpdateStatus {
-  return { ...currentStatus };
+  return { ...currentStatus, channel: resolveUpdateChannel() };
 }
 
 export async function applyUpdate(): Promise<void> {

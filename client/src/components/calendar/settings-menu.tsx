@@ -32,7 +32,9 @@ import { SETTINGS_CATEGORIES, categoryHasWarning, type SettingsView } from "./se
 import { describeWeatherStatus, type WeatherStatus } from "@/lib/weather-status";
 import { BrightnessControl } from "./brightness-control";
 import { WeatherLocationSettings } from "./weather-location-settings";
+import { UpdateChannelSettings } from "./update-channel-settings";
 import type { WeatherLocation } from "@shared/dashboard-config";
+import type { UpdateChannel } from "@shared/release-version";
 import type { OskMode } from "@/lib/osk";
 
 interface CalendarInfo {
@@ -233,6 +235,11 @@ interface SettingsMenuProps {
   weatherLocation?: WeatherLocation;
   /** Saves a picked weather location. Absent hides the Weather row. */
   onSaveWeatherLocation?: (location: WeatherLocation) => void;
+  /** The saved update channel (dashboard.json `update.channel`), if any.
+   *  Absent → the server's effective channel (env, else stable). */
+  updateChannel?: UpdateChannel;
+  /** Saves the update channel. Absent hides the channel toggle. */
+  onSaveUpdateChannel?: (channel: UpdateChannel) => void;
 }
 
 export function SettingsMenu({
@@ -259,6 +266,8 @@ export function SettingsMenu({
   themeErrorEntries = [],
   weatherLocation,
   onSaveWeatherLocation,
+  updateChannel,
+  onSaveUpdateChannel,
 }: SettingsMenuProps) {
   // IMPORTANT #1: only count widgets that actually RENDER a pane toward
   // the "at least one widget must stay enabled" guard — a builtin always
@@ -408,6 +417,17 @@ export function SettingsMenu({
     retry: false,
   });
   const weatherStatus = describeWeatherStatus(weatherStatusData, new Date());
+
+  // The server's effective update channel, for a kiosk whose channel comes
+  // from the UPDATE_CHANNEL env var rather than dashboard.json.
+  const { data: updateStatusData } = useQuery<{ channel?: UpdateChannel }>({
+    queryKey: ['/api/update/status'],
+    enabled: isOpen,
+    staleTime: 0,
+    retry: false,
+  });
+  // Undefined until known: never show a guessed channel as selected.
+  const effectiveUpdateChannel: UpdateChannel | undefined = updateChannel ?? updateStatusData?.channel;
 
   const handleCopyEmail = () => {
     if (!serviceAccountEmail) return;
@@ -1097,6 +1117,7 @@ export function SettingsMenu({
             {/* ===== System ===== */}
             {view === "system" && (
             <div className="space-y-2">
+              <Label className="text-sm font-medium">Updates</Label>
               <div className="flex gap-2">
                 {onCheckForUpdates && (
                   <Button
@@ -1121,6 +1142,9 @@ export function SettingsMenu({
                   </Button>
                 )}
               </div>
+              {onSaveUpdateChannel && (
+                <UpdateChannelSettings channel={effectiveUpdateChannel} onChange={onSaveUpdateChannel} />
+              )}
 
               {/* Weather — the location setting (beta-launch brief 01) plus
                   the status lines: why the weather stopped updating, readable
