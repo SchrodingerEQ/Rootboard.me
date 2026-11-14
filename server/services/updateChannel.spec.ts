@@ -287,6 +287,29 @@ describe("where the channel comes from", () => {
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining("update channel is invalid"));
   });
 
+  test("a dashboard.json from v1.7.3 (no update key) still loads with its layout intact", async () => {
+    const v173 = {
+      configVersion: 1,
+      defaultWidget: "dinner",
+      theme: "deep-space",
+      widgets: [
+        { id: "dinner", enabled: true, settings: {} },
+        { id: "calendar", enabled: true, settings: { hiddenCalendars: ["holidays"] } },
+        { id: "chores", enabled: false, settings: {} },
+        { id: "what-to-wear", enabled: true, settings: { zip: "" } },
+      ],
+    };
+    fs.mkdirSync(path.join(dir, "data", "config"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "data", "config", "dashboard.json"), JSON.stringify(v173));
+    const { resolveUpdateChannel } = await loadUpdater("1.7.3");
+    const { readDashboardConfig } = await import("./configService");
+    const { config, source } = readDashboardConfig();
+    expect(source).toBe("file");
+    expect(config).toEqual(v173);
+    expect(resolveUpdateChannel()).toBe("stable");
+    expect(console.error).not.toHaveBeenCalled();
+  });
+
   test("the status endpoint reports the channel", async () => {
     writeConfig({ channel: "beta" });
     const { getUpdateStatus } = await loadUpdater("1.7.3");
