@@ -28,6 +28,23 @@ export const weatherLocationSchema = z.object({
 
 export type WeatherLocation = z.infer<typeof weatherLocationSchema>;
 
+/**
+ * Bumped when the first-run wizard gains a step every existing kiosk should
+ * see. Recorded with the completion so a later version can tell.
+ */
+export const SETUP_WIZARD_VERSION = 1;
+
+/**
+ * The first-run wizard's completion record (beta-launch brief 03). Its
+ * absence is what makes the wizard open at boot.
+ */
+export const setupStateSchema = z.object({
+  completedAt: z.string().datetime(),
+  version: z.number().int().positive(),
+});
+
+export type SetupState = z.infer<typeof setupStateSchema>;
+
 export const dashboardConfigSchema = z
   .object({
     configVersion: z.literal(1),
@@ -46,6 +63,12 @@ export const dashboardConfigSchema = z
      * invalidating the widget layout. Absent on a fresh kiosk.
      */
     weather: weatherLocationSchema.optional().catch(undefined),
+    /**
+     * First-run wizard completion. LENIENT like `theme`/`weather`: a
+     * malformed value becomes undefined (→ the wizard runs again at the next
+     * boot) instead of invalidating the widget layout.
+     */
+    setup: setupStateSchema.optional().catch(undefined),
     widgets: z
       .array(dashboardWidgetEntrySchema)
       .min(1)

@@ -10,8 +10,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 // Responses whose body is personal data (the place names a postal-code
-// lookup returns) and must not reach the journal; the request line still does.
-const UNLOGGED_BODY_PATHS = new Set(["/api/weather/lookup"]);
+// lookup returns; the kiosk's and its neighbours' Wi-Fi names and address)
+// and must not reach the journal; the request line still does.
+const UNLOGGED_BODY_PATHS = new Set([
+  "/api/weather/lookup",
+  "/api/system/network/status",
+  "/api/system/network/scan",
+  "/api/system/network/connect",
+  "/api/system/network/forget",
+]);
 
 app.use((req, res, next) => {
   const start = Date.now();

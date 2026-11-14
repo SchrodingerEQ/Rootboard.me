@@ -25,7 +25,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   { id: "calendars", label: "Calendars", summary: "Share email, show/hide, remove, add by ID", icon: Calendar },
   { id: "widgets", label: "Widgets", summary: "Built-in layout + settings, community, folder errors", icon: LayoutGrid },
   { id: "keyboard", label: "Keyboard", summary: "On-screen keyboard: Auto/Always/Off", icon: Keyboard },
-  { id: "system", label: "System", summary: "Check for updates, roll back, weather status", icon: RefreshCw },
+  { id: "system", label: "System", summary: "Updates, roll back, setup, weather", icon: RefreshCw },
 ];
 
 /** Problems the main screen must surface so they are never hidden inside a closed category. */

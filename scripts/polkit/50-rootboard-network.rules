@@ -1,0 +1,29 @@
+// Rootboard first-run wizard (beta-launch brief 03, decision 0018).
+//
+// Lets the kiosk app — which runs as an ordinary user, never root — join
+// Wi-Fi, scan for networks and set the time zone without a password prompt.
+// Nothing else: no other NetworkManager or systemd action is granted.
+//
+// Granted to members of the "rootboard-system" group rather than a named
+// user, so this file carries no username. Add the user the kiosk service
+// runs as to that group:
+//
+//   sudo groupadd --system rootboard-system
+//   sudo usermod -aG rootboard-system <kiosk-service-user>
+//   sudo install -m 0644 -o root -g root scripts/polkit/50-rootboard-network.rules /etc/polkit-1/rules.d/
+//
+// polkit picks up a new rules file without a restart. INSTALLATION.md covers
+// this; brief 06's scripts/provision.sh installs it on a new image.
+
+polkit.addRule(function (action, subject) {
+  var allowed = [
+    "org.freedesktop.NetworkManager.settings.modify.system",
+    "org.freedesktop.NetworkManager.network-control",
+    "org.freedesktop.NetworkManager.wifi.scan",
+    "org.freedesktop.timedate1.set-timezone"
+  ];
+  if (allowed.indexOf(action.id) >= 0 && subject.isInGroup("rootboard-system")) {
+    return polkit.Result.YES;
+  }
+  return polkit.Result.NOT_HANDLED;
+});

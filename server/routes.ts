@@ -11,6 +11,9 @@ import { getWeather, getWeatherStatus } from "./services/weatherService";
 import { lookupPostalCode } from "./services/weatherLookup";
 import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
 import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscovery";
+import { networkService } from "./services/networkService";
+import { registerSystemRoutes } from "./system-routes";
+import { isLocalRequest } from "./local-request";
 import { APP_VERSION } from "@shared/version";
 import { dashboardConfigSchema } from "@shared/dashboard-config";
 
@@ -297,11 +300,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  const isLocalRequest = (req: any): boolean => {
-    const ip = req.ip || req.connection?.remoteAddress || '';
-    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
-  };
-
   app.get("/api/update/check", async (req, res) => {
     try {
       const result = await checkForUpdate();
@@ -422,6 +420,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.body?.weather !== undefined && parsed.data.weather === undefined) {
       return res.status(400).json({ message: "Invalid weather location" });
     }
+    // Same for the first-run wizard's completion record: dropping it would
+    // bring the wizard back on the next boot.
+    if (req.body?.setup !== undefined && parsed.data.setup === undefined) {
+      return res.status(400).json({ message: "Invalid setup record" });
+    }
     try {
       writeDashboardConfig(parsed.data);
       res.json({ success: true });
@@ -486,6 +489,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
     express.static(path.resolve("widgets"), { index: false }),
   );
+
+  // Wi-Fi and time zone for the first-run wizard (brief 03): mutations
+  // localhost-only, like update/rollback above.
+  registerSystemRoutes(app, { service: networkService, isLocalRequest });
 
   const httpServer = createServer(app);
   return httpServer;

@@ -75,11 +75,18 @@ retention sweep, which runs inside each sync.
 | PUT | `/api/config/dashboard` | Zod-validate + atomic write of the whole config | none |
 | GET | `/api/widgets` | Discover `widgets/*/widget.json`; `{widgets, invalid}`, no-store | none |
 | GET | `/widgets/*` | Static community-widget assets (`express.static`) | realpath containment |
+| GET | `/api/system/network/status` | `{managed, timezoneManaged, connected, connection:{type, device, name, ip}, hasWifiDevice, uptimeSeconds}`; `?internet=1` adds `internet: "reachable"\|"unreachable"` (one HEAD to `www.googleapis.com`, answer reused for 15 s), no-store (3.11) | none |
+| POST | `/api/system/network/scan` | Rescan → `{networks:[{ssid, signal, secured, inUse}]}`; 409 when NetworkManager is absent | **localhost-only** |
+| POST | `/api/system/network/connect` | `{ssid, password?, hidden?}` → `{status:"connected"}` or `{status:"failed", reason}` (`bad-password`, `not-found`, `timeout`, `failed`); 400 for a bad SSID or a password of impossible length | **localhost-only** |
+| POST | `/api/system/network/forget` | `{ssid}` → deletes every saved Wi-Fi profile for that SSID (no UI yet) | **localhost-only** |
+| GET | `/api/system/timezone` | `{managed:false}` or `{managed:true, current, zones}`, no-store | none |
+| POST | `/api/system/timezone` | `{timezone}` (must be in `zones`) → `timedatectl set-timezone`, then `process.env.TZ` so the server follows at once | **localhost-only** |
 
 - **Localhost guard:** `isLocalRequest` compares `req.ip`/socket address to
   `127.0.0.1`, `::1`, `::ffff:127.0.0.1`, `localhost`; violations get 403.
-  Applied **only** to `apply` and `rollback` — `check`, `status`, and
-  `backups` are open. No `trust proxy` is configured, so the guard checks
+  Applied to `apply`, `rollback` and the four `/api/system/*` mutations
+  (`server/local-request.ts`, `server/system-routes.ts`) — `check`,
+  `status`, `backups` and the two system GETs are open. No `trust proxy` is configured, so the guard checks
   the direct socket peer; a reverse proxy would break/bypass semantics —
   re-verify if one is ever added.
 - **Validation:** Zod. Event writes coerce `startTime`/`endTime` to Date,
@@ -106,6 +113,12 @@ retention sweep, which runs inside each sync.
   `widgets/` root — this closes a symlink-escape route (e.g.
   `widgets/evil/x -> ../../service-account.json`) that a literal
   `..`-segment check alone would miss.
+
+- **Request log:** `/api/system/network/*` response bodies (SSIDs,
+  the kiosk's address) are kept out of the log like the weather lookup's
+  (`UNLOGGED_BODY_PATHS`, `server/index.ts`). No handler logs a request
+  body, so a Wi-Fi password never reaches the journal; a failed connect
+  logs only its reason and nmcli's exit code.
 
 ### 2.3 Google Calendar service (`server/services/googleCalendar.ts`)
 
@@ -253,7 +266,8 @@ retries upstream when a client asks, so this is also the retry cadence.
   visibility switches, remove, add-calendar), **Widgets** (layout
   picker — enable/disable + reorder installed widgets and their
   settings, community widgets, widget-folder errors), **Keyboard** (OSK
-  mode), **System** (update check, roll back, weather status). It always
+  mode), **System** (update check, roll back, Setup: Wi-Fi / Time zone / Run
+  setup again — 3.11, weather status). It always
   reopens on the main screen; a category with a problem (theme error,
   widget-folder error or crashed community widget, missing
   service-account key, the server's latest weather fetch failed) shows
@@ -605,6 +619,12 @@ per-calendar visibility switches + unsubscribe, add-calendar-by-ID
 copy button (or a "key file not found" warning linking `/setup`),
 Check-for-Updates and Roll Back buttons, and the current `APP_VERSION`.
 
+System → **Setup** (brief 03): **Wi-Fi** and **Time zone** open that
+one wizard step over the dashboard; **Run setup again** replays every step
+(3.11). Each closes the popover first. Like the rest of Settings, these are
+reachable only once Google is connected until brief 05 lands; before that
+the wizard's own run condition is the way in.
+
 System → **Weather** (`weather-location-settings.tsx`): postal code and
 two-letter country (default: the browser locale's region, else US), a
 °F/°C toggle (default °F for US-style countries, else °C), and **Look up**
@@ -836,6 +856,80 @@ layout picker.
   offset (not a v1 use case).
 - **Layout:** fixed landscape panel, nothing scrolls; theme tokens only.
 
+### 3.11 First-run wizard (`client/src/pages/setup-wizard.tsx`)
+
+Beta-launch brief 03, decision 0018. Session 1 shipped; the Google step
+is a placeholder until brief 02 (session 2).
+
+- **Steps:** Welcome → Network → Time zone → Google → Weather → Done.
+  Every step but Network has "Skip this step"; Welcome and Done only move
+  on. Each step changes something only when its own button is tapped.
+- **Modes** (`lib/setup-wizard.ts`): `first-run` (every step), `rerun`
+  (Settings → System → **Run setup again**: every step, current values
+  shown, a Close button), `network` / `timezone` (Settings → System →
+  **Wi-Fi** / **Time zone**: that one step), `network-only` (boot with no
+  network: the Network step alone). Only `first-run` and `rerun` write the
+  completion record, and only when Done is tapped; Close writes nothing.
+- **Run condition** (`hooks/use-setup-run-condition.ts`, decided once per
+  page load): the shell shows a "Starting…" splash, then
+  - no `setup.completedAt` in `dashboard.json` → `first-run`;
+  - otherwise asks `/api/system/network/status`: connected, NetworkManager
+    absent, the request failing, or the page loaded more than 300 s after
+    the OS booted → the dashboard (a reload after an update, or a drop
+    later in the day, never opens the wizard); not connected and uptime
+    < 90 s → "Connecting to the network…" splash, re-asking every 5 s;
+    still not connected at 90 s → `network-only`.
+  At boot the wizard is rendered **instead of** the nav rail and widget
+  host, so no widget mounts or fetches until Done (or until a
+  `network-only` run passes). From Settings it opens over the running
+  dashboard (`fixed inset-0 z-50`; the OSK is `z-[60]`, AuthDialog's
+  portal sits above it).
+- **Network step:** polls status every 5 s. At boot (`first-run`,
+  `network-only`) it passes on its own 2.5 s after a one-line
+  confirmation when Ethernet or any saved connection is up — also when one
+  comes up while the step shows — unless a password is being typed, a join
+  is running, or the last join's internet check failed. From Settings it
+  never auto-passes. Scan list strongest first, one row per SSID, hidden
+  networks dropped from the list and offered as "Network not listed? Type
+  its name" (SSID + optional password). Open networks join on tap. After a
+  join the internet check runs once. Failure sentences (one sentence +
+  Retry; in the join form the Connect button becomes Retry): "That
+  password didn't work.", "Rootboard can't see that network from here.",
+  "Connected to Wi-Fi, but the internet isn't reachable yet.", plus
+  timeout/generic/scan/server variants (`FAILURE_COPY`). The password is
+  cleared from component state after a successful join. The step's
+  footnote discloses where the password goes and the HEAD request.
+- **Time zone step:** searchable list (space matches `_` or `/`, 40
+  shown), starting on the browser's reported zone if the system lists it,
+  else the system's current zone; the selected zone and every row show
+  their current time. After "Use this time zone" it shows the local time
+  there; if the browser's own zone still differs it adds "The dashboard
+  clock follows after the next restart." (Firefox keeps the zone it
+  started with).
+- **Google step (placeholder):** connected/not connected from
+  `/api/calendar/auth-status`; "How to connect" opens today's
+  `AuthDialog`.
+- **Weather step:** embeds `WeatherLocationSettings` (3.7) with the
+  shell's `saveWeatherLocation`; Continue appears once a place is saved.
+- **Managed outside Rootboard:** when nmcli/NetworkManager or
+  timedatectl/systemd is absent, the Network and Time zone steps say so
+  and pass (Network on its own after 2.5 s). This is the `npm run dev`
+  path on a laptop and in CI.
+- **Server** (`server/services/networkService.ts`): `execFile` (never a
+  shell) with a 30 s timeout and `LC_ALL=C`; nmcli connect gets
+  `--wait 25`. Presence is the binary (looked up once) **and** a daemon
+  answering (`nmcli -t -f RUNNING general`, `timedatectl show`, asked each
+  time). Terse output is parsed with `\:`/`\\` unescaping; tests run
+  against hand-written fixtures (`networkService.fixtures.ts`, to refresh
+  from the real kiosk). The runner resolves a plain result instead of
+  rejecting, so Node's exec error (whose `cmd` holds the password) can
+  never be logged. A leading `-` is refused in an SSID and a zone name.
+- **Permissions:** `scripts/polkit/50-rootboard-network.rules` grants the
+  `rootboard-system` group `NetworkManager.settings.modify.system`,
+  `.network-control`, `.wifi.scan` and `timedate1.set-timezone`, nothing
+  else (`server/polkit-rule.spec.ts`). Installed by hand per
+  INSTALLATION.md step 11 until brief 06's provision script does it.
+
 ## 4. Update system
 
 ### 4.1 Cadence
@@ -911,6 +1005,13 @@ identifies the restored version, then `npm install` + `npm run build`
   schema-invalid file degrades to `defaultDashboardConfig()` on read
   rather than ever failing to boot. Gitignored — never tracked, and on
   both updater preserve lists.
+- `dashboard.json` `setup`: `{completedAt (ISO 8601), version}`, written
+  only by the wizard's Done in `first-run`/`rerun` (3.11). Lenient like
+  `theme`/`weather`; its absence opens the wizard at boot, so a PUT that
+  carries a malformed `setup` is refused (400) rather than silently
+  dropping it. `version` is `SETUP_WIZARD_VERSION` (1).
+- Wi-Fi passwords are never stored by the app: they go to NetworkManager's
+  system connection profile and are dropped after `nmcli` returns.
 - `widgets/`: sideloaded folder-drop community widgets (SD card/SSH).
   Gitignored — never tracked, never in the release tarball — and on
   both updater preserve lists (`PRESERVE_PATHS` in `updateService.ts`,
@@ -926,7 +1027,11 @@ identifies the restored version, then `npm install` + `npm run build`
 - Localhost guard trusts the raw socket IP; no `trust proxy` — re-verify
   if a reverse proxy is ever introduced.
 - Update `check`/`status`/`backups` endpoints are unguarded; only
-  `apply`/`rollback` are localhost-only.
+  `apply`/`rollback` (and the `/api/system/*` mutations) are
+  localhost-only.
+- An existing kiosk updating to the release with the wizard has no
+  `setup` record, so it opens the full wizard once at its next boot
+  (decision 1 of brief 03, flagged for the founder in the PR).
 - No server-side scheduler: sync cadence, update checks, and state
   refresh are all client timers.
 - `better-sqlite3` is a native module — always `npm install` on the target
