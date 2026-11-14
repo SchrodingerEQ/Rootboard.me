@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from "react";
-import { Settings, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, type LucideIcon } from "lucide-react";
+import { Settings, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, Activity, Link2, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { WidgetSettingsFields } from "@/components/widget-settings-fields";
 import type { WidgetSettingField } from "@shared/widget-manifest";
@@ -27,7 +27,9 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useOskMode } from "@/hooks/use-osk-mode";
-import { SETTINGS_CATEGORIES, categoryHasWarning, type SettingsView } from "./settings-nav";
+import { SETTINGS_CATEGORIES, categoryHasWarning, parentView, viewLabel, type SettingsView } from "./settings-nav";
+import { SystemDiagnostics } from "./system-diagnostics";
+import { PairDeviceSettings } from "./pair-device-settings";
 import { describeWeatherStatus, type WeatherStatus } from "@/lib/weather-status";
 import { BrightnessControl } from "./brightness-control";
 import { WeatherLocationSettings } from "./weather-location-settings";
@@ -163,6 +165,11 @@ export interface ThemeErrorEntry {
 }
 
 interface SettingsMenuProps {
+  /** Google Calendar is connected (`/api/calendar/auth-status`). Settings
+   *  opens in every auth state (beta-launch brief 05, goal 3); while this is
+   *  false only the rows that need Google (the calendar list, add by ID) are
+   *  hidden. Defaults to true. */
+  googleConnected?: boolean;
   /** Persisted calendar-widget setting `hiddenCalendars` (see
    *  client/src/widgets/calendar/shell-bridge.ts). A calendar is shown iff
    *  its id is NOT in here — a hidden-LIST, so a calendar the user has never
@@ -235,6 +242,7 @@ interface SettingsMenuProps {
 }
 
 export function SettingsMenu({
+  googleConnected = true,
   hiddenCalendars,
   onCalendarToggle,
   setBrightness: externalSetBrightness,
@@ -387,7 +395,7 @@ export function SettingsMenu({
   // Get calendars for selection
   const { data: calendars, isLoading } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
-    enabled: true,
+    enabled: googleConnected,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -449,7 +457,6 @@ export function SettingsMenu({
     serviceAccountMissing: !!serviceAccountError,
     weatherFailing: weatherStatus?.failing ?? false,
   };
-  const activeCategory = SETTINGS_CATEGORIES.find((c) => c.id === view);
 
   return (
     <>
@@ -515,11 +522,11 @@ export function SettingsMenu({
                 <button
                   type="button"
                   className="touch-button -ml-2 flex items-center gap-1 rounded-md px-2 text-sm font-semibold hover:bg-rb-chip"
-                  onClick={() => setView("main")}
+                  onClick={() => setView(parentView(view))}
                   data-testid="settings-back"
                 >
                   <ChevronLeft className="h-5 w-5" />
-                  {activeCategory?.label ?? "Settings"}
+                  {viewLabel(view)}
                 </button>
               )}
               <Button
@@ -1017,6 +1024,12 @@ export function SettingsMenu({
                   </div>
                 </div>
               ) : null}
+              {!googleConnected && (
+                <p className="text-xs text-rb-muted leading-snug" data-testid="calendars-signed-out">
+                  Google Calendar isn't connected, so there are no calendars to show. System → Diagnostics says why.
+                </p>
+              )}
+              {googleConnected && (
               <div className="space-y-2 max-h-40 overflow-y-auto pr-6 [&::-webkit-scrollbar]:w-4 [&::-webkit-scrollbar-track]:bg-rb-chip [&::-webkit-scrollbar-thumb]:bg-rb-scrollbar-thumb [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:border-2 [&::-webkit-scrollbar-thumb]:border-rb-chip">
                 {isLoading ? (
                   <div className="text-xs text-rb-muted">Loading calendars...</div>
@@ -1058,9 +1071,11 @@ export function SettingsMenu({
                   <div className="text-xs text-rb-muted">No calendars available</div>
                 )}
               </div>
+              )}
             </div>
 
-            {/* Add Calendar by ID */}
+            {/* Add Calendar by ID (needs Google) */}
+            {googleConnected && (
             <div className="space-y-1.5">
               {/* 44px-tall input/button: kiosk touch targets, and roomier when
                   the on-screen keyboard is driving this field. */}
@@ -1090,6 +1105,7 @@ export function SettingsMenu({
                 Find Calendar ID in Google Calendar → Settings → Integrate calendar
               </p>
             </div>
+            )}
               </>
             )}
 
@@ -1119,6 +1135,30 @@ export function SettingsMenu({
                     Roll Back
                   </Button>
                 )}
+              </div>
+
+              {/* Diagnostics and pairing (beta-launch brief 05). */}
+              <Separator />
+              <div className="space-y-1">
+                {([
+                  { id: "system-diagnostics", icon: Activity, summary: "Health of this kiosk, copyable" },
+                  { id: "system-pairing", icon: Link2, summary: "Let a laptop on your Wi-Fi use the API" },
+                ] as const).map((row) => (
+                  <button
+                    type="button"
+                    key={row.id}
+                    onClick={() => setView(row.id)}
+                    data-testid={`settings-open-${row.id}`}
+                    className="touch-button w-full flex items-center gap-3 rounded-md px-2 py-1.5 text-left hover:bg-rb-chip"
+                  >
+                    <row.icon className="h-4 w-4 flex-shrink-0 text-rb-ink-secondary" />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium">{viewLabel(row.id)}</span>
+                      <span className="block text-xs text-rb-muted truncate">{row.summary}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 flex-shrink-0 text-rb-faint" />
+                  </button>
+                ))}
               </div>
 
               {/* Weather — the location setting (beta-launch brief 01) plus
@@ -1151,6 +1191,9 @@ export function SettingsMenu({
               )}
             </div>
             )}
+
+            {view === "system-diagnostics" && <SystemDiagnostics />}
+            {view === "system-pairing" && <PairDeviceSettings />}
           </div>
         </PopoverContent>
       </Popover>

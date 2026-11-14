@@ -33,9 +33,25 @@ retention sweep, which runs inside each sync.
 - Port hard-coded to `5000`, host `0.0.0.0` (the one non-firewalled port).
 - Middleware: `express.json()` (default ~100 KB body limit — this backs the
   app-state size cap), `express.urlencoded`, and a custom `/api` request
-  logger that truncates logged response JSON to 79 chars.
-- Startup: `await storageReady` → `registerRoutes` → error middleware →
-  Vite (dev) or static (prod) → listen.
+  logger that truncates logged response JSON to 79 chars. Response bodies
+  of `/api/weather/lookup`, `/api/pair`, `/api/system/pairing-code`,
+  `/api/system/diagnostics` and `/api/system/paired-devices` are never
+  logged (place names, the code and token, the full diagnostics view).
+- **Log ring** (`server/services/logRing.ts`, installed by
+  `server/install-log-ring.ts`, the second import after dotenv so the
+  services' startup lines are caught): console.log/info/warn/error also go
+  into an in-memory ring of the last 500 lines. Lines are scrubbed before
+  storage: emails, `Bearer …` and `rbp_…` tokens, the response-body
+  tail of request log lines (it can hold event titles), and any value
+  wrapped in `logPrivate()` (calendar names, calendar ids, paired-device
+  names; an invisible U+2063 mark the journal shows as plain text) are
+  removed. Request lines are kept only for 5xx, so kiosk polling or a 401
+  flood from the LAN can't push errors out. No file is written. The
+  diagnostics bundle shows the last 50 (2.7). **Any new log line that
+  prints a name or other personal text must wrap it in `logPrivate()`.**
+- Startup: `await storageReady` → `registerRoutes` (first mounts the LAN
+  guard, 2.7) → error middleware → Vite (dev) or static (prod) → listen.
+  With `LAN_API_OPEN=true` a boot warning says the API is open.
 - **Quirk:** the error middleware responds `{message}` with the error's
   status, then **re-throws** the error after responding.
 - **Quirk:** `reusePort: true` is set only when `platform !== "win32"` —
@@ -47,41 +63,54 @@ retention sweep, which runs inside each sync.
 
 ### 2.2 Endpoint inventory (`server/routes.ts`)
 
+**Guard column:** "LAN token" means loopback callers need nothing and any
+other caller needs a paired bearer token (2.7); before brief 05 every row
+marked so was open to the whole network. "Kiosk only" means loopback only,
+even with a token.
+
 | Method | Path | Purpose | Guard |
 |---|---|---|---|
-| GET | `/api/version` | `{version, timestamp}` — supervisor health-check target | none |
-| GET | `/api/weather` | Cached Open-Meteo forecast, or `{enabled:false}` | none |
-| GET | `/api/weather/status` | `{configured, lastSuccessAt, lastError:{at, reason}}` — server-side Open-Meteo health for Settings → System | none |
-| GET | `/api/weather/lookup?postal=&country=` | Postal code → `{candidates:[{label, lat, lon}]}` via `api.zippopotam.us` (server-side proxy, 20 s budget); 400 on bad input, 502 generic message when the lookup host is unreachable; response body is kept out of the request log | none |
-| GET | `/api/calendar/events` | Events overlapping `from`/`to` (legacy `startDate`/`endDate` accepted) | none |
-| GET | `/api/calendar/calendars` | Google calendar list | none |
-| DELETE | `/api/calendar/calendars/:calendarId` | Unsubscribe + purge local events | none |
-| POST | `/api/calendar/events` | Create event in Google + local mirror | none |
-| PATCH | `/api/calendar/events/:id` | Update event | none |
-| DELETE | `/api/calendar/events/:id` | Delete event (204; 404 if missing) | none |
-| POST | `/api/calendar/subscribe` | Subscribe calendar (409 dup, 400 bad) | none |
-| POST | `/api/calendar/sync` | Pull a date window from Google into storage | none |
-| GET | `/api/calendar/sync-status` | `{lastSyncAt,lastSyncError,syncing}`, no-store | none |
-| GET | `/api/calendar/service-account-email` | Service account `client_email` | none |
-| GET | `/api/calendar/auth-status` | `{authenticated,needsAuth,error}`, no-store | none |
-| GET | `/api/update/check` | Compare `APP_VERSION` vs latest GitHub release | none |
-| GET | `/api/update/status` | In-memory update progress | none |
-| POST | `/api/update/apply` | Trigger update (fire-and-forget) | **localhost-only** |
-| POST | `/api/update/rollback` | Trigger rollback (fire-and-forget) | **localhost-only** |
-| GET | `/api/update/backups` | List backups | none |
-| GET | `/api/state/:key` | Read app-state blob | key whitelist |
-| PUT | `/api/state/:key` | Write app-state blob | key whitelist + 64,000-char cap |
-| GET | `/api/config/dashboard` | Re-reads config from disk every call; `{config, source}` | none |
-| PUT | `/api/config/dashboard` | Zod-validate + atomic write of the whole config | none |
-| GET | `/api/widgets` | Discover `widgets/*/widget.json`; `{widgets, invalid}`, no-store | none |
+| GET | `/api/version` | `{version, timestamp}` — supervisor health-check target | none (open from the LAN) |
+| GET | `/api/weather` | Cached Open-Meteo forecast, or `{enabled:false}` | LAN token |
+| GET | `/api/weather/status` | `{configured, lastSuccessAt, lastError:{at, reason}}` — server-side Open-Meteo health for Settings → System | LAN token |
+| GET | `/api/weather/lookup?postal=&country=` | Postal code → `{candidates:[{label, lat, lon}]}` via `api.zippopotam.us` (server-side proxy, 20 s budget); 400 on bad input, 502 generic message when the lookup host is unreachable; response body is kept out of the request log | LAN token |
+| GET | `/api/calendar/events` | Events overlapping `from`/`to` (legacy `startDate`/`endDate` accepted) | LAN token |
+| GET | `/api/calendar/calendars` | Google calendar list | LAN token |
+| DELETE | `/api/calendar/calendars/:calendarId` | Unsubscribe + purge local events | LAN token |
+| POST | `/api/calendar/events` | Create event in Google + local mirror | LAN token |
+| PATCH | `/api/calendar/events/:id` | Update event | LAN token |
+| DELETE | `/api/calendar/events/:id` | Delete event (204; 404 if missing) | LAN token |
+| POST | `/api/calendar/subscribe` | Subscribe calendar (409 dup, 400 bad) | LAN token |
+| POST | `/api/calendar/sync` | Pull a date window from Google into storage | LAN token |
+| GET | `/api/calendar/sync-status` | `{lastSyncAt,lastSyncError,syncing}`, no-store | LAN token |
+| GET | `/api/calendar/service-account-email` | Service account `client_email` | LAN token |
+| GET | `/api/calendar/auth-status` | `{authenticated,needsAuth,error}`, no-store | LAN token |
+| GET | `/api/update/check` | Compare `APP_VERSION` vs latest GitHub release | LAN token |
+| GET | `/api/update/status` | In-memory update progress | LAN token |
+| POST | `/api/update/apply` | Trigger update (fire-and-forget) | **kiosk only** |
+| POST | `/api/update/rollback` | Trigger rollback (fire-and-forget) | **kiosk only** |
+| GET | `/api/update/backups` | List backups | LAN token |
+| GET | `/api/state/:key` | Read app-state blob | LAN token + key whitelist |
+| PUT | `/api/state/:key` | Write app-state blob | LAN token + key whitelist + 64,000-char cap |
+| GET | `/api/config/dashboard` | Re-reads config from disk every call; `{config, source}` | LAN token |
+| PUT | `/api/config/dashboard` | Zod-validate + atomic write of the whole config | LAN token |
+| GET | `/api/widgets` | Discover `widgets/*/widget.json`; `{widgets, invalid}`, no-store | LAN token |
+| GET | `/api/system/diagnostics?view=redacted\|full` | Diagnostics bundle (2.7), no-store | redacted: none (open from the LAN); full: LAN token |
+| POST | `/api/system/pairing-code` | Show a new 6-digit pairing code `{code, expiresAt}` (replaces any earlier one) | **kiosk only** |
+| GET | `/api/system/pairing-code?code=` | `{active}` — whether that code still works (never returns a code) | **kiosk only** |
+| DELETE | `/api/system/pairing-code?code=` | Cancel the showing code (only that code, when `code` is given); 204 | **kiosk only** |
+| POST | `/api/pair` | `{code, name}` → 201 `{token, device}`; 410 no/expired code; 403 wrong code (`attemptsLeft`); 400 bad name; 409 too many devices | none (the code is the credential) |
+| GET | `/api/system/paired-devices` | `{devices:[{id, name, createdAt}]}` (never a hash), no-store | LAN token |
+| DELETE | `/api/system/paired-devices/:id` | Revoke a device; 204, 404 unknown | LAN token |
 | GET | `/widgets/*` | Static community-widget assets (`express.static`) | realpath containment |
 
-- **Localhost guard:** `isLocalRequest` compares `req.ip`/socket address to
-  `127.0.0.1`, `::1`, `::ffff:127.0.0.1`, `localhost`; violations get 403.
-  Applied **only** to `apply` and `rollback` — `check`, `status`, and
-  `backups` are open. No `trust proxy` is configured, so the guard checks
-  the direct socket peer; a reverse proxy would break/bypass semantics —
-  re-verify if one is ever added.
+- **Kiosk-only guard:** `isLocalRequest` (`server/middleware/lanAuth.ts`)
+  compares `req.ip`/socket address to `127.0.0.1`, `::1`,
+  `::ffff:127.0.0.1`, `localhost`; violations get 403. Applied to update
+  `apply`/`rollback` and to issuing/cancelling a pairing code. The same
+  check is what lets the kiosk skip the LAN token (2.7). No `trust proxy`
+  is configured, so both check the direct socket peer; a reverse proxy
+  would make every caller look local — re-verify if one is ever added.
 - **Validation:** Zod. Event writes coerce `startTime`/`endTime` to Date,
   require non-empty trimmed title, and refine `endTime > startTime`;
   creates also require `calendarId`. App-state keys whitelisted to
@@ -223,6 +252,63 @@ retries upstream when a client asks, so this is also the retry cadence.
 | `PM2_HOME`, `INVOCATION_ID` | presence implies supervised (pm2/systemd) |
 | `WEATHER_*` | fallback only when `dashboard.json` has no `weather` key — see 2.5; deprecated for kiosks (use Settings → System → Weather), still fine for hosted use |
 | `NODE_ENV` | `development` → Vite middleware; else static `dist/public` |
+| `LAN_API_OPEN` | `true` → non-loopback callers need no pairing token (hosted/dev escape hatch; boot warning). Kiosk-only routes stay kiosk-only. Any other value or unset → pairing required (2.7) |
+
+### 2.7 LAN pairing and diagnostics (beta-launch brief 05, decision 0020)
+
+**Guard** (`server/middleware/lanAuth.ts`), mounted first in
+`registerRoutes` with `app.use("/api", …)` — the same case-insensitive,
+trailing-slash-tolerant matching the routes use, so `/API/…` cannot reach
+a handler around it. Order: loopback → pass (`res.locals.apiAccess =
+"loopback"`); `LAN_API_OPEN=true` → pass (`"lan-open"`); a valid
+`Authorization: Bearer <token>` → pass (`"paired"`); `GET /api/version`,
+`GET /api/system/diagnostics` or `POST /api/pair` (also as HEAD for the
+two GETs, in any letter case, with one trailing slash — the forms Express
+routes to those same handlers) → pass (`"unpaired"`);
+anything else → 401 `{message: "Pairing required", pairing: <how-to>}`
+with `WWW-Authenticate: Bearer realm="rootboard"`.
+
+**Pairing** (`server/services/pairingService.ts`): one code at a time,
+6 digits from `crypto.randomInt`, in memory, 5-minute TTL, single use,
+cancelled after 5 wrong tries (compare is constant-time). A token is
+`rbp_` + 32 random bytes base64url; only its SHA-256 is kept, in
+`data/paired-devices.json` (`{devices:[{id, name, createdAt,
+tokenHash}]}`, mode 0600, `.tmp` + rename). The file is re-read on each
+LAN call, so deleting it over SSH revokes everything without a restart; a
+missing or invalid file means no devices (fails closed), and the next
+pairing renames an invalid file to `paired-devices.json.damaged` instead
+of overwriting it. Names are 1–64 characters, control characters
+stripped. At most 20 devices. `code` may be a string or a whole number
+(re-padded to 6 digits).
+
+**Diagnostics** (`server/services/diagnosticsService.ts`, type in
+`shared/diagnostics.ts`): `version`, app and system uptime, Node version,
+platform/arch, `supervised`, update status + last check (in memory,
+`getLastUpdateCheck`), auth `{mode: service-account|none, connected,
+error}` (never the email; `oauth` arrives with brief 02), calendar sync
+status, weather status, enabled widgets with versions (built-ins from
+their manifests) and errors, widget-folder errors, theme id, network
+`{interface, connected, internetReachable}`, disk free/total on the app
+volume (`fs.statfsSync`), Wi-Fi self-heal count, config warnings
+(`readDashboardConfig().warnings`), last 50 log-ring lines.
+- `internetReachable` is inferred from the latest weather fetch / calendar
+  sync (a success in the last 2 h → true, a later failure → false, else
+  null); the bundle makes no network call.
+- Wi-Fi self-heal: `null` unless `/etc/systemd/system/wifi-selfheal.timer`
+  exists; otherwise the number of `reconnected` lines from
+  `journalctl -t wifi-selfheal --since -24h -o cat` (INSTALLATION.md
+  §12.3). journalctl's "not seeing messages from other users" hint (the
+  service user is not in `systemd-journal`/`adm`) also gives `null`, not 0.
+- The full view adds `network.ssid` (`nmcli -t -f active,ssid dev wifi`,
+  else `iwgetid -r`), `network.ip`, `network.hostname`. The whole bundle
+  is built at most once per 5 s (concurrent calls share one build; a
+  failed build is not kept), because the redacted view is open to the LAN.
+- **Redaction** (`redactDiagnostics`): drops the three fields, then
+  scrubs every string of the SSID, IP, hostname and Linux username (values
+  of 3+ characters), IPv4 literals, `/home/<user>`, emails, tokens, and any
+  remaining `@`. Both views scrub emails and tokens. IPv6 literals are
+  not scrubbed (a time like `8:10:53` looks like one); the kiosk's own
+  address is only ever read as IPv4.
 
 ## 3. Client
 
@@ -236,7 +322,7 @@ retries upstream when a client asks, so this is also the retry cadence.
   guide), catch-all NotFound.
 - Layout: fixed 104px left NavRail (logo, one button per enabled
   widget with its manifest name/icon, live per-widget badges, Settings
-  at bottom — Settings only when authenticated) + flex content column.
+  at bottom — in every auth state since brief 05) + flex content column.
 - TanStack Query defaults are fully manual: `staleTime: Infinity`,
   `retry: false`, no refetch-on-focus/interval; all cadence is explicit
   timers. All requests send `credentials: "include"`. Multiple React
@@ -250,10 +336,13 @@ retries upstream when a client asks, so this is also the retry cadence.
   plus five sub-menus opened by tapping a row and closed with Back
   (`components/calendar/settings-nav.ts`): **Display** (theme picker,
   theme errors), **Calendars** (service-account display, per-calendar
-  visibility switches, remove, add-calendar), **Widgets** (layout
+  visibility switches, remove, add-calendar — the list and add-calendar
+  are hidden while Google is not connected), **Widgets** (layout
   picker — enable/disable + reorder installed widgets and their
   settings, community widgets, widget-folder errors), **Keyboard** (OSK
-  mode), **System** (update check, roll back, weather status). It always
+  mode), **System** (update check, roll back, weather status, and two
+  sub-screens: **Diagnostics** and **Pair a device**, 3.7; Back from them
+  returns to System, `parentView` in `settings-nav.ts`). It always
   reopens on the main screen; a category with a problem (theme error,
   widget-folder error or crashed community widget, missing
   service-account key, the server's latest weather fetch failed) shows
@@ -601,8 +690,13 @@ capped at 100 % (decision 0011); 100 % paints nothing.
 
 ### 3.7 Settings and update UI
 
-Settings is a 416 px Radix popover from the nav rail (authenticated
-only): brightness slider (30–100 %, step 5; its own component so a drag
+Settings is a 416 px Radix popover from the nav rail, in every auth state
+(brief 05 goal 3: a unit that has lost Google is the one that most needs
+it; `app-shell.tsx` passes `googleConnected`, and only the calendar list
+and add-calendar hide while it is false — the calendar list query is not
+even sent). On a unit with no key file the calendar widget's "Google
+Calendar Not Connected" dialog still opens at boot; Close it to reach the
+rail. Contents: brightness slider (30–100 %, step 5; its own component so a drag
 re-renders only the slider, saved on release), OSK mode (Auto/Always/Off),
 per-calendar visibility switches + unsubscribe, add-calendar-by-ID
 (`POST /api/calendar/subscribe`), service-account email display with
@@ -619,6 +713,30 @@ re-asks `/api/weather` and its status so the header chip follows at
 once. With a place saved, the unit toggle saves immediately. The status
 lines (last update, last error) sit under it once weather is configured.
 Clearing a saved location is not offered yet (hand-edit the file).
+
+System → **Diagnostics** (`system-diagnostics.tsx`, rows from
+`lib/diagnostics-rows.ts`): fetches the *redacted* bundle (2.7) each time
+it opens and shows it as label/value rows, with a warning mark on the
+ones that probably need fixing (supervisor off, update failed, Google not
+set up or not connected, sync error, weather failing, no network,
+internet unreachable, 3+ self-heal reconnects in 24 h, under 1 GB or 5 %
+disk free, widget errors, config warnings). **Copy** puts the same
+redacted JSON on the clipboard; **Show details** shows the log tail;
+refresh re-fetches.
+
+System → **Pair a device** (`pair-device-settings.tsx`): opening it
+issues a code (shown large, with a m:ss countdown) and reads the full
+diagnostics view for the kiosk's LAN address, shown as
+`http://<ip>:5000/api/pair`. While the code is live the device list is
+polled every 2 s together with `GET /api/system/pairing-code?code=`
+(`lib/pairing-outcome.ts`): a device created at or after the code's issue
+time replaces the code with "Paired “name”"; a code the server no longer
+accepts (5 wrong tries, a restart) shows "That code no longer works" and
+a new-code button. A code that arrives after the screen was left is
+cancelled at once.
+Leaving the screen cancels that code (`DELETE …?code=`, so a late cancel
+never removes a newer one). Paired devices are listed with Revoke (tap,
+then tap again to confirm).
 
 Update flow (client side): auto-check if not checked since today 8 AM,
 then re-check every 24 h. Dismissals persist per-day (localStorage
@@ -915,6 +1033,9 @@ identifies the restored version, then `npm install` + `npm run build`
   schema-invalid file degrades to `defaultDashboardConfig()` on read
   rather than ever failing to boot. Gitignored — never tracked, and on
   both updater preserve lists.
+- `data/paired-devices.json`: LAN pairing (2.7) — SHA-256 token hashes
+  only, never a token; mode 0600; gitignored and preserved across updates
+  with the rest of `data/`. Missing or invalid → no paired devices.
 - `widgets/`: sideloaded folder-drop community widgets (SD card/SSH).
   Gitignored — never tracked, never in the release tarball — and on
   both updater preserve lists (`PRESERVE_PATHS` in `updateService.ts`,
@@ -927,10 +1048,15 @@ identifies the restored version, then `npm install` + `npm run build`
 
 - Error middleware re-throws after responding (`server/index.ts`).
 - `reusePort` only off-Windows (`ENOTSUP` on win32).
-- Localhost guard trusts the raw socket IP; no `trust proxy` — re-verify
-  if a reverse proxy is ever introduced.
-- Update `check`/`status`/`backups` endpoints are unguarded; only
-  `apply`/`rollback` are localhost-only.
+- Kiosk-only guard and the LAN guard trust the raw socket IP; no
+  `trust proxy` — a reverse proxy would make every caller loopback;
+  re-verify if one is ever introduced.
+- Update `check`/`status`/`backups` need a LAN token like any other
+  route; only `apply`/`rollback` are kiosk only.
+- `/widgets/*` static assets are outside `/api` and stay open to the LAN
+  (decision 0020).
+- The LAN API is plain HTTP: a paired token can be read by someone already
+  sniffing the home network (TLS out of scope, brief 05 §8).
 - No server-side scheduler: sync cadence, update checks, and state
   refresh are all client timers.
 - `better-sqlite3` is a native module — always `npm install` on the target

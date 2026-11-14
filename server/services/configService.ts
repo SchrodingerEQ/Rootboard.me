@@ -16,9 +16,15 @@ import { dashboardConfigSchema, defaultDashboardConfig, type DashboardConfig } f
 const CONFIG_DIR = path.join(process.cwd(), "data", "config");
 const CONFIG_PATH = path.join(CONFIG_DIR, "dashboard.json");
 
+/**
+ * `warnings` are plain sentences for the diagnostics bundle (relative path
+ * only, no file contents). The console lines below keep their detail.
+ */
 export type ReadDashboardConfigResult =
-  | { config: DashboardConfig; source: "file" }
-  | { config: DashboardConfig; source: "default" };
+  | { config: DashboardConfig; source: "file"; warnings: string[] }
+  | { config: DashboardConfig; source: "default"; warnings: string[] };
+
+const CONFIG_LABEL = "data/config/dashboard.json";
 
 export function readDashboardConfig(): ReadDashboardConfigResult {
   let raw: string;
@@ -29,8 +35,13 @@ export function readDashboardConfig(): ReadDashboardConfigResult {
     // (permissions, etc.) is also non-fatal — fall back to defaults either way.
     if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
       console.error(`Failed to read dashboard config at ${CONFIG_PATH}:`, error);
+      return {
+        config: defaultDashboardConfig(),
+        source: "default",
+        warnings: [`${CONFIG_LABEL} could not be read; using the default layout`],
+      };
     }
-    return { config: defaultDashboardConfig(), source: "default" };
+    return { config: defaultDashboardConfig(), source: "default", warnings: [] };
   }
 
   let parsedJson: unknown;
@@ -38,7 +49,11 @@ export function readDashboardConfig(): ReadDashboardConfigResult {
     parsedJson = JSON.parse(raw);
   } catch (error) {
     console.error(`Dashboard config at ${CONFIG_PATH} is not valid JSON:`, error);
-    return { config: defaultDashboardConfig(), source: "default" };
+    return {
+      config: defaultDashboardConfig(),
+      source: "default",
+      warnings: [`${CONFIG_LABEL} is not valid JSON; using the default layout`],
+    };
   }
 
   const result = dashboardConfigSchema.safeParse(parsedJson);
@@ -47,18 +62,28 @@ export function readDashboardConfig(): ReadDashboardConfigResult {
       `Dashboard config at ${CONFIG_PATH} failed validation:`,
       result.error.flatten()
     );
-    return { config: defaultDashboardConfig(), source: "default" };
+    return {
+      config: defaultDashboardConfig(),
+      source: "default",
+      warnings: [`${CONFIG_LABEL} failed validation; using the default layout`],
+    };
   }
 
   // `theme` and `weather` are lenient: a malformed value is dropped rather
   // than failing the whole file. Say so for the weather location, or the
   // owner only sees weather quietly fall back to .env / switch off.
+  const warnings: string[] = [];
   const rawWeather = (parsedJson as { weather?: unknown } | null)?.weather;
   if (rawWeather !== undefined && result.data.weather === undefined) {
     console.error(`Dashboard config at ${CONFIG_PATH}: saved weather location is invalid, ignoring it`);
+    warnings.push(`${CONFIG_LABEL}: the saved weather location is invalid and is ignored`);
+  }
+  const rawTheme = (parsedJson as { theme?: unknown } | null)?.theme;
+  if (rawTheme !== undefined && result.data.theme === undefined) {
+    warnings.push(`${CONFIG_LABEL}: the saved theme id is malformed; the default theme is used`);
   }
 
-  return { config: result.data, source: "file" };
+  return { config: result.data, source: "file", warnings };
 }
 
 /**

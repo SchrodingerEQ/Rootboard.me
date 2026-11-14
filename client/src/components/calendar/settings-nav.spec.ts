@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 import {
   SETTINGS_CATEGORIES,
+  SETTINGS_SUBVIEWS,
   categoryHasWarning,
+  parentView,
+  viewLabel,
   type SettingsProblems,
   type SettingsView,
 } from "./settings-nav";
@@ -58,4 +61,26 @@ describe("categoryHasWarning", () => {
       }
     });
   }
+});
+
+describe("sub-views (brief 05)", () => {
+  test("Diagnostics and Pair a device sit under System", () => {
+    expect(parentView("system-diagnostics")).toBe("system");
+    expect(parentView("system-pairing")).toBe("system");
+    expect(viewLabel("system-diagnostics")).toBe("Diagnostics");
+    expect(viewLabel("system-pairing")).toBe("Pair a device");
+  });
+
+  test("categories go back to main and keep their label", () => {
+    for (const c of SETTINGS_CATEGORIES) {
+      expect(parentView(c.id)).toBe("main");
+      expect(viewLabel(c.id)).toBe(c.label);
+    }
+    expect(parentView("main")).toBe("main");
+  });
+
+  test("every sub-view's parent is a real category", () => {
+    const ids = new Set(SETTINGS_CATEGORIES.map((c) => c.id));
+    for (const sub of Object.values(SETTINGS_SUBVIEWS)) expect(ids.has(sub.parent)).toBe(true);
+  });
 });
