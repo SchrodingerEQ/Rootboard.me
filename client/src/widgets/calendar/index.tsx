@@ -29,6 +29,7 @@ import {
   type PowerSavingChangeDetail,
 } from "./shell-bridge";
 import rawManifest from "./manifest.json";
+import { createCalendarKeyHandler, stepCalendarDate } from "./keyboard";
 
 /**
  * Calendar as a contract widget (CONTRACT.md §3-§5) — the whole of the old
@@ -285,53 +286,18 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
   useEffect(() => {
     if (!isVisible) return;
 
+    const handleKey = createCalendarKeyHandler(currentView, setCurrentDate, setCurrentView);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          navigateCalendar(-1);
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          navigateCalendar(1);
-          break;
-        case 't':
-        case 'T':
-          setCurrentDate(new Date());
-          break;
-        case '1':
-          setCurrentView('day');
-          break;
-        case '2':
-          setCurrentView('week');
-          break;
-        case '3':
-          setCurrentView('month');
-          break;
-      }
+      handleKey(e);
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-    // Known stale-date bug (TASKS.md): navigateCalendar reads currentDate,
-    // which is not a dependency. Fixed in its own PR (pre-beta cleanup 4a).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, isVisible]);
 
   const navigateCalendar = (direction: number) => {
-    const newDate = new Date(currentDate);
-
-    if (currentView === 'month') {
-      newDate.setMonth(newDate.getMonth() + direction);
-    } else if (currentView === 'week') {
-      newDate.setDate(newDate.getDate() + (direction * 7));
-    } else if (currentView === 'day') {
-      newDate.setDate(newDate.getDate() + direction);
-    }
-
-    setCurrentDate(newDate);
+    setCurrentDate((date) => stepCalendarDate(date, currentView, direction));
   };
 
   const goToToday = () => {
