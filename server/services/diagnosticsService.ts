@@ -187,19 +187,6 @@ function readUsername(): string | null {
   }
 }
 
-// The subprocess probes are cached briefly: the redacted view is open to
-// anything on the network, and each call would otherwise spawn two processes.
-const PROBE_CACHE_MS = 10_000;
-let probeCache: { at: number; ssid: string | null; selfHeal: number | null } | null = null;
-
-async function systemProbes(): Promise<{ ssid: string | null; selfHeal: number | null }> {
-  const now = Date.now();
-  if (probeCache && now - probeCache.at < PROBE_CACHE_MS) return probeCache;
-  const [ssid, selfHeal] = await Promise.all([readSsid(), readSelfHealCount()]);
-  probeCache = { at: now, ssid, selfHeal };
-  return probeCache;
-}
-
 async function collectFull(): Promise<DiagnosticsBundle> {
   const { config, warnings } = readDashboardConfig();
   const discovery = discoverWidgets();
@@ -222,7 +209,7 @@ async function collectFull(): Promise<DiagnosticsBundle> {
   const calendarSync = googleCalendarService.getSyncStatus();
   const weather = getWeatherStatus();
   const iface = primaryInterface();
-  const probes = await systemProbes();
+  const [ssid, selfHeal] = await Promise.all([readSsid(), readSelfHealCount()]);
 
   return scrubFull({
     view: "full",
@@ -252,19 +239,39 @@ async function collectFull(): Promise<DiagnosticsBundle> {
       interface: iface?.name ?? null,
       connected: iface !== null,
       internetReachable: inferInternetReachable(weather, calendarSync, Date.now()),
-      ssid: probes.ssid,
+      ssid,
       ip: iface?.ip ?? null,
       hostname: os.hostname(),
     },
     disk: readDisk(),
-    wifiSelfHealCount24h: probes.selfHeal,
+    wifiSelfHealCount24h: selfHeal,
     configWarnings: warnings,
     logTail: logRing.tail(DIAGNOSTICS_LOG_TAIL_LINES),
   });
 }
 
+// The redacted view is open to anything on the network: answer repeat
+// calls from one recent build (shared while in flight), so a caller in a
+// loop can't make the Pi re-read config, rescan widgets/ and spawn probes
+// on every request.
+const BUNDLE_CACHE_MS = 5_000;
+let bundleCache: { at: number; full: Promise<DiagnosticsBundle> } | null = null;
+
+function cachedFull(): Promise<DiagnosticsBundle> {
+  const now = Date.now();
+  if (!bundleCache || now - bundleCache.at >= BUNDLE_CACHE_MS) {
+    const full = collectFull();
+    bundleCache = { at: now, full };
+    // A failed build is not cached; the next call tries again.
+    full.catch(() => {
+      if (bundleCache?.full === full) bundleCache = null;
+    });
+  }
+  return bundleCache.full;
+}
+
 export async function getDiagnostics(view: DiagnosticsView): Promise<DiagnosticsBundle> {
-  const full = await collectFull();
+  const full = await cachedFull();
   if (view === "full") return full;
   const username = readUsername();
   return redactDiagnostics(full, username ? [username] : []);

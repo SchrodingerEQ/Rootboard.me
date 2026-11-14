@@ -41,9 +41,14 @@ retention sweep, which runs inside each sync.
   `server/install-log-ring.ts`, the second import after dotenv so the
   services' startup lines are caught): console.log/info/warn/error also go
   into an in-memory ring of the last 500 lines. Lines are scrubbed before
-  storage: emails, `Bearer …` and `rbp_…` tokens, and the response-body
-  tail of request log lines (it can hold event titles) are removed. No
-  file is written. The diagnostics bundle shows the last 50 (2.7).
+  storage: emails, `Bearer …` and `rbp_…` tokens, the response-body
+  tail of request log lines (it can hold event titles), and any value
+  wrapped in `logPrivate()` (calendar names, calendar ids, paired-device
+  names; an invisible U+2063 mark the journal shows as plain text) are
+  removed. Request lines are kept only for 5xx, so kiosk polling or a 401
+  flood from the LAN can't push errors out. No file is written. The
+  diagnostics bundle shows the last 50 (2.7). **Any new log line that
+  prints a name or other personal text must wrap it in `logPrivate()`.**
 - Startup: `await storageReady` → `registerRoutes` (first mounts the LAN
   guard, 2.7) → error middleware → Vite (dev) or static (prod) → listen.
   With `LAN_API_OPEN=true` a boot warning says the API is open.
@@ -92,6 +97,7 @@ even with a token.
 | GET | `/api/widgets` | Discover `widgets/*/widget.json`; `{widgets, invalid}`, no-store | LAN token |
 | GET | `/api/system/diagnostics?view=redacted\|full` | Diagnostics bundle (2.7), no-store | redacted: none (open from the LAN); full: LAN token |
 | POST | `/api/system/pairing-code` | Show a new 6-digit pairing code `{code, expiresAt}` (replaces any earlier one) | **kiosk only** |
+| GET | `/api/system/pairing-code?code=` | `{active}` — whether that code still works (never returns a code) | **kiosk only** |
 | DELETE | `/api/system/pairing-code?code=` | Cancel the showing code (only that code, when `code` is given); 204 | **kiosk only** |
 | POST | `/api/pair` | `{code, name}` → 201 `{token, device}`; 410 no/expired code; 403 wrong code (`attemptsLeft`); 400 bad name; 409 too many devices | none (the code is the credential) |
 | GET | `/api/system/paired-devices` | `{devices:[{id, name, createdAt}]}` (never a hash), no-store | LAN token |
@@ -256,7 +262,9 @@ trailing-slash-tolerant matching the routes use, so `/API/…` cannot reach
 a handler around it. Order: loopback → pass (`res.locals.apiAccess =
 "loopback"`); `LAN_API_OPEN=true` → pass (`"lan-open"`); a valid
 `Authorization: Bearer <token>` → pass (`"paired"`); `GET /api/version`,
-`GET /api/system/diagnostics` or `POST /api/pair` → pass (`"unpaired"`);
+`GET /api/system/diagnostics` or `POST /api/pair` (also as HEAD for the
+two GETs, in any letter case, with one trailing slash — the forms Express
+routes to those same handlers) → pass (`"unpaired"`);
 anything else → 401 `{message: "Pairing required", pairing: <how-to>}`
 with `WWW-Authenticate: Bearer realm="rootboard"`.
 
@@ -267,8 +275,11 @@ cancelled after 5 wrong tries (compare is constant-time). A token is
 `data/paired-devices.json` (`{devices:[{id, name, createdAt,
 tokenHash}]}`, mode 0600, `.tmp` + rename). The file is re-read on each
 LAN call, so deleting it over SSH revokes everything without a restart; a
-missing or invalid file means no devices (fails closed). Names are 1–64
-characters, control characters stripped. At most 20 devices.
+missing or invalid file means no devices (fails closed), and the next
+pairing renames an invalid file to `paired-devices.json.damaged` instead
+of overwriting it. Names are 1–64 characters, control characters
+stripped. At most 20 devices. `code` may be a string or a whole number
+(re-padded to 6 digits).
 
 **Diagnostics** (`server/services/diagnosticsService.ts`, type in
 `shared/diagnostics.ts`): `version`, app and system uptime, Node version,
@@ -289,9 +300,9 @@ volume (`fs.statfsSync`), Wi-Fi self-heal count, config warnings
   §12.3). journalctl's "not seeing messages from other users" hint (the
   service user is not in `systemd-journal`/`adm`) also gives `null`, not 0.
 - The full view adds `network.ssid` (`nmcli -t -f active,ssid dev wifi`,
-  else `iwgetid -r`), `network.ip`, `network.hostname`. The SSID and
-  self-heal probes are cached for 10 s (the redacted view is open to the
-  LAN).
+  else `iwgetid -r`), `network.ip`, `network.hostname`. The whole bundle
+  is built at most once per 5 s (concurrent calls share one build; a
+  failed build is not kept), because the redacted view is open to the LAN.
 - **Redaction** (`redactDiagnostics`): drops the three fields, then
   scrubs every string of the SSID, IP, hostname and Linux username (values
   of 3+ characters), IPv4 literals, `/home/<user>`, emails, tokens, and any
@@ -713,7 +724,12 @@ System → **Pair a device** (`pair-device-settings.tsx`): opening it
 issues a code (shown large, with a m:ss countdown) and reads the full
 diagnostics view for the kiosk's LAN address, shown as
 `http://<ip>:5000/api/pair`. While the code is live the device list is
-polled every 2 s; a new device replaces the code with "Paired “name”".
+polled every 2 s together with `GET /api/system/pairing-code?code=`
+(`lib/pairing-outcome.ts`): a device created at or after the code's issue
+time replaces the code with "Paired “name”"; a code the server no longer
+accepts (5 wrong tries, a restart) shows "That code no longer works" and
+a new-code button. A code that arrives after the screen was left is
+cancelled at once.
 Leaving the screen cancels that code (`DELETE …?code=`, so a late cancel
 never removes a newer one). Paired devices are listed with Revoke (tap,
 then tap again to confirm).

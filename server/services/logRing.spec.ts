@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { LogRing, scrubLogLine } from "./logRing";
+import { LogRing, logPrivate, scrubLogLine, shouldRecord } from "./logRing";
 
 describe("scrubLogLine", () => {
   test("removes emails and tokens", () => {
@@ -13,6 +13,14 @@ describe("scrubLogLine", () => {
     expect(scrubLogLine(line)).toBe("12:00:01 PM [express] GET /api/calendar/events 200 in 12ms");
   });
 
+  test("drops values marked private (calendar and device names)", () => {
+    const line = `Synced 12 events from calendar: ${logPrivate("Soccer practice")}`;
+    expect(line).toContain("Soccer practice"); // the journal still shows it
+    expect(scrubLogLine(line)).toBe("Synced 12 events from calendar: [name]");
+    expect(scrubLogLine(`cut short: ${logPrivate("Spare laptop").slice(0, 6)}`)).toBe("cut short: [name]");
+    expect(scrubLogLine(`Paired: "${logPrivate("two\nlines")}"`)).toBe('Paired: "[name]"');
+  });
+
   test("leaves other lines alone", () => {
     expect(scrubLogLine("Service account auth initialized from: ./service-account.json")).toBe(
       "Service account auth initialized from: ./service-account.json",
@@ -21,6 +29,15 @@ describe("scrubLogLine", () => {
 
   test("caps very long lines", () => {
     expect(scrubLogLine("x".repeat(2000)).length).toBe(500);
+  });
+});
+
+describe("shouldRecord", () => {
+  test("request lines only for server errors", () => {
+    expect(shouldRecord("8:10:53 PM [express] GET /api/calendar/events 200 in 1ms :: []")).toBe(false);
+    expect(shouldRecord("8:10:53 PM [express] GET /api/widgets 401 in 0ms :: {\"message\"…")).toBe(false);
+    expect(shouldRecord("8:10:53 PM [express] POST /api/calendar/sync 500 in 9ms :: {\"message\"…")).toBe(true);
+    expect(shouldRecord("Weather fetch failed: ENOTFOUND")).toBe(true);
   });
 });
 

@@ -43,12 +43,19 @@ export function isLanApiOpen(): boolean {
   return process.env.LAN_API_OPEN === "true";
 }
 
-/** Requests (path relative to the `/api` mount) that never need a token. */
+/**
+ * Requests (path relative to the `/api` mount) that never need a token.
+ * Normalised the way Express routes (case-insensitive, one trailing slash
+ * ignored, HEAD answered by GET handlers), so each form reaches the same
+ * handler it would route to — and only that handler.
+ */
 function isOpenWithoutToken(req: Request): boolean {
+  const p = req.path.toLowerCase().replace(/\/$/, "");
+  const read = req.method === "GET" || req.method === "HEAD";
   return (
-    (req.method === "GET" && req.path === "/version") ||
-    (req.method === "GET" && req.path === "/system/diagnostics") ||
-    (req.method === "POST" && req.path === "/pair")
+    (read && p === "/version") ||
+    (read && p === "/system/diagnostics") ||
+    (req.method === "POST" && p === "/pair")
   );
 }
 

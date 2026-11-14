@@ -1082,7 +1082,9 @@ export default function AppShell() {
           // lost Google is the one that most needs Diagnostics and pairing.
           <SettingsMenu
             compactTrigger
-            googleConnected={authStatus?.authenticated ?? false}
+            // Unknown (still loading, or paused offline) reads as connected,
+            // so a working unit never flashes "not connected".
+            googleConnected={authStatus ? authStatus.authenticated : true}
             hiddenCalendars={hiddenCalendars}
             onCalendarToggle={handleCalendarVisibilityToggle}
             setBrightness={screensaver.setBrightness}

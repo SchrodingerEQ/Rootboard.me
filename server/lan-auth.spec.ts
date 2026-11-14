@@ -76,6 +76,7 @@ const LOCALHOST_ONLY = new Set([
   "POST /api/update/apply",
   "POST /api/update/rollback",
   "POST /api/system/pairing-code",
+  "GET /api/system/pairing-code",
   "DELETE /api/system/pairing-code",
 ]);
 /** Every /api route and its expected guard. A new route fails the inventory test until it is listed here. */
@@ -102,6 +103,7 @@ const INVENTORY = [
   "GET /api/update/backups",
   "GET /api/system/diagnostics",
   "POST /api/system/pairing-code",
+  "GET /api/system/pairing-code",
   "DELETE /api/system/pairing-code",
   "POST /api/pair",
   "GET /api/system/paired-devices",
@@ -246,6 +248,14 @@ describe("from a LAN address without a token", () => {
     });
   }
 
+  test("the open routes stay open in every form Express routes to them", async () => {
+    expect((await call("HEAD", "/api/version")).status).toBe(200);
+    expect((await call("GET", "/API/VERSION")).status).toBe(200);
+    expect((await call("GET", "/api/version/")).status).toBe(200);
+    expect((await call("GET", "/api/system/diagnostics/")).status).toBe(200);
+    expect((await call("POST", "/api/pair/", { body: {} })).status).not.toBe(401);
+  });
+
   test("an X-Forwarded-For header claiming loopback is ignored", async () => {
     const res = await call("GET", "/api/config/dashboard", { headers: { "x-forwarded-for": LOOPBACK } });
     expect(res.status).toBe(401);
@@ -366,6 +376,21 @@ describe("pairing flow (brief 05 §5 acceptance)", () => {
     }
   });
 
+  test("a numeric code is accepted, leading zeros included", async () => {
+    const issued = await call("POST", "/api/system/pairing-code", { peer: LOOPBACK });
+    const res = await call("POST", "/api/pair", { body: { code: Number(issued.json.code), name: "numeric" } });
+    expect(res.status).toBe(201);
+  });
+
+  test("the kiosk can ask whether its code still works; it never gets a code back", async () => {
+    const issued = await call("POST", "/api/system/pairing-code", { peer: LOOPBACK });
+    const status = (code: string) => call("GET", `/api/system/pairing-code?code=${code}`, { peer: LOOPBACK });
+    expect((await status(issued.json.code)).json).toEqual({ active: true });
+    const wrong = issued.json.code === "000000" ? "000001" : "000000";
+    for (let i = 0; i < 5; i++) await call("POST", "/api/pair", { body: { code: wrong, name: "guess" } });
+    expect((await status(issued.json.code)).json).toEqual({ active: false });
+  });
+
   test("no code showing → 410", async () => {
     await call("DELETE", "/api/system/pairing-code", { peer: LOOPBACK });
     expect((await call("POST", "/api/pair", { body: { code: "123456", name: "x" } })).status).toBe(410);
@@ -397,10 +422,13 @@ describe("pairing flow (brief 05 §5 acceptance)", () => {
     expect((await call("DELETE", "/api/system/pairing-code", { token })).status).toBe(403);
   });
 
-  test("a damaged devices file refuses every token (fails closed)", async () => {
+  test("a damaged devices file refuses every token, and the next pairing keeps it aside", async () => {
     const token = await pairDevice("before-damage");
     fs.writeFileSync(devicesFile, "{not json");
     expect((await call("GET", "/api/widgets", { token })).status).toBe(401);
-    fs.rmSync(devicesFile);
+    await pairDevice("after-damage");
+    expect(fs.readFileSync(`${devicesFile}.damaged`, "utf-8")).toBe("{not json");
+    const listed = await call("GET", "/api/system/paired-devices", { peer: LOOPBACK });
+    expect(listed.json.devices.map((d: { name: string }) => d.name)).toEqual(["after-damage"]);
   });
 });

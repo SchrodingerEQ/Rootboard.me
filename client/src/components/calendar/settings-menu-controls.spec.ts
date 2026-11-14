@@ -79,7 +79,7 @@ describe("settings-menu.tsx keeps every existing control", () => {
     const shell = fs.readFileSync(path.resolve(import.meta.dirname, "../app-shell.tsx"), "utf-8");
     // the shell no longer gates the whole popover on authentication
     expect(shell).not.toMatch(/authStatus\?\.authenticated \? \(\s*<SettingsMenu/);
-    expect(shell).toContain("googleConnected={authStatus?.authenticated ?? false}");
+    expect(shell).toContain("googleConnected={authStatus ? authStatus.authenticated : true}");
     // the calendar list query and the add-by-ID row need Google
     expect(src).toContain("enabled: googleConnected,");
     expect(src).toContain("{googleConnected && (");

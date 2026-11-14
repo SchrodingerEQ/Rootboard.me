@@ -3,6 +3,7 @@ import { GoogleAuth } from 'google-auth-library';
 import { existsSync, readFileSync } from 'fs';
 import { storage } from '../storage';
 import { normalizeGoogleEventTimes } from './googleEventTimes';
+import { logPrivate } from './logRing';
 import type { CalendarEvent, InsertCalendarEvent } from '@shared/schema';
 
 export class GoogleCalendarService {
@@ -219,12 +220,12 @@ export class GoogleCalendarService {
           // Clean up events that were deleted/cancelled in Google Calendar
           const removedCount = await storage.deleteCalendarEventsByCalendarNotIn(calendar.id, syncedGoogleIds);
           if (removedCount > 0) {
-            console.log(`Removed ${removedCount} stale events from calendar: ${calendar.summary}`);
+            console.log(`Removed ${removedCount} stale events from calendar: ${logPrivate(calendar.summary)}`);
           }
 
-          console.log(`Synced ${totalEventsForCalendar} events from calendar: ${calendar.summary}`);
+          console.log(`Synced ${totalEventsForCalendar} events from calendar: ${logPrivate(calendar.summary)}`);
         } catch (calendarError) {
-          console.warn(`Failed to sync events from calendar ${calendar.summary}:`, calendarError);
+          console.warn(`Failed to sync events from calendar ${logPrivate(calendar.summary)}:`, calendarError);
         }
       }
 

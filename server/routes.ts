@@ -14,6 +14,7 @@ import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscover
 import { pairingService as defaultPairingService, type PairingService } from "./services/pairingService";
 import { getDiagnostics } from "./services/diagnosticsService";
 import { createLanAuthGuard, isLocalRequest, sendPairingRequired } from "./middleware/lanAuth";
+import { logPrivate } from "./services/logRing";
 import { APP_VERSION } from "@shared/version";
 import { dashboardConfigSchema } from "@shared/dashboard-config";
 
@@ -164,7 +165,7 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
       // Purge all locally cached events for this calendar so they stop
       // appearing in views immediately, without waiting for the next sync.
       const removed = await storage.deleteCalendarEventsByCalendarNotIn(calendarId, []);
-      console.log(`Purged ${removed} local events for removed calendar: ${calendarId}`);
+      console.log(`Purged ${removed} local events for removed calendar: ${logPrivate(calendarId)}`);
       res.json({ success: true });
     } catch (error) {
       console.error('Failed to unsubscribe from calendar:', error);
@@ -390,6 +391,16 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     res.status(201).json(pairing.issueCode());
   });
 
+  // Whether the code the kiosk is showing still works (it is cancelled by
+  // 5 wrong tries, a newer code, a pairing or a restart). Never returns a code.
+  app.get("/api/system/pairing-code", (req, res) => {
+    if (!isLocalRequest(req)) {
+      return res.status(403).json({ message: "Pairing codes can only be read on the kiosk screen" });
+    }
+    res.set("Cache-Control", "no-store");
+    res.json({ active: typeof req.query.code === "string" && pairing.isCodeActive(req.query.code) });
+  });
+
   app.delete("/api/system/pairing-code", (req, res) => {
     if (!isLocalRequest(req)) {
       return res.status(403).json({ message: "A pairing code can only be cancelled on the kiosk screen" });
@@ -402,7 +413,7 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     const result = pairing.pair(req.body?.code, req.body?.name);
     switch (result.status) {
       case "paired":
-        console.log(`Paired a new device: "${result.device.name}"`);
+        console.log(`Paired a new device: "${logPrivate(result.device.name)}"`);
         res.set("Cache-Control", "no-store");
         return res.status(201).json({ token: result.token, device: result.device });
       case "no-code":

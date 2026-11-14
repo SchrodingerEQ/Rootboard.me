@@ -83,6 +83,10 @@ export class PairingService {
     return { code, expiresAt: new Date(this.active.expiresAt).toISOString() };
   }
 
+  isCodeActive(code: string): boolean {
+    return this.active !== null && this.active.code === code && this.now() < this.active.expiresAt;
+  }
+
   /** Cancel the showing code; with `code`, only if that is still the one showing. */
   cancelCode(code?: string): void {
     if (code === undefined || this.active?.code === code) this.active = null;
@@ -95,7 +99,7 @@ export class PairingService {
       this.active = null;
       return { status: "expired" };
     }
-    if (typeof code !== "string" || !safeEqual(code.trim(), active.code)) {
+    if (!safeEqual(normalizeCode(code), active.code)) {
       active.wrongAttempts += 1;
       const attemptsLeft = PAIRING_MAX_WRONG_ATTEMPTS - active.wrongAttempts;
       if (attemptsLeft <= 0) this.active = null;
@@ -104,8 +108,9 @@ export class PairingService {
     const name = cleanDeviceName(rawName);
     if (!name) return { status: "bad-name" };
 
-    const devices = this.readDevices();
+    const { devices, damaged } = this.readStore();
     if (devices.length >= MAX_PAIRED_DEVICES) return { status: "too-many-devices" };
+    if (damaged) this.setAsideDamagedFile();
 
     const token = TOKEN_PREFIX + crypto.randomBytes(32).toString("base64url");
     const device: StoredDevice = {
@@ -156,22 +161,37 @@ export class PairingService {
    * a damaged file fails closed (every token is refused).
    */
   private readDevices(): StoredDevice[] {
+    return this.readStore().devices;
+  }
+
+  /** `damaged`: the file exists but can't be read or parsed. */
+  private readStore(): { devices: StoredDevice[]; damaged: boolean } {
     let raw: string;
     try {
       raw = fs.readFileSync(this.filePath, "utf-8");
     } catch (error) {
-      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
-        console.error("Failed to read data/paired-devices.json:", (error as Error).message);
-      }
-      return [];
+      if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return { devices: [], damaged: false };
+      console.error("Failed to read data/paired-devices.json:", (error as Error).message);
+      return { devices: [], damaged: true };
     }
     try {
       const parsed = JSON.parse(raw) as { devices?: unknown };
       if (!Array.isArray(parsed.devices)) throw new Error("no devices array");
-      return parsed.devices.filter(isStoredDevice);
+      return { devices: parsed.devices.filter(isStoredDevice), damaged: false };
     } catch (error) {
       console.error("data/paired-devices.json is not valid; treating it as empty:", (error as Error).message);
-      return [];
+      return { devices: [], damaged: true };
+    }
+  }
+
+  /** Keep a damaged file for hand recovery instead of overwriting it with the next pairing. */
+  private setAsideDamagedFile(): void {
+    const aside = `${this.filePath}.damaged`;
+    try {
+      fs.renameSync(this.filePath, aside);
+      console.error(`data/paired-devices.json was damaged; kept it as ${path.basename(aside)} and started a new list`);
+    } catch (error) {
+      console.error("Could not set aside the damaged data/paired-devices.json:", (error as Error).message);
     }
   }
 
@@ -181,6 +201,15 @@ export class PairingService {
     fs.writeFileSync(tmpPath, JSON.stringify({ devices }, null, 2) + "\n", { encoding: "utf-8", mode: 0o600 });
     fs.renameSync(tmpPath, this.filePath);
   }
+}
+
+/** A string code as typed, or a whole number (an agent may send 12345 for "012345"). */
+function normalizeCode(code: unknown): string {
+  if (typeof code === "string") return code.trim();
+  if (typeof code === "number" && Number.isInteger(code) && code >= 0 && code < 1_000_000) {
+    return String(code).padStart(6, "0");
+  }
+  return "";
 }
 
 function toPublic(device: StoredDevice): PairedDevice {

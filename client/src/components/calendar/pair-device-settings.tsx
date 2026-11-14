@@ -3,27 +3,27 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Laptop, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DiagnosticsBundle } from "@shared/diagnostics";
+import { pairingOutcome, type PairedDeviceSummary } from "@/lib/pairing-outcome";
 
 const DEVICES_URL = "/api/system/paired-devices";
 const CODE_URL = "/api/system/pairing-code";
-
-interface PairedDevice {
-  id: string;
-  name: string;
-  createdAt: string;
-}
+const POLL_MS = 2000;
 
 interface IssuedCode {
   code: string;
   expiresAt: string;
-  /** Devices already paired when this code was shown, to spot the new one. */
-  knownIds: Set<string>;
 }
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body?.message ?? `Request failed (${res.status})`);
   return body as T;
+}
+
+function cancelCode(code: string): void {
+  fetch(`${CODE_URL}?code=${encodeURIComponent(code)}`, { method: "DELETE", credentials: "include" }).catch((e) =>
+    console.error("Cancelling the pairing code failed:", e),
+  );
 }
 
 function secondsLeft(expiresAt: string, now: number): number {
@@ -39,22 +39,46 @@ function secondsLeft(expiresAt: string, now: number): number {
 export function PairDeviceSettings() {
   const queryClient = useQueryClient();
   const [issued, setIssued] = useState<IssuedCode | null>(null);
-  const [justPaired, setJustPaired] = useState<string | null>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
+  const mountedRef = useRef(false);
+  const shownCodeRef = useRef<string | null>(null);
 
-  const remaining = issued ? secondsLeft(issued.expiresAt, now) : 0;
-  const codeLive = issued !== null && remaining > 0;
-
-  const devicesQuery = useQuery<{ devices: PairedDevice[] }>({
+  const devicesQuery = useQuery<{ devices: PairedDeviceSummary[] }>({
     queryKey: [DEVICES_URL],
     staleTime: 0,
     retry: false,
-    // Poll only while a code is showing, to notice the pairing land.
-    refetchInterval: codeLive ? 2000 : false,
   });
   const devices = devicesQuery.data?.devices ?? [];
+
+  // Ask the server whether the shown code still works: it can end early
+  // (5 wrong tries, a restart), and the countdown alone wouldn't know.
+  const codeStatus = useQuery<{ active: boolean }>({
+    queryKey: [`${CODE_URL}?code=${issued?.code ?? ""}`],
+    enabled: issued !== null,
+    staleTime: 0,
+    retry: false,
+  });
+
+  const outcome = issued ? pairingOutcome(issued.expiresAt, codeStatus.data?.active, devices) : null;
+  const remaining = issued ? secondsLeft(issued.expiresAt, now) : 0;
+  const waiting = outcome?.kind === "waiting" && remaining > 0;
+
+  // Poll only while a code is showing, to notice the pairing land.
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      devicesQuery.refetch();
+      codeStatus.refetch();
+    }, POLL_MS);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearInterval(timer);
+      clearInterval(tick);
+    };
+  }, [waiting, devicesQuery.refetch, codeStatus.refetch]);
 
   // The kiosk screen may read the full view; it is the one place the LAN
   // address is shown, so the owner can type it on the other device.
@@ -65,18 +89,23 @@ export function PairDeviceSettings() {
   });
   const lanIp = fullDiagnostics?.network.ip ?? null;
 
-  const devicesRef = useRef<PairedDevice[]>([]);
-  devicesRef.current = devices;
-  const shownCodeRef = useRef<string | null>(null);
-
   const issueMutation = useMutation({
-    mutationFn: async () => jsonOrThrow<{ code: string; expiresAt: string }>(await fetch(CODE_URL, { method: "POST", credentials: "include" })),
+    mutationFn: async () => {
+      const data = await jsonOrThrow<IssuedCode>(await fetch(CODE_URL, { method: "POST", credentials: "include" }));
+      // The screen was left while this was in flight: nobody will see the
+      // code, so cancel it rather than leave it live for 5 minutes.
+      if (!mountedRef.current) {
+        cancelCode(data.code);
+        return null;
+      }
+      return data;
+    },
     onSuccess: (data) => {
+      if (!data) return;
       setError(null);
-      setJustPaired(null);
       setNow(Date.now());
       shownCodeRef.current = data.code;
-      setIssued({ ...data, knownIds: new Set(devicesRef.current.map((d) => d.id)) });
+      setIssued(data);
     },
     onError: (e: Error) => setError(e.message),
   });
@@ -98,31 +127,16 @@ export function PairDeviceSettings() {
   // remove a newer code (React's dev double-mount, or a quick re-open).
   const issue = issueMutation.mutate;
   useEffect(() => {
+    mountedRef.current = true;
     issue();
     return () => {
-      const code = shownCodeRef.current;
-      if (!code) return;
-      fetch(`${CODE_URL}?code=${encodeURIComponent(code)}`, { method: "DELETE", credentials: "include" }).catch((e) =>
-        console.error("Cancelling the pairing code failed:", e),
-      );
+      mountedRef.current = false;
+      if (shownCodeRef.current) cancelCode(shownCodeRef.current);
     };
   }, [issue]);
 
-  useEffect(() => {
-    if (!codeLive) return;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, [codeLive]);
-
-  // A device that wasn't there when the code was shown means the code was used.
-  useEffect(() => {
-    if (!issued) return;
-    const added = devices.find((d) => !issued.knownIds.has(d.id));
-    if (added) {
-      setJustPaired(added.name);
-      setIssued(null);
-    }
-  }, [devices, issued]);
+  const codeLive = issued !== null && waiting;
+  const justPaired = outcome?.kind === "paired" ? outcome.name : null;
 
   const minutes = Math.floor(remaining / 60);
   const seconds = String(remaining % 60).padStart(2, "0");
@@ -138,7 +152,9 @@ export function PairDeviceSettings() {
           <p className="text-xs text-rb-muted">Expires in {minutes}:{seconds}</p>
         </div>
       ) : (
-        <p className="text-xs text-rb-muted">{issueMutation.isPending ? "Getting a code…" : "The code has expired."}</p>
+        <p className="text-xs text-rb-muted">
+          {issueMutation.isPending || !issued ? "Getting a code…" : "That code no longer works (it expired, or had too many wrong tries)."}
+        </p>
       )}
 
       {!codeLive && !issueMutation.isPending && (
