@@ -7,6 +7,26 @@ import type {
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 
+// Row shapes as SQLite returns them (snake_case columns, 0/1 booleans,
+// ISO-string dates). Matches the CREATE TABLE statements in initializeTables().
+type UserRow = { id: number; username: string; password: string };
+type CalendarEventRow = {
+  id: number;
+  google_event_id: string;
+  calendar_id: string;
+  calendar_name: string;
+  title: string;
+  description: string | null;
+  start_time: string;
+  end_time: string;
+  location: string | null;
+  color: string | null;
+  is_all_day: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+type AppStateRow = { value: string };
+
 export class SQLiteStorage implements IStorage {
   private db: Database.Database;
 
@@ -54,12 +74,12 @@ export class SQLiteStorage implements IStorage {
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    const row = this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as any;
+    const row = this.db.prepare('SELECT * FROM users WHERE id = ?').get(id) as UserRow | undefined;
     return row ? { id: row.id, username: row.username, password: row.password } : undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const row = this.db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
+    const row = this.db.prepare('SELECT * FROM users WHERE username = ?').get(username) as UserRow | undefined;
     return row ? { id: row.id, username: row.username, password: row.password } : undefined;
   }
 
@@ -73,12 +93,12 @@ export class SQLiteStorage implements IStorage {
       SELECT * FROM calendar_events 
       WHERE start_time < ? AND end_time > ?
       ORDER BY start_time ASC
-    `).all(endDate.toISOString(), startDate.toISOString()) as any[];
+    `).all(endDate.toISOString(), startDate.toISOString()) as CalendarEventRow[];
 
     return rows.map(row => this.rowToCalendarEvent(row));
   }
 
-  private rowToCalendarEvent(row: any): CalendarEvent {
+  private rowToCalendarEvent(row: CalendarEventRow): CalendarEvent {
     return {
       id: row.id,
       googleEventId: row.google_event_id,
@@ -97,7 +117,7 @@ export class SQLiteStorage implements IStorage {
   }
 
   async getCalendarEvent(id: number): Promise<CalendarEvent | undefined> {
-    const row = this.db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id) as any;
+    const row = this.db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id) as CalendarEventRow | undefined;
     return row ? this.rowToCalendarEvent(row) : undefined;
   }
 
@@ -139,12 +159,12 @@ export class SQLiteStorage implements IStorage {
   }
 
   async updateCalendarEvent(id: number, event: Partial<InsertCalendarEvent>): Promise<CalendarEvent | undefined> {
-    const existing = this.db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id) as any;
+    const existing = this.db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id) as CalendarEventRow | undefined;
     if (!existing) return undefined;
 
     const now = new Date().toISOString();
     const updates: string[] = ['updated_at = ?'];
-    const values: any[] = [now];
+    const values: (string | number | null)[] = [now];
 
     if (event.title !== undefined) { updates.push('title = ?'); values.push(event.title); }
     if (event.description !== undefined) { updates.push('description = ?'); values.push(event.description); }
@@ -159,7 +179,7 @@ export class SQLiteStorage implements IStorage {
     values.push(id);
     this.db.prepare(`UPDATE calendar_events SET ${updates.join(', ')} WHERE id = ?`).run(...values);
 
-    const updated = this.db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id) as any;
+    const updated = this.db.prepare('SELECT * FROM calendar_events WHERE id = ?').get(id) as CalendarEventRow;
     return this.rowToCalendarEvent(updated);
   }
 
@@ -169,7 +189,7 @@ export class SQLiteStorage implements IStorage {
   }
 
   async getCalendarEventByGoogleIdAndCalendar(googleEventId: string, calendarId: string): Promise<CalendarEvent | undefined> {
-    const row = this.db.prepare('SELECT * FROM calendar_events WHERE google_event_id = ? AND calendar_id = ?').get(googleEventId, calendarId) as any;
+    const row = this.db.prepare('SELECT * FROM calendar_events WHERE google_event_id = ? AND calendar_id = ?').get(googleEventId, calendarId) as CalendarEventRow | undefined;
     return row ? this.rowToCalendarEvent(row) : undefined;
   }
 
@@ -189,7 +209,7 @@ export class SQLiteStorage implements IStorage {
   }
 
   async getAppState(key: string): Promise<string | null> {
-    const row = this.db.prepare('SELECT value FROM app_state WHERE key = ?').get(key) as any;
+    const row = this.db.prepare('SELECT value FROM app_state WHERE key = ?').get(key) as AppStateRow | undefined;
     return row ? row.value : null;
   }
 

@@ -368,11 +368,14 @@ export function WidgetHostMount({ entries, activeId, onWidgetCrash }: WidgetHost
   // re-mount every still-present entry against its still-live host,
   // instead of either double-mounting or silently no-op'ing.
   useEffect(() => {
+    // The ref holds one Map for the component's life, so reading it here
+    // is the same Map the cleanup must clear.
+    const mounted = mountedRef.current;
     return () => {
-      Array.from(mountedRef.current.entries()).forEach(([id, mounted]) => {
-        safeUnmount(id, mounted.instance);
+      Array.from(mounted.entries()).forEach(([id, entry]) => {
+        safeUnmount(id, entry.instance);
       });
-      mountedRef.current.clear();
+      mounted.clear();
     };
   }, []);
 

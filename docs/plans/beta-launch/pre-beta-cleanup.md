@@ -1,6 +1,6 @@
 # Pre-beta cleanup — dependencies, a real linter, two small bugs
 
-**Status:** Not started.
+**Status:** In progress (started 2026-11-14): step 1 merged (#27); step 3 (ESLint) taken ahead of step 2 so other briefs get a real lint step sooner.
 **Type:** One session, a short series of small PRs (one thing each, per
 `CODING-STANDARDS.md` kernel 3), in the order below. Each is safe zone
 unless its review says otherwise; merge each on green before starting

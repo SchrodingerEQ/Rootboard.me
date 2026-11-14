@@ -111,7 +111,7 @@ check("Pi regression: focus stolen by a key button must NOT clear the target", (
   // The focus tracker keeps the field when the new activeElement is inside
   // the keyboard — this is what stopped the keyboard closing on every tap.
   const keyButton = { closest: (sel: string) => (sel === '[data-osk="true"]' ? {} : null) };
-  const shouldClearTarget = !isEditableTarget(keyButton as any) && !isInsideOsk(keyButton);
+  const shouldClearTarget = !isEditableTarget(keyButton as Parameters<typeof isEditableTarget>[0]) && !isInsideOsk(keyButton);
   assert.equal(shouldClearTarget, false);
 });
 

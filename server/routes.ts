@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import express from "express";
 import path from "path";
 import fs from "fs";
@@ -297,7 +297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  const isLocalRequest = (req: any): boolean => {
+  const isLocalRequest = (req: Request): boolean => {
     const ip = req.ip || req.connection?.remoteAddress || '';
     return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1' || ip === 'localhost';
   };
