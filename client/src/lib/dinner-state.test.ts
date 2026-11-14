@@ -181,7 +181,7 @@ console.log("purgeOldDinners — drops the prior week, keeps the current week's 
 {
   // 2026-07-08 is a Wednesday; the current week's Sunday is 2026-07-05.
   const todayKey = "2026-07-08";
-  let s: DinnerState = {
+  const s: DinnerState = {
     savedMeals: [],
     candidates: [],
     dinners: {

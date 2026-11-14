@@ -18,7 +18,6 @@ import {
   totalChoreCount,
 } from "@/lib/chores-state";
 
-const STATE_KEY = "chores";
 const ROLLOVER_CHECK_MS = 60_000;
 
 function emptyState(): ChoresState {
