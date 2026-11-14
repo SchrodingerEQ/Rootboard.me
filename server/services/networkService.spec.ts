@@ -41,6 +41,8 @@ const TIMEDATECTL_VERSION = {
   "timedatectl show --property=Timezone --value": ok("Europe/London\n"),
 };
 const DEVICE_STATUS = "nmcli -t -f DEVICE,TYPE,STATE,CONNECTION device status";
+const GENERAL_CONNECTED = { "nmcli -t -f STATE general": ok("connected\n") };
+const GENERAL_DISCONNECTED = { "nmcli -t -f STATE general": ok("disconnected\n") };
 const WIFI_LIST_CACHED = "nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY device wifi list --rescan no";
 const WIFI_LIST_RESCAN = "nmcli -t -f IN-USE,SSID,SIGNAL,SECURITY device wifi list --rescan yes";
 
@@ -98,6 +100,7 @@ describe("status", () => {
     const { run } = fakeRun({
       ...NMCLI_VERSION,
       ...TIMEDATECTL_VERSION,
+      ...GENERAL_CONNECTED,
       [DEVICE_STATUS]: ok(fx.DEVICE_STATUS_WIFI_CONNECTED),
       [WIFI_LIST_CACHED]: ok(fx.WIFI_LIST),
       "nmcli -t -f IP4.ADDRESS device show wlan0": ok(fx.DEVICE_SHOW_IP4),
@@ -116,6 +119,7 @@ describe("status", () => {
     const { run, calls } = fakeRun({
       ...NMCLI_VERSION,
       ...TIMEDATECTL_VERSION,
+      ...GENERAL_CONNECTED,
       [DEVICE_STATUS]: ok(fx.DEVICE_STATUS_ETHERNET_CONNECTED),
       "nmcli -t -f IP4.ADDRESS device show eth0": ok(fx.DEVICE_SHOW_IP4),
     });
@@ -128,15 +132,65 @@ describe("status", () => {
     ["a link configured outside NetworkManager", "eth0:ethernet:connected (externally):eth0\nlo:loopback:connected (externally):lo\n", "ethernet"],
     ["a bridge", "br0:bridge:connected:br0\nwlan0:wifi:disconnected:\n", "other"],
   ])("%s counts as connected", async (_name, out, type) => {
-    const { run } = fakeRun({ ...NMCLI_VERSION, [DEVICE_STATUS]: ok(out), "nmcli -t -f IP4.ADDRESS device show *": ok("") });
+    const { run } = fakeRun({ ...NMCLI_VERSION, ...GENERAL_CONNECTED, [DEVICE_STATUS]: ok(out), "nmcli -t -f IP4.ADDRESS device show *": ok("") });
     const status = await createNetworkService({ run, uptime: () => 1 }).status();
     expect(status.connected).toBe(true);
     expect(status.connection?.type).toBe(type);
   });
 
+  test("a Docker bridge or VPN interface alone is not a network (NetworkManager says local only)", async () => {
+    const { run } = fakeRun({
+      ...NMCLI_VERSION,
+      "nmcli -t -f STATE general": ok("connected (local only)\n"),
+      [DEVICE_STATUS]: ok("docker0:bridge:connected (externally):docker0\nwlan0:wifi:disconnected:\n"),
+    });
+    const status = await createNetworkService({ run, uptime: () => 1 }).status();
+    expect(status.connected).toBe(false);
+    expect(status.connection).toBeNull();
+  });
+
+  test("with Wi-Fi and a VPN both up, the Wi-Fi link is the one named", async () => {
+    const { run } = fakeRun({
+      ...NMCLI_VERSION,
+      ...GENERAL_CONNECTED,
+      [DEVICE_STATUS]: ok("tailscale0:tun:connected (externally):tailscale0\n" + fx.DEVICE_STATUS_WIFI_CONNECTED),
+      [WIFI_LIST_CACHED]: ok(fx.WIFI_LIST),
+      "nmcli -t -f IP4.ADDRESS device show wlan0": ok(fx.DEVICE_SHOW_IP4),
+    });
+    const status = await createNetworkService({ run, uptime: () => 1 }).status();
+    expect(status.connection).toMatchObject({ type: "wifi", device: "wlan0", name: "ExampleHome" });
+  });
+
+  test("a status read still in flight is shared, however slow", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let t = 0;
+    let reads = 0;
+    const run: RunCommand = async (file, args) => {
+      const key = [file, ...args].join(" ");
+      if (key === "nmcli --version") return ok("1.42\n");
+      if (key === "nmcli -t -f RUNNING general") return ok("running\n");
+      if (key === "nmcli -t -f STATE general") return ok("disconnected\n");
+      if (key === DEVICE_STATUS) {
+        reads++;
+        await gate;
+        return ok(fx.DEVICE_STATUS_NOTHING_CONNECTED);
+      }
+      throw new Error(key);
+    };
+    const svc = createNetworkService({ run, uptime: () => 1, now: () => t });
+    const first = svc.status();
+    await new Promise((r) => setTimeout(r, 0));
+    t = 10_000;
+    const second = svc.status();
+    release();
+    await Promise.all([first, second]);
+    expect(reads).toBe(1);
+  });
+
   test("repeat asks within a few seconds reuse one nmcli read", async () => {
     let t = 0;
-    const { run, calls } = fakeRun({ ...NMCLI_VERSION, [DEVICE_STATUS]: ok(fx.DEVICE_STATUS_NOTHING_CONNECTED) });
+    const { run, calls } = fakeRun({ ...NMCLI_VERSION, ...GENERAL_DISCONNECTED, [DEVICE_STATUS]: ok(fx.DEVICE_STATUS_NOTHING_CONNECTED) });
     const svc = createNetworkService({ run, uptime: () => 1, now: () => t });
     await svc.status();
     await svc.status();
@@ -151,7 +205,7 @@ describe("status", () => {
     ["nothing saved", fx.DEVICE_STATUS_NOTHING_CONNECTED],
     ["still connecting", fx.DEVICE_STATUS_WIFI_CONNECTING],
   ])("%s is not connected (loopback never counts)", async (_name, out) => {
-    const { run } = fakeRun({ ...NMCLI_VERSION, ...TIMEDATECTL_VERSION, [DEVICE_STATUS]: ok(out) });
+    const { run } = fakeRun({ ...NMCLI_VERSION, ...GENERAL_DISCONNECTED, [DEVICE_STATUS]: ok(out) });
     const status = await createNetworkService({ run, uptime: () => 1 }).status();
     expect(status.connected).toBe(false);
     expect(status.connection).toBeNull();
@@ -214,7 +268,7 @@ describe("Wi-Fi actions", () => {
     expect(await createNetworkService({ run }).scan()).toEqual({ status: "failed" });
   });
 
-  test("runs nmcli in a UTF-8 locale so non-ASCII SSIDs survive", async () => {
+  test.skipIf(process.platform === "win32")("runs nmcli in a UTF-8 locale so non-ASCII SSIDs survive", async () => {
     const { runCommand } = await import("./networkService");
     const r = await runCommand("sh", ["-c", "printf %s \"$LC_ALL\""]);
     expect(r.stdout).toBe("C.UTF-8");

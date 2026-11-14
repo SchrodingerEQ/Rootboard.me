@@ -233,13 +233,21 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
   // A ref, not state: two Enter taps in one tick would both still see the
   // state from before the first.
   const joinInFlight = useRef(false);
+  // Status replies can land out of order (a 5 s poll that started before a
+  // join finished): only apply one newer than the last applied.
+  const statusSeq = useRef(0);
+  const appliedSeq = useRef(0);
 
   const readStatus = useCallback(async (checkInternet = false) => {
+    const seq = ++statusSeq.current;
     try {
       const r = await getJson<NetworkStatus>(`/api/system/network/status${checkInternet ? "?internet=1" : ""}`);
       if (!r.ok || !r.body) throw new Error(String(r.status));
-      setStatus(r.body);
-      setStatusFailed(false);
+      if (seq > appliedSeq.current) {
+        appliedSeq.current = seq;
+        setStatus(r.body);
+        setStatusFailed(false);
+      }
       return r.body;
     } catch {
       setStatusFailed(true);
@@ -381,7 +389,7 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
         <div className="flex items-center gap-3 p-4 rounded-md border border-rb-grid-line bg-rb-surface" data-testid="setup-network-connected">
           <CheckCircle2 className="h-6 w-6 text-rb-success shrink-0" />
           <p className="flex-1 text-lg">
-            {ethernet ? "Connected by Ethernet." : s.connection.type === "wifi" ? `Connected to ${s.connection.name}.` : "Connected."}
+            {ethernet ? "Connected by Ethernet." : `Connected to ${s.connection.name}.`}
             {autoPass && !busy && <span className="text-rb-muted"> Moving on…</span>}
           </p>
           {(!autoPass || holdForInternet) && (

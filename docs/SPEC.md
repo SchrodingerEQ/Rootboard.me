@@ -921,8 +921,13 @@ is a placeholder until brief 02 (session 2).
 - **Server** (`server/services/networkService.ts`): `execFile` (never a
   shell) with a 30 s timeout and `LC_ALL=C.UTF-8` (English messages,
   non-ASCII SSIDs intact); nmcli connect gets `--wait 25`. "Connected"
-  is any `connected…` device state (including `connected (externally)`)
-  on anything but loopback and Wi-Fi P2P; wired beats Wi-Fi. Presence is the binary (looked up once) **and** a daemon
+  is NetworkManager's own overall state (`nmcli -t -f STATE general`):
+  `connected` or `connected (site only)`, never `connected (local only)`
+  (a Docker bridge or VPN interface alone). The link it names is the
+  first `connected…` device (including `connected (externally)`), wired
+  before Wi-Fi before anything else. The nmcli read is shared while in
+  flight and for 3 s after; the client applies only status replies newer
+  than the last one it applied. Presence is the binary (looked up once) **and** a daemon
   answering (`nmcli -t -f RUNNING general`, `timedatectl show`, asked each
   time). Terse output is parsed with `\:`/`\\` unescaping; tests run
   against hand-written fixtures (`networkService.fixtures.ts`, to refresh

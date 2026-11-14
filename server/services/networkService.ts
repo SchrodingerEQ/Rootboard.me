@@ -199,12 +199,21 @@ export function classifyConnectFailure(result: CommandResult): ConnectFailureRea
 // --- Status -----------------------------------------------------------------
 
 /**
- * A device that carries the kiosk's traffic: any "connected" state —
- * including "connected (externally)", a link configured outside
- * NetworkManager — on anything but loopback and Wi-Fi P2P. A bridge, bond
- * or VLAN counts too: a unit whose internet works must never be held on the
- * Network step, which has no Skip.
+ * `nmcli -t -f STATE general` → whether NetworkManager has a way out: its
+ * overall state is "connected" (global) or "connected (site only)" (a
+ * default route, but its connectivity check failed — a captive portal, or
+ * the check is unreachable). "connected (local only)" — e.g. only a Docker
+ * bridge or a VPN interface is up — is not a network the wizard can stop at.
+ * This is NetworkManager's own judgement, so a link it brought up and one
+ * configured outside it (with a default route) both count.
  */
+export function isGloballyConnected(generalState: string): boolean {
+  const state = generalState.trim();
+  return state === "connected" || state === "connected (site only)";
+}
+
+/** A device with a link up: any "connected…" state, including
+ *  "connected (externally)", on anything but loopback and Wi-Fi P2P. */
 export function isUplink(d: NetworkDevice): boolean {
   return d.state.startsWith("connected") && d.type !== "loopback" && d.type !== "wifi-p2p";
 }
@@ -304,24 +313,32 @@ export function createNetworkService(deps: NetworkServiceDeps = {}) {
   async function readStatus(): Promise<Omit<NetworkStatus, "internet" | "uptimeSeconds">> {
     const base = { managed: await hasNmcli(), connected: false, connection: null as ActiveConnection | null, hasWifiDevice: false };
     if (!base.managed) return base;
-    const list = await devices();
+    const [list, general] = await Promise.all([devices(), run("nmcli", ["-t", "-f", "STATE", "general"])]);
     if (!list) return base;
     base.hasWifiDevice = list.some((d) => d.type === "wifi");
+    if (general.code !== 0 || !isGloballyConnected(general.stdout)) return base;
     const up = list.filter(isUplink);
-    const chosen = up.find((d) => d.type === "ethernet") ?? up.find((d) => d.type !== "wifi") ?? up[0];
-    if (!chosen) return base;
+    // Which link to name: wired, then Wi-Fi, then anything else that is up.
+    const chosen = up.find((d) => d.type === "ethernet") ?? up.find((d) => d.type === "wifi") ?? up[0];
     base.connected = true;
+    if (!chosen) return base;
     const type: ActiveConnection["type"] = chosen.type === "ethernet" ? "ethernet" : chosen.type === "wifi" ? "wifi" : "other";
     const name = type === "wifi" ? ((await activeSsid()) ?? chosen.connection) : chosen.connection;
     base.connection = { type, device: chosen.device, name, ip: await ipv4(chosen.device) };
     return base;
   }
 
-  let lastStatus: { at: number; result: ReturnType<typeof readStatus> } | null = null;
+  // Reused while in flight and for STATUS_REUSE_MS after it settles, so a
+  // slow nmcli (busy with a connect) never piles up parallel reads.
+  let lastStatus: { settledAt: number | null; result: ReturnType<typeof readStatus> } | null = null;
 
   async function status(opts: { checkInternet?: boolean } = {}): Promise<NetworkStatus> {
-    if (!lastStatus || now() - lastStatus.at >= STATUS_REUSE_MS) {
-      lastStatus = { at: now(), result: readStatus() };
+    if (!lastStatus || (lastStatus.settledAt !== null && now() - lastStatus.settledAt >= STATUS_REUSE_MS)) {
+      const entry: { settledAt: number | null; result: ReturnType<typeof readStatus> } = { settledAt: null, result: readStatus() };
+      entry.result.finally(() => {
+        entry.settledAt = now();
+      }).catch(() => {});
+      lastStatus = entry;
     }
     const result: NetworkStatus = { ...(await lastStatus.result), uptimeSeconds: Math.floor(uptime()) };
     if (opts.checkInternet) result.internet = await checkInternet();
@@ -369,8 +386,8 @@ export function createNetworkService(deps: NetworkServiceDeps = {}) {
       // The profile name is not always the SSID ("Home 1"); compare the SSID itself.
       const s = await run("nmcli", ["-g", "802-11-wireless.ssid", "connection", "show", "uuid", uuid]);
       if (s.code !== 0 || parseSingleValue(s.stdout) !== ssid) continue;
-      lastStatus = null;
       const del = await run("nmcli", ["connection", "delete", "uuid", uuid]);
+      lastStatus = null;
       if (del.code !== 0) return { status: "failed" };
       removed++;
     }
@@ -388,7 +405,9 @@ export function createNetworkService(deps: NetworkServiceDeps = {}) {
   async function setTimezone(tz: string): Promise<SetTimezoneResult> {
     const info = await listTimezones();
     if (!info.managed) return { status: "unmanaged" };
-    if (!TIMEZONE_RE.test(tz) || !info.zones.includes(tz)) return { status: "invalid" };
+    // zones only holds names that pass TIMEZONE_RE, so this also rules out
+    // anything timedatectl could read as an option.
+    if (!info.zones.includes(tz)) return { status: "invalid" };
     const r = await run("timedatectl", ["--no-ask-password", "set-timezone", tz]);
     if (r.code !== 0) {
       console.error(`[network] timedatectl set-timezone failed (exit ${r.code ?? "none"})`);
