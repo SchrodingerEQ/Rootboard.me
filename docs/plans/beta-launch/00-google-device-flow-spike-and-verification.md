@@ -108,7 +108,11 @@ spike. Use a scratch directory.
    edits events but never creates or deletes calendars.
 3. Publish to **In production**.
 4. Submit for verification with the screen recording and scope
-   justification. Keep the submission text in private planning records.
+   justification. The recording has to show Rootboard's own sign-in
+   asking for calendar access, so steps 3 and 4 wait until brief 02's
+   flow B works on the kiosk. Steps 1 and 2, and the domain verification
+   in Search Console (§2), can and should start now: they are the slow
+   part. Keep the submission text in private planning records.
 5. Record the submission date in this brief's Status line.
 
 ### 3.3 Decide the primary sign-in surface

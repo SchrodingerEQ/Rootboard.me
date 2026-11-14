@@ -65,6 +65,7 @@ do not decide whether 02 can be built.
 
 ```
 Runs now, no founder work needed:
+  C   Pre-beta cleanup: audit fixes, unused packages, ESLint, two bugs
   05  Diagnostics + LAN pairing + Settings in every auth state
   08  Beta update channel
   03  session 1: wizard shell, Wi-Fi, time zone, weather
@@ -78,6 +79,7 @@ After 02, 03, 05, 06, 07, 08 released, 00 §3.2 step 3 (and 04 if live):  09
 
 | Brief | Before brief 00? | Waits on | Needs hardware or the founder |
 |---|---|---|---|
+| C (cleanup) | yes; merge its linter PR early | nothing | push access to awesome-rootboard for one list entry |
 | 00 | — | nothing | founder, in Google Cloud and Search Console |
 | 01 | done | — | kiosk check after the next release |
 | 02 | no: needs 00 §3.0 (≈30 min) | 00 §3.0 | kiosk check after merge |
@@ -97,7 +99,9 @@ because they wait on other parties.
 1. Brief 00 §3.0: consent screen in Testing and a Desktop OAuth client.
    Unblocks 02.
 2. Brief 00 §3.1–3.3: the device-flow test and the verification
-   submission. §3.2 step 3 (In production) must be done before 09.
+   submission. The recording needs brief 02's sign-in on screen, so
+   only the branding and Search Console domain checks can start before
+   02; §3.2 step 3 (In production) must be done before 09.
 3. The feedback service going live (private planning records). Unblocks 04.
 4. For 06: a spare Pi or SD card, and copies of the reference kiosk's
    launch script and labwc autostart file with the username and hostname
@@ -139,6 +143,7 @@ agent needs nothing from the planning conversation. The agent must:
 
 ## Briefs
 
+- [Pre-beta cleanup — dependencies, a real linter, two small bugs](pre-beta-cleanup.md) (added 2026-11-14; not numbered because it is not a beta feature)
 - [00 — Google device-flow spike and OAuth verification](00-google-device-flow-spike-and-verification.md)
 - [01 — Weather location as a config setting](01-weather-location-setting.md)
 - [02 — Google sign-in with OAuth](02-google-sign-in-oauth.md)
