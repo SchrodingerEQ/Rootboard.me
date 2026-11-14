@@ -431,6 +431,10 @@ retries upstream when a client asks, so this is also the retry cadence.
   section is showing, but the view is never stale on return.
   `useCalendar`'s own internal 10-minute throttle inside `autoRefresh()`
   is unchanged and still acts as a second guard.
+- The "Syncing calendar..." indicator (top right) shows only while the
+  calendar is the visible section; a sync still in flight when another
+  section comes up carries on without it, so it never covers that
+  section's header.
 - Keyboard nav: `←/→` navigate, `t` today, `1/2/3` = day/week/month
   (ignored while an input is focused, **and while the calendar widget
   is not the visible section** — keep-alive keeps it mounted behind
