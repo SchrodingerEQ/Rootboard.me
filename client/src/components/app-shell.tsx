@@ -1052,9 +1052,12 @@ export default function AppShell() {
   // life, but if AppShell itself ever unmounts, flush+dispose whatever
   // hosts are still live rather than leaking their timers.
   useEffect(() => {
+    // The ref holds one Map for the component's life, so reading it here
+    // is the same Map the cleanup must flush.
+    const hosts = hostsRef.current;
     return () => {
-      Array.from(hostsRef.current.values()).forEach((handle) => handle.dispose());
-      hostsRef.current.clear();
+      Array.from(hosts.values()).forEach((handle) => handle.dispose());
+      hosts.clear();
     };
   }, []);
 

@@ -155,6 +155,8 @@ export function EventFormDialog({ open, onOpenChange, event, defaultStart }: Eve
     if (open && !isEdit && !form.calendarId && writableCalendars.length > 0) {
       setForm((f) => ({ ...f, calendarId: writableCalendars[0].id }));
     }
+    // Keyed on the list's length, not its identity, for the same refetch
+    // reason as above; form.calendarId is read, not watched.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [writableCalendars.length, open, isEdit]);
 

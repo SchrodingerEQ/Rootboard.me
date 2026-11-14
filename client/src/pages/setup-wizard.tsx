@@ -571,8 +571,7 @@ function TimezoneStep({ onNext, lastStep }: { onNext: () => void; lastStep: bool
     void load();
   }, [load]);
 
-  const zones = info?.managed ? info.zones : [];
-  const matches = useMemo(() => filterTimezones(zones, query), [zones, query]);
+  const matches = useMemo(() => filterTimezones(info?.managed ? info.zones : [], query), [info, query]);
 
   const confirm = async () => {
     if (!selected) return;

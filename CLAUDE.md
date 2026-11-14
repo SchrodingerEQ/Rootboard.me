@@ -142,6 +142,10 @@ via the HQ import). Before any branch goes to main: run `/crucible-code-standard
 against `main`, then `/pr`. Never open a PR with red checks. Never apply a
 lower tier than `/crucible-code-standards-review` reported.
 
+Every change must pass `npm run check` (TypeScript), `npm test` and
+`npm run lint` (ESLint with the React hooks rules, decision 0024) — the
+same three steps CI runs.
+
 After cloning, run `git config core.hooksPath .githooks` once so the gitleaks
 pre-commit secret scan runs (PR-POLICY gate 4); CI scans the full history as
 the backstop.

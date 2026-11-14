@@ -17,6 +17,7 @@ import { validateBuiltinManifest } from "@/widgets/validate-manifest";
 import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/types";
 import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/lib/app-types";
+import type { CalendarInfo } from "@/lib/calendar-meta";
 import {
   CALENDAR_SUBSCRIBE_SUCCESS_EVENT,
   DISABLED_CALENDARS_KEY,
@@ -28,6 +29,7 @@ import {
   type PowerSavingChangeDetail,
 } from "./shell-bridge";
 import rawManifest from "./manifest.json";
+import { createCalendarKeyHandler, stepCalendarDate } from "./keyboard";
 
 /**
  * Calendar as a contract widget (CONTRACT.md §3-§5) — the whole of the old
@@ -116,7 +118,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
 
   // Get calendars for dialog metadata, the chip row, and the visibility
   // derivations below (this is the "subscribed" set).
-  const { data: calendars } = useQuery<any[]>({
+  const { data: calendars } = useQuery<CalendarInfo[]>({
     queryKey: ['/api/calendar/calendars'],
     enabled: true,
     staleTime: 5 * 60 * 1000,
@@ -177,7 +179,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
   );
 
   const subscribedIds = useMemo<string[]>(
-    () => (calendars ?? []).map((cal: any) => cal.id as string),
+    () => (calendars ?? []).map((cal) => cal.id),
     [calendars],
   );
 
@@ -284,51 +286,18 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
   useEffect(() => {
     if (!isVisible) return;
 
+    const handleKey = createCalendarKeyHandler(currentView, setCurrentDate, setCurrentView);
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement) return;
-
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          navigateCalendar(-1);
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          navigateCalendar(1);
-          break;
-        case 't':
-        case 'T':
-          setCurrentDate(new Date());
-          break;
-        case '1':
-          setCurrentView('day');
-          break;
-        case '2':
-          setCurrentView('week');
-          break;
-        case '3':
-          setCurrentView('month');
-          break;
-      }
+      handleKey(e);
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, isVisible]);
 
   const navigateCalendar = (direction: number) => {
-    const newDate = new Date(currentDate);
-
-    if (currentView === 'month') {
-      newDate.setMonth(newDate.getMonth() + direction);
-    } else if (currentView === 'week') {
-      newDate.setDate(newDate.getDate() + (direction * 7));
-    } else if (currentView === 'day') {
-      newDate.setDate(newDate.getDate() + direction);
-    }
-
-    setCurrentDate(newDate);
+    setCurrentDate((date) => stepCalendarDate(date, currentView, direction));
   };
 
   const goToToday = () => {
@@ -428,7 +397,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
         isOpen={isDialogOpen}
         onClose={handleDialogClose}
         onEdit={handleEditEvent}
-        calendarName={selectedEvent ? calendars?.find((cal: any) => cal.id === selectedEvent.calendarId)?.summary : undefined}
+        calendarName={selectedEvent ? calendars?.find((cal) => cal.id === selectedEvent.calendarId)?.summary : undefined}
         calendarColor={selectedEvent?.color ?? undefined}
       />
 

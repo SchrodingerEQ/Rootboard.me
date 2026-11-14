@@ -17,7 +17,6 @@ import {
   vote,
 } from "@/lib/dinner-state";
 
-const STATE_KEY = "dinner";
 const PURGE_CHECK_MS = 60_000;
 const COOLDOWN_TICK_MS = 1_000;
 

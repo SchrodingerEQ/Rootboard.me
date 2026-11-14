@@ -246,7 +246,7 @@ export type SetTimezoneResult =
 
 /** IANA zone names: letters, digits and `_ + - /`, never a leading `-`
  *  (which timedatectl would read as an option). */
-const TIMEZONE_RE = /^[A-Za-z0-9_+][A-Za-z0-9_+\-]*(\/[A-Za-z0-9_+\-]+)*$/;
+const TIMEZONE_RE = /^[A-Za-z0-9_+][A-Za-z0-9_+-]*(\/[A-Za-z0-9_+-]+)*$/;
 
 export function createNetworkService(deps: NetworkServiceDeps = {}) {
   const run = deps.run ?? runCommand;
