@@ -1,6 +1,6 @@
 # 03 — First-run setup wizard (Wi-Fi, time zone, Google, weather)
 
-**Status:** Session 1 (wizard shell, Network, Time zone, Weather, Settings entries, polkit rule) in a PR, awaiting the founder (soft flag) — 2026-11-14. Session 2 (the Google step) not started; this line and the `TASKS.md` item stay open until it merges.
+**Status:** Session 1 (wizard shell, Network, Time zone, Weather, Settings entries, polkit rule) in PR #35, awaiting the founder (soft flag) — 2026-11-14. Session 2 (the Google step) not started; this line and the `TASKS.md` item stay open until it merges.
 **Type:** Client wizard + server network control + Pi image policy. Two sessions.
 **Depends on:** session 1: 01 (merged 2026-11-11), so it can run now.
 Session 2: 02 (Google sign-in).
