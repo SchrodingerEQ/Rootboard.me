@@ -41,12 +41,19 @@ tester's unit, or the other way round.
 - Promoting a beta needs a one-line commit that sets `version.ts` to
   `X.Y.Z`; publishing the beta's exact tree as `vX.Y.Z` would leave
   kiosks reporting `X.Y.Z-beta.N` and being offered `X.Y.Z` forever.
-  The brief's decision 3 said "the same tree"; this is raised with the
-  founder in the PR that added channels.
+  The brief's decision 3 said "the same tree"; the founder accepted the
+  one-line bump instead (2026-11-16).
 - A beta tag published without the Pre-release tick would come back from
   `releases/latest`; stable refuses any tag with a prerelease part and
   logs it, so the mistake stalls stable updates instead of shipping a
   beta. An optional CI check for the tick is left for later.
+- Kiosks from before channels (v1.7.3 and older) read `X.Y.Z-beta.N` as
+  a normal newer release, so the first beta waits until every kiosk runs
+  a build with channel support, and a beta is never published without
+  the Pre-release tick (`docs/RELEASING.md`).
+- Founder decisions on the PR (2026-11-16): promotion is the one-line
+  `version.ts` PR, then the tag; and the tag must match `version.ts`
+  exactly, a manual checklist step for now.
 - Rolling back to a build from before channels, then saving any setting
   there, drops the `update` key (older schemas strip keys they don't
   know), so the kiosk returns to the env value or stable. Set the

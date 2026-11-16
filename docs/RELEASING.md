@@ -62,14 +62,28 @@ for the **owner**, not for developers:
 4. **Privacy gate.** If the release changes what leaves the kiosk (a new
    host, new data sent to an existing host), it waits until the Crucible
    privacy policy says so. Brief 01's weather lookup was the first case.
-5. **Tag and publish** (below).
-6. **Kiosk check.** Update the reference kiosk and check the change on
+5. **Tag matches the version.** Before publishing, check that the tag
+   you are about to type is `shared/version.ts` on the target commit with
+   a `v` in front, character for character: `vX.Y.Z` ↔ `X.Y.Z`,
+   `vX.Y.Z-beta.N` ↔ `X.Y.Z-beta.N`. Nothing checks this automatically
+   yet, and a mismatch makes kiosks re-offer the same release every day.
+6. **Tag and publish** (below).
+7. **Kiosk check.** Update the reference kiosk and check the change on
    it, plus every merged item in `TASKS.md` still marked as waiting on a
    kiosk verification. Tick those items once seen.
 
 ## Publishing a beta (prerelease)
 
-1. Steps 1–4 of the checklist, with `APP_VERSION` = `X.Y.Z-beta.N`.
+> **Before the first beta:** kiosks on v1.7.3 or older don't understand
+> prerelease versions. Their version compare splits on dots, so they read
+> `1.8.0-beta.1` as an ordinary release newer than `1.7.3`. They only ask
+> GitHub for the latest *non-prerelease*, so the Pre-release tick is what
+> keeps a beta away from them. Publish the first beta only **after every
+> kiosk runs a release that includes channel support** (decision 0022),
+> and always tick **Set as a pre-release**: a beta published without the
+> tick is offered to, and installed by, every older stable kiosk.
+
+1. Steps 1–5 of the checklist, with `APP_VERSION` = `X.Y.Z-beta.N`.
 2. GitHub → Releases → **Draft a new release**.
 3. **Choose a tag** → type `vX.Y.Z-beta.N` → **Create new tag on
    publish**, target `main` (the commit with the version bump).
@@ -82,9 +96,10 @@ for the **owner**, not for developers:
    Updates** offers `X.Y.Z-beta.N`; a stable kiosk does not.
 
 A tag `vX.Y.Z-beta.N` published **without** the pre-release tick becomes
-GitHub's "latest release". Stable kiosks refuse a beta tag and log it,
-so they get **no** update at all until it is fixed: edit the release and
-tick **Set as a pre-release** straight away.
+GitHub's "latest release". Stable kiosks with channel support refuse a
+beta tag and log it, so they get **no** update until it is fixed; older
+kiosks install it (see the warning above). Edit the release and tick
+**Set as a pre-release** straight away.
 
 ## Promoting a beta to stable
 
@@ -93,7 +108,7 @@ When the beta has run on the beta kiosk without problems:
 1. A PR to `main` that changes only `shared/version.ts` from
    `X.Y.Z-beta.N` to `X.Y.Z`. No other changes, so stable gets exactly
    what beta tested.
-2. Checklist steps 2–4.
+2. Checklist steps 2–5.
 3. Draft a new release with tag `vX.Y.Z` on that commit, title `vX.Y.Z`,
    the owner-facing notes (no beta sentence), **Set as the latest
    release** ticked and **pre-release unticked**. Publish.
