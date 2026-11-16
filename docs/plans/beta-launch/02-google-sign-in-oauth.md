@@ -1,6 +1,6 @@
 # 02 — Google sign-in with OAuth (tokens stay on the unit)
 
-**Status:** Flow B built 2026-11-16 in PR #38 (soft flag, awaiting the founder). The founder chose option B the same day: the client id and secret ship on each unit in `data/google-oauth-client.json`, never in the repo (decision 0017). Flow A (device flow) waits on brief 00 §3.1, as a follow-up session.
+**Status:** Flow B merged 2026-11-16 as #38 (soft flag, founder-approved); not yet in a release, and the kiosk checks in #38 follow the next release once `data/google-oauth-client.json` is on the kiosk. The founder chose option B the same day: the client id and secret ship on each unit in `data/google-oauth-client.json`, never in the repo (decision 0017). Flow A (device flow) waits on brief 00 §3.1, as a follow-up session.
 **Type:** Server auth refactor + client dialog. One to two sessions.
 **Depends on:** 00 §3.0 only: a consent screen in Testing and a Desktop
 OAuth client, about 30 minutes of founder work. Flow B is the whole
