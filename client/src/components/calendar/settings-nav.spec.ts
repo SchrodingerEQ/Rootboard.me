@@ -13,7 +13,7 @@ const NONE: SettingsProblems = {
   themeErrors: 0,
   widgetFolderErrors: 0,
   communityWidgetProblems: 0,
-  serviceAccountMissing: false,
+  googleNeedsSetup: false,
   weatherFailing: false,
 };
 
@@ -49,7 +49,7 @@ describe("categoryHasWarning", () => {
     [{ themeErrors: 1 }, "display"],
     [{ widgetFolderErrors: 2 }, "widgets"],
     [{ communityWidgetProblems: 1 }, "widgets"],
-    [{ serviceAccountMissing: true }, "calendars"],
+    [{ googleNeedsSetup: true }, "calendars"],
     [{ weatherFailing: true }, "system"],
   ];
 

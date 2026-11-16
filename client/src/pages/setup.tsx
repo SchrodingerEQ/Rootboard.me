@@ -167,10 +167,36 @@ export default function SetupPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="h-5 w-5 text-amber-600" />
-              Step 3: Connect Google Calendar (Service Account)
+              Step 3: Connect your Google account (on the kiosk)
             </CardTitle>
             <CardDescription>
-              Create a Google service account so the kiosk can read your calendars without a browser sign-in
+              Sign in on the touchscreen, the way you add an account to a phone
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-900">
+              <strong>Self-hosting?</strong> The kiosk first needs a Google sign-in client: in the Google Cloud Console, enable the Calendar API, set up the OAuth consent screen (External, Testing, scopes <code className="bg-amber-100 px-1 rounded">calendar.events</code> and <code className="bg-amber-100 px-1 rounded">calendar.readonly</code>, yourself as a test user), create an OAuth client of type <strong>Desktop app</strong>, download its JSON and save it on the kiosk as <code className="bg-amber-100 px-1 rounded">data/google-oauth-client.json</code>. It is never in the app's repository. INSTALLATION.md step 7.1 has the details. A Rootboard you received already has it.
+            </div>
+            <ol className="list-decimal list-inside space-y-3 text-gray-700">
+              <li>Once the app is running (Step 4), the <strong>Google Calendar Not Connected</strong> dialog opens. You can also open it from Settings → Calendars.</li>
+              <li>Tap <strong>Connect Google</strong>. Google's sign-in page opens on the kiosk.</li>
+              <li>Pick or sign in to the Google account whose calendars the kiosk should show, and allow access to its calendars and events.</li>
+              <li>Google sends you back to the dashboard. Choose which calendars to show and tap <strong>Done</strong>. Calendars family members share with that account are in the list too.</li>
+            </ol>
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
+              The sign-in is kept only on this kiosk (<code className="bg-blue-100 px-1 rounded">data/google-oauth.json</code>). Sign out from Settings → Calendars, or remove the kiosk's access from your Google account's security page. Rootboard's on-screen keyboard doesn't appear on Google's pages: if Google asks you to type an address or password, plug in a USB keyboard.
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Key className="h-5 w-5 text-amber-600" />
+              Advanced: Connect with a Google service account instead
+            </CardTitle>
+            <CardDescription>
+              For self-hosters: create a Google service account so the kiosk can read your calendars without a browser sign-in. Skip this if you connected your Google account above.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

@@ -40,9 +40,25 @@ function updateRow(b: DiagnosticsBundle, now: Date): DiagnosticsRow {
   return { label: "Updates", value: `Up to date (checked ${when})`, warn: false };
 }
 
+/** The unit's Google sign-in client: present or not, and its project number only. */
+function googleClientRow(b: DiagnosticsBundle): DiagnosticsRow {
+  const client = b.auth.oauthClient;
+  if (!client) return { label: "Google sign-in client", value: "unknown", warn: false };
+  if (client.status === "configured") {
+    const project = client.projectNumber ? `, project ${client.projectNumber}` : "";
+    return { label: "Google sign-in client", value: `configured: yes${project}`, warn: false };
+  }
+  // A service-account unit doesn't need one.
+  const warn = b.auth.mode !== "service-account";
+  return { label: "Google sign-in client", value: client.status === "missing" ? "missing" : "invalid file", warn };
+}
+
 function googleRow(b: DiagnosticsBundle): DiagnosticsRow {
-  if (b.auth.mode === "none") return { label: "Google Calendar", value: "Not set up (no key file)", warn: true };
-  if (b.auth.connected) return { label: "Google Calendar", value: "Connected (service account)", warn: false };
+  if (b.auth.mode === "none") return { label: "Google Calendar", value: "Not connected (no Google sign-in or key file)", warn: true };
+  if (b.auth.connected) {
+    const how = b.auth.mode === "oauth" ? "signed in with Google" : "service account";
+    return { label: "Google Calendar", value: `Connected (${how})`, warn: false };
+  }
   return { label: "Google Calendar", value: `Not connected: ${b.auth.error ?? "starting up"}`, warn: true };
 }
 
@@ -103,6 +119,7 @@ export function diagnosticsRows(b: DiagnosticsBundle, now: Date): DiagnosticsRow
     { label: "Supervisor", value: b.supervised ? "Yes (restarts itself after updates)" : "No (restart by hand after updates)", warn: !b.supervised },
     updateRow(b, now),
     googleRow(b),
+    googleClientRow(b),
     syncRow(b, now),
     weatherRow(b, now),
     networkRow(b),

@@ -62,6 +62,28 @@ describe("dashboardConfigSchema", () => {
   });
 });
 
+describe("a v1.7.3 dashboard.json (brief 02 data-shape check)", () => {
+  // The calendar choice after Google sign-in writes the calendar widget's
+  // existing `hiddenCalendars` setting, so no new key: a file written by
+  // v1.7.3 (no weather/setup/update keys) still loads unchanged.
+  const v173 = {
+    configVersion: 1,
+    defaultWidget: "calendar",
+    theme: "deep-space",
+    widgets: [
+      { id: "calendar", enabled: true, settings: { hiddenCalendars: ["holidays@example.test"], disabledCalendars: [] } },
+      { id: "chores", enabled: true, settings: {} },
+      { id: "dinner", enabled: false, settings: {} },
+      { id: "what-to-wear", enabled: true, settings: {} },
+    ],
+  };
+
+  test("parses with every key and setting kept", () => {
+    const parsed = dashboardConfigSchema.parse(v173);
+    expect(parsed).toEqual(v173);
+  });
+});
+
 describe("defaultDashboardConfig", () => {
   test("round-trips through its own schema", () => {
     const result = dashboardConfigSchema.safeParse(defaultDashboardConfig());

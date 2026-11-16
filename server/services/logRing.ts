@@ -19,6 +19,9 @@ const MAX_LINE_LENGTH = 500;
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g;
 const BEARER_RE = /Bearer\s+\S+/gi;
 const PAIRING_TOKEN_RE = new RegExp(`${TOKEN_PREFIX}[A-Za-z0-9_-]+`, "g");
+// Google OAuth access tokens (ya29.…) and refresh tokens (1//…). Nothing logs
+// them on purpose (brief 02); this catches a library error that quotes one.
+const GOOGLE_TOKEN_RE = /\b(?:ya29\.[A-Za-z0-9._-]+|1\/\/[A-Za-z0-9._-]{10,})/g;
 // "<time> [express] GET /api/x 200 in 3ms :: {...body}"
 const REQUEST_LINE_RE = /^(.*\[express\] [A-Z]+ \/\S* (\d{3}) in \d+ms)(?: :: .*)?$/;
 
@@ -44,6 +47,7 @@ export function scrubSecrets(text: string): string {
   return text
     .replace(BEARER_RE, "Bearer [token]")
     .replace(PAIRING_TOKEN_RE, "[token]")
+    .replace(GOOGLE_TOKEN_RE, "[token]")
     .replace(EMAIL_RE, "[email]");
 }
 

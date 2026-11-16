@@ -5,6 +5,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 ## Features
 
 - **Google Calendar Sync** — Real-time integration with the Google Calendar API
+- **Sign in on the kiosk** — Connect your own Google account from the touchscreen; the tokens are stored only on the device (a service-account key file remains an option for self-hosters)
 - **Touch-Optimized UI** — Day, week, and month views with touch-friendly navigation
 - **Multi-Calendar Support** — Toggle individual calendars on or off
 - **Power-Saving Mode** — Auto-dims after 5 minutes of inactivity, wakes on any touch
@@ -19,7 +20,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 - **Frontend**: React 18 + TypeScript + Vite, Tailwind CSS, Radix UI / shadcn
 - **Backend**: Node.js + Express + TypeScript
 - **Database**: SQLite (`calendar.db`, on the device)
-- **Auth**: Google Service Account (JSON key file)
+- **Auth**: Google sign-in on the kiosk (OAuth 2.0 + PKCE, tokens stored on the device), or a Google service account (JSON key file)
 
 ## Quick Start
 
@@ -34,15 +35,11 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
    npm install
    ```
 
-3. **Configure the Google service account**
+3. **Connect Google**
 
-   Copy the example environment file and point it at your service-account JSON key:
-   ```bash
-   cp .env.example .env
-   nano .env
-   ```
+   Self-hosting needs your own Google sign-in client first: create a free "Desktop app" OAuth client in Google Cloud and save its downloaded JSON as `data/google-oauth-client.json` (it is never in this repository; INSTALLATION.md step 7.1). Then start the app (step 4) and tap **Connect Google** in the dialog that opens: sign in with the Google account whose calendars you want and choose which to show. The tokens are kept in `data/google-oauth.json` on the device. Sign-in must be started from the browser on the same machine as the server (it uses a loopback redirect to `127.0.0.1:5000`). See **[INSTALLATION.md](INSTALLATION.md)** step 7.
 
-   You will need a Google Cloud project with the Calendar API enabled and a **service account** with a JSON key file. Drop the key at `./service-account.json` (or set `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` to its path), then share each calendar you want displayed with the service account's `client_email`. The app contains a complete step-by-step setup guide — start the app and visit `http://localhost:5000/setup`, or see **[INSTALLATION.md](INSTALLATION.md)** Step 7 for detailed instructions.
+   **Advanced: service account.** To use a key file instead, copy `.env.example` to `.env`, drop the key at `./service-account.json` (or set `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` to its path), and share each calendar with the service account's `client_email`. The in-app guide at `http://localhost:5000/setup` and INSTALLATION.md Appendix A have the full steps.
 
 4. **Run in development mode**
    ```bash
@@ -68,7 +65,7 @@ The same guide is also available in-app at the `/setup` route once the server is
 - Connecting and calibrating the touchscreen
 - Installing Node.js and dependencies
 - Transferring the app to the Pi (USB, direct download, git clone, or SCP)
-- Creating a Google service account and sharing calendars with it
+- Connecting your Google account on the kiosk (or, for self-hosters, a Google service account)
 - Setting up Chromium kiosk mode with auto-start on boot
 - Updating to new versions and rolling back
 - Common troubleshooting

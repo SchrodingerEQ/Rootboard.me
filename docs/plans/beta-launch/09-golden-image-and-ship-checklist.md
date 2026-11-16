@@ -2,7 +2,7 @@
 
 **Status:** Not started.
 **Type:** Process + docs, with one hardware build. Last brief before the unit ships.
-**Depends on:** 03, 05, 06, 07, 08 merged and released; 02 verified on the kiosk; 00 §3.2 step 3 done (consent screen In production, with the production client id in `shared/google-oauth-client.ts`); 04 if the service is live.
+**Depends on:** 03, 05, 06, 07, 08 merged and released; 02 verified on the kiosk; 00 §3.2 step 3 done (consent screen In production, with the production client's JSON ready to go on the card as `data/google-oauth-client.json`, decision 0017); 04 if the service is live.
 **Unblocks:** shipping.
 **Closes in `TASKS.md`:** the beta sub-item 09.
 
@@ -19,8 +19,8 @@ reads. Nothing on the card may come from the reference kiosk's data.
 | # | Decision | Choice |
 |---|---|---|
 | 1 | Build method | Fresh Raspberry Pi OS (64-bit, desktop) flashed with Raspberry Pi Imager; **no** Wi-Fi prefilled (the wizard does it); hostname `rootboard`; SSH enabled with the per-unit password from the card; locale and keyboard set to the owner's country; time zone left for the wizard. Then `sudo bash scripts/provision.sh --channel <stable|beta>` from brief 06. Never clone the reference kiosk's card. |
-| 2 | What must be absent | `service-account.json`, `.env` weather keys, `calendar.db*`, `data/` (except the default `dashboard.json` the app writes itself), `/widgets/`, `.update-backups/`, the reference kiosk's Firefox profile, any journal from the build session (`journalctl --rotate && --vacuum-time=1s` before the final shutdown). A `scripts/image-check.sh` asserts each of these and prints a signed-off list; brief 06's provision script gains this as `--final-check`. |
-| 3 | What must be present | Current release on the chosen channel built and health-checked; polkit rule; wifi-selfheal timer; persistent journald; power-save off; Firefox zoom prefs and touch `mouseEmulation="no"`; Avahi; the wizard armed (`setup.completedAt` absent); and a shipping release whose `npm audit` was reviewed per `docs/RELEASING.md` (brief 08), with the pending dependency-only release from `TASKS.md` shipped before it. |
+| 2 | What must be absent | `service-account.json`, `.env` weather keys, `calendar.db*`, `data/` (except the default `dashboard.json` the app writes itself and `data/google-oauth-client.json`, which decision 3 requires), `/widgets/`, `.update-backups/`, the reference kiosk's Firefox profile, any journal from the build session (`journalctl --rotate && --vacuum-time=1s` before the final shutdown). A `scripts/image-check.sh` asserts each of these and prints a signed-off list; brief 06's provision script gains this as `--final-check`. |
+| 3 | What must be present | Current release on the chosen channel built and health-checked; polkit rule; wifi-selfheal timer; persistent journald; power-save off; Firefox zoom prefs and touch `mouseEmulation="no"`; Avahi; the wizard armed (`setup.completedAt` absent); and a shipping release whose `npm audit` was reviewed per `docs/RELEASING.md` (brief 08), with the pending dependency-only release from `TASKS.md` shipped before it. `data/google-oauth-client.json` present and valid (decision 0017: the Google sign-in client ships on the card, never in the repo). |
 | 4 | Install guide | Step 10's Firefox rewrite moved to brief 06 on 2026-11-14 (06 builds it from the reference kiosk's files). Here: check the whole guide matches what the image build actually did, that §12's Wi-Fi hardening is described as part of the provision script (brief 06), and that the manual Google Cloud steps sit in an "Advanced" appendix (brief 02). `client/src/pages/setup.tsx` mirrors the result. |
 | 5 | Recipient card | One page, printed, in the box. Front: what Rootboard does and does not do (no accounts, no tracking, calendar data stays between the unit and Google), the three things to do (plug in; follow the screen; connect Google), and "Send feedback is in Settings — please use it for everything". Back: the unit's SSH user and password, the name `rootboard.local`, "if the screen says no network…" (including the one-line mesh-router note from `INSTALLATION.md` §12.5), "if the screen is black…", and the line "Your AI agent can read AGENTS.md at <project repo URL> to help with anything else." Source lives at `docs/recipient-card.md` with generic placeholders; the printed copy has the real password written in by hand, never typed into the repo. |
 | 6 | Beta agreement | Plain words, half a page, in the box and shown once by the wizard's Welcome step as a "This is a beta" note with Continue: it is a beta; what feedback contains and that it is reviewed by the project; that nothing else leaves the unit; how to turn it off (unplug). No legalese. Text in `docs/beta-note.md`. |
@@ -30,6 +30,11 @@ reads. Nothing on the card may come from the reference kiosk's data.
 ## 3. Work
 
 1. `scripts/image-check.sh` and the `--final-check` hook.
+   Planned checks include: `data/` holds nothing but the default
+   `dashboard.json` and `data/google-oauth-client.json` (decision 2's
+   absent list); that client file parses as a Google "installed" client
+   (decision 3, decision 0017); and no `GOCSPX-` string appears anywhere
+   on the card outside that file.
 2. `INSTALLATION.md` rewrite per decision 4; `setup.tsx` sync; `README.md`
    features list updated for OAuth, wizard, feedback, channels.
 3. `docs/recipient-card.md`, `docs/beta-note.md`.

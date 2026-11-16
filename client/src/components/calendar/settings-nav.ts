@@ -27,7 +27,7 @@ export interface SettingsCategory {
 
 export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   { id: "display", label: "Display", summary: "Theme picker, theme errors", icon: Palette },
-  { id: "calendars", label: "Calendars", summary: "Share email, show/hide, remove, add by ID", icon: Calendar },
+  { id: "calendars", label: "Calendars", summary: "Google account, show/hide, add by ID", icon: Calendar },
   { id: "widgets", label: "Widgets", summary: "Built-in layout + settings, community, folder errors", icon: LayoutGrid },
   { id: "keyboard", label: "Keyboard", summary: "On-screen keyboard: Auto/Always/Off", icon: Keyboard },
   { id: "system", label: "System", summary: "Updates, setup, weather, diagnostics, pair a device", icon: RefreshCw },
@@ -57,8 +57,9 @@ export interface SettingsProblems {
   widgetFolderErrors: number;
   /** Community widgets whose status is "crashed" or "error". */
   communityWidgetProblems: number;
-  /** The Google service-account key file is missing (calendar setup needed). */
-  serviceAccountMissing: boolean;
+  /** Google is not connected: no sign-in and no service-account key, or
+   *  Google refused the saved sign-in (brief 02). */
+  googleNeedsSetup: boolean;
   /** The server's latest Open-Meteo fetch failed (weather-status.ts). */
   weatherFailing: boolean;
 }
@@ -70,7 +71,7 @@ export function categoryHasWarning(id: SettingsView, p: SettingsProblems): boole
     case "widgets":
       return p.widgetFolderErrors > 0 || p.communityWidgetProblems > 0;
     case "calendars":
-      return p.serviceAccountMissing;
+      return p.googleNeedsSetup;
     case "system":
       return p.weatherFailing;
     default:
