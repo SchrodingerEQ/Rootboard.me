@@ -66,3 +66,15 @@ events.
   without a restart. A damaged file fails closed.
 - The pairing code, the token and the diagnostics body are kept out of
   the request log.
+
+## Update 2026-11-16 (founder)
+
+- `POST /api/pair` stays open without a token, as built: it is the one
+  call an unpaired device must be able to make, and it succeeds only with
+  the 6-digit code on the kiosk's screen (issued kiosk-only, 5-minute
+  expiry, invalid after 5 wrong tries, single use). Founder confirmed.
+- Browsers on other devices: the web client never sends a token, so a
+  phone or laptop that opens the kiosk's page gets a 401 on every API
+  call; pairing serves scripts and agents. The founder confirmed that no
+  one opens Rootboard from another device, so nothing in use breaks.
+  Browser pairing is recorded as a deferred item in `TASKS.md`.
