@@ -5,6 +5,11 @@ Re-checked 2026-11-14: dependencies loosened so most briefs can run
 before brief 00's founder work, backlog items folded into the briefs
 that touch the same code, brief 04 aligned with the feedback contract,
 and decision numbers reserved (see "Running briefs in parallel").
+**Progress 2026-11-16:** merged — the pre-beta cleanup (all but one list
+entry), 01, 02 flow B, 03 session 1, 05 and 08; none of it is in a release
+yet. Next: the release that ships the wizard and Google sign-in, then the
+kiosk checks (`TASKS.md`, top of the beta list). After that: 03 session 2,
+06, 07; 04 is blocked on the feedback service; 09 is last.
 **Goal:** Put one Rootboard unit in the hands of a first external beta tester
 by mid-December 2026, with a pre-flashed card, a finger-only first-run
 setup, Google Calendar access that the developer can never see, an
