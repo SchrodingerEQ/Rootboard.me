@@ -1,6 +1,6 @@
 # Pre-beta cleanup — dependencies, a real linter, two small bugs
 
-**Status:** In progress (started 2026-11-14): step 1 merged (#27); step 3 (ESLint) merged (#29), taken ahead of step 2 so other briefs got a real lint step sooner; step 2 merged (#30); step 4a merged (#31); step 4b merged (#33); step 6 (CLAUDE.md pointer) taken before step 5, because step 5 is a soft flag that waits for the founder.
+**Status:** In progress (started 2026-11-14): step 1 merged (#27); step 3 (ESLint) merged (#29), taken ahead of step 2 so other briefs got a real lint step sooner; step 2 merged (#30); step 4a merged (#31); step 4b merged (#33); step 6 merged (#34), taken before step 5 because step 5 is a soft flag. Left: step 5's README line (its PR waits for the founder) and its awesome-rootboard entry (not done: no push access to that repo from the session).
 **Type:** One session, a short series of small PRs (one thing each, per
 `CODING-STANDARDS.md` kernel 3), in the order below. Each is safe zone
 unless its review says otherwise; merge each on green before starting

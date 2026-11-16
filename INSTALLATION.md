@@ -651,7 +651,16 @@ Add that address to the exclusion list in the router's admin interface. Afterwar
 - A backup of the previous version is taken before every update. **Settings → Roll Back** restores it.
 
 ### Manual check
-**Settings → Check for Updates** anytime.
+**Settings → System → Check for Updates** anytime.
+
+### Stable or beta
+**Settings → System → Updates → Release channel** picks which releases this kiosk gets:
+- **Stable** (default): normal releases only.
+- **Beta**: also gets pre-releases, a few days before stable. They may have rough edges.
+
+The choice is saved in `data/config/dashboard.json`, so it survives updates. To preset it on a new install, put `UPDATE_CHANNEL=beta` in `.env` (the Settings choice wins once made).
+
+Switching from Beta back to Stable does not downgrade: a kiosk running a beta keeps it until a newer stable release comes out. To go back sooner, use **Roll Back** (it restores the version from before the last update).
 
 ### Manual update from the terminal (Git clone option)
 ```bash

@@ -519,6 +519,9 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     if (req.body?.setup !== undefined && parsed.data.setup === undefined) {
       return res.status(400).json({ message: "Invalid setup record" });
     }
+    if (req.body?.update !== undefined && parsed.data.update === undefined) {
+      return res.status(400).json({ message: "Invalid update channel" });
+    }
     try {
       writeDashboardConfig(parsed.data);
       res.json({ success: true });

@@ -85,8 +85,8 @@ even with a token.
 | GET | `/api/calendar/sync-status` | `{lastSyncAt,lastSyncError,syncing}`, no-store | LAN token |
 | GET | `/api/calendar/service-account-email` | Service account `client_email` | LAN token |
 | GET | `/api/calendar/auth-status` | `{authenticated,needsAuth,error}`, no-store | LAN token |
-| GET | `/api/update/check` | Compare `APP_VERSION` vs latest GitHub release | LAN token |
-| GET | `/api/update/status` | In-memory update progress | LAN token |
+| GET | `/api/update/check` | Compare `APP_VERSION` vs the newest release on this kiosk's channel (§4.1); includes `channel` | LAN token |
+| GET | `/api/update/status` | In-memory update progress plus the effective `channel` | LAN token |
 | POST | `/api/update/apply` | Trigger update (fire-and-forget) | **kiosk only** |
 | POST | `/api/update/rollback` | Trigger rollback (fire-and-forget) | **kiosk only** |
 | GET | `/api/update/backups` | List backups | LAN token |
@@ -130,7 +130,9 @@ even with a token.
   the widget host's per-widget storage namespace, §3.1); unknown key →
   400; serialized value > 64,000 chars → 413-style rejection. Dashboard
   config PUT validates the whole document against the same schema used
-  to read it; an invalid body → 400 with flattened Zod errors.
+  to read it; an invalid body → 400 with flattened Zod errors. Because
+  `weather` and `update` are lenient, a PUT carrying a malformed value
+  for either is refused with 400 rather than silently erasing it.
 - **Apply/rollback respond `{status:"in-progress"}` immediately**; progress
   is observable only by polling `GET /api/update/status`.
 - **Widget discovery** (`server/services/widgetDiscovery.ts`):
@@ -265,6 +267,7 @@ retries upstream when a client asks, so this is also the retry cadence.
 | `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | `./service-account.json` |
 | `DATABASE_URL` | no longer used; if set, a startup log line says it is ignored (see 2.4) |
 | `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | `SchrodingerEQ` / `Rootboard.me` |
+| `UPDATE_CHANNEL` | `stable` or `beta`; fallback only when `dashboard.json` has no `update` key (§4.1); anything else logs a warning and means `stable` |
 | `MANAGED_BY_SUPERVISOR` / `SUPERVISED` | `1` → self-restart after update allowed |
 | `PM2_HOME`, `INVOCATION_ID` | presence implies supervised (pm2/systemd) |
 | `WEATHER_*` | fallback only when `dashboard.json` has no `weather` key — see 2.5; deprecated for kiosks (use Settings → System → Weather), still fine for hosted use |
@@ -737,6 +740,17 @@ once. With a place saved, the unit toggle saves immediately. The status
 lines (last update, last error) sit under it once weather is configured.
 Clearing a saved location is not offered yet (hand-edit the file).
 
+System → **Updates** (`update-channel-settings.tsx`, decision 0022):
+Check for Updates and Roll Back, then a **Release channel** Stable/Beta
+toggle with "Beta gets fixes a few days earlier and may have rough
+edges." A tap saves `dashboard.json` `update: {channel}` through the
+shell's read-merge-PUT and re-reads `/api/update/status`. With no saved
+value the toggle shows the server's effective channel (env, else
+stable); while that is still unknown, neither option is shown as
+selected. After saving, the client re-checks for updates, and a check
+that finds none closes any earlier offer. On Stable while running a
+prerelease build, a line says the kiosk stays on that beta until a newer stable release comes out.
+
 System → **Diagnostics** (`system-diagnostics.tsx`, rows from
 `lib/diagnostics-rows.ts`): fetches the *redacted* bundle (2.7) each time
 it opens and shows it as label/value rows, with a warning mark on the
@@ -1080,9 +1094,27 @@ is a placeholder until brief 02 (session 2).
 ### 4.1 Cadence
 
 The **client** drives the daily check: `use-version-check.ts` aligns to a
-next-check time, then checks every 24 h via `GET /api/update/check`. The
-server compares `APP_VERSION` to the latest GitHub release tag (leading
-`v` stripped; numeric dotted-segment comparison, missing segments = 0).
+next-check time, then checks every 24 h via `GET /api/update/check`.
+
+**Channels** (decision 0022). The server resolves the channel on every
+check: `dashboard.json` `update.channel` → `UPDATE_CHANNEL` env →
+`stable`.
+
+- `stable` reads `releases/latest` (GitHub: newest non-prerelease,
+  non-draft) — the only behaviour before channels — and refuses (logs,
+  no update) a tag with a prerelease part or one that is not a version,
+  in case a beta was published without GitHub's Pre-release tick.
+- `beta` reads `releases?per_page=10`, skips drafts and tags that are not
+  versions, and takes the highest version, prereleases included.
+
+**Compare** (`shared/release-version.ts`): leading `v` stripped; 1–3
+numeric core segments (missing = 0) plus an optional `-` prerelease;
+semver prerelease order, so `1.7.3 < 1.8.0-beta.1 < 1.8.0-beta.2 <
+1.8.0`. An update is offered only when the release is strictly newer;
+an unreadable tag is never offered. A beta build on a kiosk switched to
+stable stays until stable is newer (no automatic downgrade). Applying an
+update re-runs the check, so it installs the same channel's release.
+Release steps: `docs/RELEASING.md`.
 
 ### 4.2 Apply flow (`server/services/updateService.ts`)
 
@@ -1143,9 +1175,9 @@ identifies the restored version, then `npm install` + `npm run build`
   ≤ 64,000 chars, written atomically as whole-blob upserts; server
   treats them as opaque.
 - `data/config/dashboard.json`: nav order/enabled-state/per-widget
-  settings, theme, and weather location source of truth. `theme` and
-  `weather` are lenient (a malformed value becomes undefined, never
-  invalidating the widget layout). Zod-validated on both read and write;
+  settings, theme, weather location and update channel source of truth.
+  `theme`, `weather` and `update` are lenient (a malformed value becomes
+  undefined, never invalidating the widget layout). Zod-validated on both read and write;
   writes are atomic (`.tmp` + rename); a missing, unparseable, or
   schema-invalid file degrades to `defaultDashboardConfig()` on read
   rather than ever failing to boot. Gitignored — never tracked, and on
@@ -1165,8 +1197,10 @@ identifies the restored version, then `npm install` + `npm run build`
   both updater preserve lists (`PRESERVE_PATHS` in `updateService.ts`,
   the `case` list in `start.sh`), so installed widgets survive
   auto-updates.
-- `APP_VERSION` (`shared/version.ts`) is the single version source; update
-  eligibility is `latest > current` numerically per dotted segment.
+- `APP_VERSION` (`shared/version.ts`) is the single version source and
+  matches the release tag without its `v` (`1.8.0-beta.1`); update
+  eligibility is `latest > current` by the prerelease-aware compare
+  (§4.1).
 
 ## 6. Known quirks index
 
