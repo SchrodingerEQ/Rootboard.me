@@ -1,6 +1,6 @@
 # 02 — Google sign-in with OAuth (tokens stay on the unit)
 
-**Status:** Not started.
+**Status:** Flow B built 2026-11-16 in PR #38 (soft flag, awaiting the founder). Merge is blocked on a founder decision: GitHub push protection refused the committed client id and secret, so the PR carries placeholders. Flow A (device flow) waits on brief 00 §3.1, as a follow-up session.
 **Type:** Server auth refactor + client dialog. One to two sessions.
 **Depends on:** 00 §3.0 only: a consent screen in Testing and a Desktop
 OAuth client, about 30 minutes of founder work. Flow B is the whole
