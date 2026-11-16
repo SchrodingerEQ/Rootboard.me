@@ -19,6 +19,8 @@ export interface IStorage {
 
   deleteCalendarEventsByCalendarNotIn(calendarId: string, googleEventIds: string[]): Promise<number>;
   deleteCalendarEventsEndedBefore(cutoff: Date): Promise<number>;
+  /** Empties the synced-event cache (Google sign-in and sign-out, brief 02). */
+  deleteAllCalendarEvents(): Promise<number>;
 
   getAppState(key: string): Promise<string | null>;
   setAppState(key: string, value: string): Promise<void>;

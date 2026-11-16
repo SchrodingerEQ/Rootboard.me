@@ -34,19 +34,12 @@ import { describeWeatherStatus, type WeatherStatus } from "@/lib/weather-status"
 import { BrightnessControl } from "./brightness-control";
 import { WeatherLocationSettings } from "./weather-location-settings";
 import { UpdateChannelSettings } from "./update-channel-settings";
+import { GoogleAccountSettings } from "./google-account-settings";
+import { getCalendarColor, type CalendarInfo } from "@/lib/calendar-meta";
+import { isOAuthMode, type GoogleAuthStatus } from "@/lib/google-sign-in";
 import type { WeatherLocation } from "@shared/dashboard-config";
 import type { UpdateChannel } from "@shared/release-version";
 import type { OskMode } from "@/lib/osk";
-
-interface CalendarInfo {
-  id: string;
-  summary: string;
-  primary: boolean;
-  backgroundColor?: string;
-  foregroundColor?: string;
-  selected: boolean;
-  accessRole: string;
-}
 
 /** One row of the layout picker's "Widgets" section — an installed
  *  (builtin-backed) widget, in `data/config/dashboard.json` order. Sourced
@@ -172,6 +165,9 @@ interface SettingsMenuProps {
    *  false only the rows that need Google (the calendar list, add by ID) are
    *  hidden. Defaults to true. */
   googleConnected?: boolean;
+  /** The full auth status (brief 02): which identity reads the calendars,
+   *  and the signed-in account. Absent → the service-account rows as before. */
+  googleAuth?: GoogleAuthStatus;
   /** Persisted calendar-widget setting `hiddenCalendars` (see
    *  client/src/widgets/calendar/shell-bridge.ts). A calendar is shown iff
    *  its id is NOT in here — a hidden-LIST, so a calendar the user has never
@@ -253,6 +249,7 @@ interface SettingsMenuProps {
 
 export function SettingsMenu({
   googleConnected = true,
+  googleAuth,
   hiddenCalendars,
   onCalendarToggle,
   setBrightness: externalSetBrightness,
@@ -449,26 +446,10 @@ export function SettingsMenu({
   };
 
 
-  const getCalendarColor = (calendar: CalendarInfo): string => {
-    if (calendar.backgroundColor) {
-      return calendar.backgroundColor;
-    }
-    
-    // Generate consistent color based on calendar ID
-    const colors = [
-      '#1a73e8', '#34a853', '#ea4335', '#ff9800', '#9c27b0', 
-      '#795548', '#607d8b', '#e91e63', '#4caf50', '#ff5722', 
-      '#3f51b5', '#009688'
-    ];
-    
-    let hash = 0;
-    for (let i = 0; i < calendar.id.length; i++) {
-      hash = ((hash << 5) - hash + calendar.id.charCodeAt(i)) & 0xffffffff;
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-  };
-
+  // Signed in with Google (brief 02): the calendar list is the owner's
+  // own, so the service-account rows (share email, remove, add by ID) don't
+  // apply. Their scopes can't change the owner's calendar list either.
+  const oauthMode = isOAuthMode(googleAuth);
 
   // Problems surfaced as warning dots on the main screen so they are never
   // hidden inside a closed category (see settings-nav.ts).
@@ -478,7 +459,7 @@ export function SettingsMenu({
     communityWidgetProblems: communityWidgetPickerEntries.filter(
       (e) => e.status === "crashed" || e.status === "error",
     ).length,
-    serviceAccountMissing: !!serviceAccountError,
+    googleNeedsSetup: oauthMode ? googleAuth?.authenticated === false : !!serviceAccountError,
     weatherFailing: weatherStatus?.failing ?? false,
   };
 
@@ -1021,7 +1002,12 @@ export function SettingsMenu({
                 <Calendar className="h-4 w-4" />
                 <Label className="text-sm font-medium">Calendar Visibility</Label>
               </div>
-              {serviceAccountError ? (
+              <GoogleAccountSettings status={googleAuth} />
+              {oauthMode ? null : googleAuth?.mode === "none" ? (
+                <Link href="/setup" onClick={() => setIsOpen(false)} className="block text-xs text-rb-muted underline">
+                  Advanced: use a service account instead (Setup Guide)
+                </Link>
+              ) : serviceAccountError ? (
                 <div className="rounded-md bg-rb-warn-wash border border-rb-warn-border px-3 py-2 flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 text-rb-warn flex-shrink-0 mt-0.5" />
                   <p className="text-xs text-rb-warn-ink leading-snug">
@@ -1048,7 +1034,7 @@ export function SettingsMenu({
                   </div>
                 </div>
               ) : null}
-              {!googleConnected && (
+              {!googleConnected && !oauthMode && googleAuth?.mode !== "none" && (
                 <p className="text-xs text-rb-muted leading-snug" data-testid="calendars-signed-out">
                   Google Calendar isn't connected, so there are no calendars to show. System → Diagnostics says why.
                 </p>
@@ -1078,6 +1064,7 @@ export function SettingsMenu({
                               onCalendarToggle(calendar.id, checked)
                             }
                           />
+                          {!oauthMode && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -1087,6 +1074,7 @@ export function SettingsMenu({
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
+                          )}
                         </div>
                       </div>
                     );
@@ -1098,8 +1086,14 @@ export function SettingsMenu({
               )}
             </div>
 
-            {/* Add Calendar by ID (needs Google) */}
-            {googleConnected && (
+            {oauthMode && googleConnected && (
+              <p className="text-xs text-rb-faint leading-snug" data-testid="calendars-oauth-hint">
+                Calendars shared with this Google account appear here on their own.
+              </p>
+            )}
+
+            {/* Add Calendar by ID (needs Google; service account only) */}
+            {googleConnected && !oauthMode && (
             <div className="space-y-1.5">
               {/* 44px-tall input/button: kiosk touch targets, and roomier when
                   the on-screen keyboard is driving this field. */}

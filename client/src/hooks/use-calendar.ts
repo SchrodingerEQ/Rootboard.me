@@ -6,12 +6,9 @@ import type { CalendarEvent } from "@shared/schema";
 import type { CalendarView } from "@/lib/app-types";
 import { useOnlineStatus } from "./useOnlineStatus";
 import { useScreensaverState } from "./useScreensaverState";
+import { shouldShowSyncedEvents, type GoogleAuthStatus } from "@/lib/google-sign-in";
 
-interface AuthStatus {
-  authenticated: boolean;
-  needsAuth: boolean;
-  error?: string | null;
-}
+type AuthStatus = GoogleAuthStatus;
 
 interface SyncStatus {
   lastSyncAt: string | null;
@@ -59,7 +56,8 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
     staleTime: 60 * 1000,
   });
 
-  // Fetch calendar events (enabled only when authenticated, paused during screensaver)
+  // Fetch calendar events (when connected, and after Google refuses the
+  // sign-in so the last synced events stay up; paused during screensaver)
   const {
     data: events = [],
     isLoading,
@@ -76,7 +74,7 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
       }
       return response.json();
     },
-    enabled: authStatus?.authenticated === true && shouldPerformQueries,
+    enabled: shouldShowSyncedEvents(authStatus) && shouldPerformQueries,
     retry: isOnline ? 3 : false,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
     refetchOnWindowFocus: false,
@@ -106,6 +104,12 @@ export function useCalendar(currentDate: Date, currentView: CalendarView) {
       queryClient.invalidateQueries({ 
         queryKey: ['/api/calendar/events'] 
       });
+    },
+    // A sync that failed because Google refused the sign-in flips the
+    // server's auth status; re-read it so the connect screen shows within
+    // this one sync instead of at the next auth-status poll (brief 02).
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/calendar/auth-status'] });
     },
   });
 

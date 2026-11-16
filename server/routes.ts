@@ -5,7 +5,7 @@ import fs from "fs";
 import { createServer, type Server } from "http";
 import { z } from "zod";
 import { storage } from "./storage";
-import { googleCalendarService } from "./services/googleCalendar";
+import { googleCalendarService, SIGNED_IN_LIST_MESSAGE } from "./services/googleCalendar";
 import { checkForUpdate, applyUpdate, rollback, getUpdateStatus, getAvailableBackups } from "./services/updateService";
 import { getWeather, getWeatherStatus } from "./services/weatherService";
 import { lookupPostalCode } from "./services/weatherLookup";
@@ -13,6 +13,8 @@ import { readDashboardConfig, writeDashboardConfig } from "./services/configServ
 import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscovery";
 import { networkService } from "./services/networkService";
 import { registerSystemRoutes } from "./system-routes";
+import { registerGoogleRoutes } from "./google-routes";
+import { googleOAuthService } from "./services/googleOAuth";
 import { pairingService as defaultPairingService, type PairingService } from "./services/pairingService";
 import { getDiagnostics } from "./services/diagnosticsService";
 import { createLanAuthGuard, isLocalRequest, sendPairingRequired } from "./middleware/lanAuth";
@@ -163,6 +165,9 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
       if (!calendarId) {
         return res.status(400).json({ message: "calendarId is required" });
       }
+      if (googleCalendarService.getAuthStatus().mode === "oauth") {
+        return res.status(409).json({ message: SIGNED_IN_LIST_MESSAGE });
+      }
       await googleCalendarService.unsubscribeFromCalendar(calendarId);
       // Purge all locally cached events for this calendar so they stop
       // appearing in views immediately, without waiting for the next sync.
@@ -245,7 +250,7 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
       res.status(201).json(entry);
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to subscribe to calendar";
-      const status = msg.startsWith('Already subscribed') ? 409
+      const status = (msg.startsWith('Already subscribed') || msg === SIGNED_IN_LIST_MESSAGE) ? 409
         : (msg.startsWith('Calendar not found') || msg.includes("doesn't have permission")) ? 400
         : 500;
       res.status(status).json({ message: msg });
@@ -305,12 +310,24 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
       'Pragma': 'no-cache',
       'Expires': '0',
     });
-    const connected = googleCalendarService.isConnected();
+    // `mode` and `email` added by brief 02; the first three keep their
+    // meaning for every existing caller.
+    const status = googleCalendarService.getAuthStatus();
     res.json({
-      authenticated: connected,
-      needsAuth: !connected,
-      error: connected ? null : googleCalendarService.getInitError(),
+      authenticated: status.authenticated,
+      needsAuth: !status.authenticated,
+      error: status.error,
+      mode: status.mode,
+      email: status.email,
     });
+  });
+
+  registerGoogleRoutes(app, {
+    oauth: googleOAuthService,
+    authStatus: () => googleCalendarService.getAuthStatus(),
+    beginAccountChange: () => googleCalendarService.beginAccountChange(),
+    clearSyncedEvents: () => storage.deleteAllCalendarEvents(),
+    isLocalRequest,
   });
 
   app.get("/api/update/check", async (req, res) => {

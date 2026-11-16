@@ -1,10 +1,48 @@
 import { google, type calendar_v3 } from 'googleapis';
-import { GoogleAuth } from 'google-auth-library';
+import { GoogleAuth, type OAuth2Client } from 'google-auth-library';
 import { existsSync, readFileSync } from 'fs';
 import { storage } from '../storage';
 import { normalizeGoogleEventTimes } from './googleEventTimes';
 import { logPrivate } from './logRing';
+import { googleOAuthService, isInvalidGrant, LOST_ACCESS_REASON, type GoogleOAuthService } from './googleOAuth';
+import { calendarFallbackColor } from '@shared/calendar-color';
 import type { CalendarEvent, InsertCalendarEvent } from '@shared/schema';
+
+/**
+ * Which identity reads the calendars (brief 02 decision 6). `oauth` whenever
+ * data/google-oauth.json exists, including after Google refused it (then
+ * `authenticated` is false and the connect screen shows why); otherwise the
+ * service account when its key loaded; otherwise `none`.
+ */
+export type GoogleAuthMode = 'oauth' | 'service-account' | 'none';
+
+export interface GoogleAuthStatus {
+  mode: GoogleAuthMode;
+  authenticated: boolean;
+  /** Why the current mode is not connected, or null. */
+  error: string | null;
+  /** The signed-in account, OAuth only (display only). */
+  email: string | null;
+}
+
+export const SIGNED_IN_LIST_MESSAGE =
+  'Signed in with Google: add or remove calendars in Google Calendar, and they appear here on their own.';
+
+/** Ends a sync that started under the previous Google account. */
+class AccountChangedError extends Error {
+  constructor() {
+    super('The Google account changed during the sync; it was stopped');
+    this.name = 'AccountChangedError';
+  }
+}
+
+/** Thrown in place of a Google call once the saved sign-in is lost. */
+export class GoogleAccessLostError extends Error {
+  constructor(message: string = LOST_ACCESS_REASON) {
+    super(message);
+    this.name = 'GoogleAccessLostError';
+  }
+}
 
 // The parts of a googleapis (gaxios) error this file reads. Every field is
 // optional because the status sits in different places across versions.
@@ -17,26 +55,73 @@ type GoogleApiError = {
 };
 
 export class GoogleCalendarService {
+  // The service-account client; see calendarClient() for the provider choice.
   private calendar: calendar_v3.Calendar | null;
+  private oauthCalendar: { client: OAuth2Client; calendar: calendar_v3.Calendar } | null = null;
   private isInitialized: boolean = false;
   private initError: string | null = null;
   private initPromise: Promise<void>;
   private syncInFlight: Promise<CalendarEvent[]> | null = null;
+  // Bumped when the Google account changes (sign-in, sign-out). A sync that
+  // started under the old identity stops before its next write, so it can't
+  // put the old account's events back after the cache is cleared.
+  private accountGeneration = 0;
   private lastSyncAt: Date | null = null;
   private lastSyncError: string | null = null;
 
-  constructor() {
+  constructor(
+    private readonly oauth: GoogleOAuthService = googleOAuthService,
+    /** Tests point the signed-in client at a mock Calendar API. */
+    private readonly oauthApiRootUrl?: string,
+  ) {
     this.calendar = null;
     this.initPromise = this.initialize();
   }
 
-  // `calendar` is non-null exactly when `isInitialized` is true; callers check
-  // that first, so this only narrows the type.
-  private requireClient(): calendar_v3.Calendar {
-    if (!this.calendar) {
+  /**
+   * The auth-provider seam (brief 02 §3): the signed-in owner's OAuth client
+   * when data/google-oauth.json exists, else the service account. Everything
+   * that talks to Google goes through here, so sync and the event writes
+   * work the same with either.
+   */
+  private async calendarClient(): Promise<calendar_v3.Calendar> {
+    await this.initPromise;
+    const oauth = this.oauth.status();
+    if (oauth.present) {
+      const client = oauth.connected ? this.oauth.getAuthClient() : null;
+      if (!client) throw new GoogleAccessLostError(oauth.lostReason ?? undefined);
+      if (this.oauthCalendar?.client !== client) {
+        const rootUrl = this.oauthApiRootUrl ? { rootUrl: this.oauthApiRootUrl } : {};
+        this.oauthCalendar = { client, calendar: google.calendar({ version: 'v3', auth: client, ...rootUrl }) };
+      }
+      return this.oauthCalendar.calendar;
+    }
+    if (!this.isInitialized || !this.calendar) {
       throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
     }
     return this.calendar;
+  }
+
+  /**
+   * One Google call. An `invalid_grant` (the owner revoked access, or a
+   * Testing-status token expired) drops the saved tokens once and becomes a
+   * GoogleAccessLostError; later calls fail fast without contacting Google
+   * until the owner connects again (brief 02 decision 8: no retry loops).
+   */
+  private async withCalendar<T>(call: (calendar: calendar_v3.Calendar) => Promise<T>): Promise<T> {
+    const calendar = await this.calendarClient();
+    try {
+      return await call(calendar);
+    } catch (error) {
+      const oauthCalendar = this.oauthCalendar;
+      if (oauthCalendar?.calendar === calendar && isInvalidGrant(error)) {
+        // Only the sign-in that failed: a newer one may have replaced it meanwhile.
+        this.oauth.markLost(oauthCalendar.client.credentials.refresh_token ?? null);
+        if (this.oauthCalendar === oauthCalendar) this.oauthCalendar = null;
+        throw new GoogleAccessLostError();
+      }
+      throw error;
+    }
   }
 
   private async initialize(): Promise<void> {
@@ -68,6 +153,9 @@ export class GoogleCalendarService {
       this.isInitialized = true;
       this.initError = null;
       console.log(`Service account auth initialized from: ${keyFile}`);
+      if (this.oauth.status().present) {
+        console.log('A Google sign-in (data/google-oauth.json) also exists; it is used instead of the service account');
+      }
     } catch (error) {
       this.calendar = null;
       this.isInitialized = false;
@@ -76,12 +164,43 @@ export class GoogleCalendarService {
     }
   }
 
-  isConnected(): boolean {
-    return this.isInitialized;
-  }
-
   getInitError(): string | null {
     return this.initError;
+  }
+
+  /**
+   * Call before the Google account changes and before clearing the event
+   * cache: stops a running sync at its next write and waits for it to end.
+   */
+  async beginAccountChange(): Promise<void> {
+    this.accountGeneration++;
+    this.oauthCalendar = null;
+    await this.syncInFlight?.catch(() => undefined);
+  }
+
+  /**
+   * Adding or removing a calendar changes the identity's calendar list. A
+   * service account's list is the kiosk's own; a signed-in owner's list is
+   * their Google account's, and the sign-in's scopes don't allow it anyway.
+   */
+  private refuseCalendarListChangeWhenSignedIn(): void {
+    if (this.oauth.status().present) throw new Error(SIGNED_IN_LIST_MESSAGE);
+  }
+
+  getAuthStatus(): GoogleAuthStatus {
+    const oauth = this.oauth.status();
+    if (oauth.present) {
+      return {
+        mode: 'oauth',
+        authenticated: oauth.connected,
+        error: oauth.connected ? null : (oauth.lostReason ?? LOST_ACCESS_REASON),
+        email: oauth.email,
+      };
+    }
+    if (this.isInitialized) {
+      return { mode: 'service-account', authenticated: true, error: null, email: null };
+    }
+    return { mode: 'none', authenticated: false, error: this.initError, email: null };
   }
 
   getServiceAccountEmail(): string | null {
@@ -104,12 +223,8 @@ export class GoogleCalendarService {
   }
 
   async getCalendarList(): Promise<calendar_v3.Schema$CalendarListEntry[]> {
-    await this.initPromise;
-    if (!this.isInitialized) {
-      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
-    }
     try {
-      const response = await this.requireClient().calendarList.list();
+      const response = await this.withCalendar((calendar) => calendar.calendarList.list());
       return response.data.items || [];
     } catch (error) {
       console.error('Failed to fetch calendar list:', error);
@@ -118,14 +233,11 @@ export class GoogleCalendarService {
   }
 
   async subscribeToCalendar(calendarId: string): Promise<calendar_v3.Schema$CalendarListEntry> {
-    await this.initPromise;
-    if (!this.isInitialized) {
-      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
-    }
+    this.refuseCalendarListChangeWhenSignedIn();
     try {
-      const response = await this.requireClient().calendarList.insert({
+      const response = await this.withCalendar((calendar) => calendar.calendarList.insert({
         requestBody: { id: calendarId.trim() },
-      });
+      }));
       return response.data;
     } catch (caught) {
       const error = caught as GoogleApiError | undefined;
@@ -145,12 +257,9 @@ export class GoogleCalendarService {
   }
 
   async unsubscribeFromCalendar(calendarId: string): Promise<void> {
-    await this.initPromise;
-    if (!this.isInitialized) {
-      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
-    }
+    this.refuseCalendarListChangeWhenSignedIn();
     try {
-      await this.requireClient().calendarList.delete({ calendarId });
+      await this.withCalendar((calendar) => calendar.calendarList.delete({ calendarId }));
     } catch (caught) {
       const error = caught as GoogleApiError | undefined;
       const status = error?.code ?? error?.status ?? error?.response?.status;
@@ -177,12 +286,11 @@ export class GoogleCalendarService {
   }
 
   private async runSync(startDate: Date, endDate: Date): Promise<CalendarEvent[]> {
+    const generation = this.accountGeneration;
+    const stopIfAccountChanged = () => {
+      if (generation !== this.accountGeneration) throw new AccountChangedError();
+    };
     try {
-      await this.initPromise;
-      if (!this.isInitialized) {
-        throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
-      }
-
       // Get all calendars first
       const calendars = await this.getCalendarList();
       const syncedEvents: CalendarEvent[] = [];
@@ -197,7 +305,7 @@ export class GoogleCalendarService {
 
           // Paginate through all events for this calendar
           do {
-            const response: { data: calendar_v3.Schema$Events } = await this.requireClient().events.list({
+            const response: { data: calendar_v3.Schema$Events } = await this.withCalendar((client) => client.events.list({
               calendarId,
               timeMin: startDate.toISOString(),
               timeMax: endDate.toISOString(),
@@ -205,8 +313,9 @@ export class GoogleCalendarService {
               orderBy: 'startTime',
               maxResults: 2500,
               pageToken: pageToken,
-            });
+            }));
 
+            stopIfAccountChanged();
             const googleEvents = response.data.items || [];
             totalEventsForCalendar += googleEvents.length;
 
@@ -226,6 +335,7 @@ export class GoogleCalendarService {
               };
 
               let event: CalendarEvent;
+              stopIfAccountChanged();
               if (existingEvent) {
                 event = await storage.updateCalendarEvent(existingEvent.id, eventData) || existingEvent;
               } else {
@@ -239,6 +349,7 @@ export class GoogleCalendarService {
           } while (pageToken);
 
           // Clean up events that were deleted/cancelled in Google Calendar
+          stopIfAccountChanged();
           const removedCount = await storage.deleteCalendarEventsByCalendarNotIn(calendarId, syncedGoogleIds);
           if (removedCount > 0) {
             console.log(`Removed ${removedCount} stale events from calendar: ${logPrivate(calendar.summary)}`);
@@ -246,6 +357,9 @@ export class GoogleCalendarService {
 
           console.log(`Synced ${totalEventsForCalendar} events from calendar: ${logPrivate(calendar.summary)}`);
         } catch (calendarError) {
+          // Losing the sign-in, or a new account, ends the whole sync; it is
+          // not one calendar's problem.
+          if (calendarError instanceof GoogleAccessLostError || calendarError instanceof AccountChangedError) throw calendarError;
           console.warn(`Failed to sync events from calendar ${logPrivate(calendar.summary)}:`, calendarError);
         }
       }
@@ -345,16 +459,11 @@ export class GoogleCalendarService {
     endTime: Date;
     isAllDay: boolean;
   }): Promise<CalendarEvent> {
-    await this.initPromise;
-    if (!this.isInitialized) {
-      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
-    }
-
     const body = this.buildGoogleEventBody(input);
-    const response = await this.requireClient().events.insert({
+    const response = await this.withCalendar((calendar) => calendar.events.insert({
       calendarId: input.calendarId,
       requestBody: body,
-    });
+    }));
     const googleEvent = response.data;
     const meta = await this.getCalendarMeta(input.calendarId);
     const times = this.parseGoogleEventTimes(googleEvent);
@@ -386,22 +495,18 @@ export class GoogleCalendarService {
       isAllDay: boolean;
     }
   ): Promise<CalendarEvent> {
-    await this.initPromise;
-    if (!this.isInitialized) {
-      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
-    }
-
+    await this.calendarClient();
     const existing = await storage.getCalendarEvent(localId);
     if (!existing) {
       throw new Error(`Event not found: ${localId}`);
     }
 
     const body = this.buildGoogleEventBody(input);
-    const response = await this.requireClient().events.patch({
+    const response = await this.withCalendar((calendar) => calendar.events.patch({
       calendarId: existing.calendarId,
       eventId: existing.googleEventId,
       requestBody: body,
-    });
+    }));
     const googleEvent = response.data;
     const times = this.parseGoogleEventTimes(googleEvent);
 
@@ -420,21 +525,17 @@ export class GoogleCalendarService {
   }
 
   async deleteEvent(localId: number): Promise<void> {
-    await this.initPromise;
-    if (!this.isInitialized) {
-      throw new Error(`Google Calendar service account not initialized: ${this.initError}`);
-    }
-
+    await this.calendarClient();
     const existing = await storage.getCalendarEvent(localId);
     if (!existing) {
       throw new Error(`Event not found: ${localId}`);
     }
 
     try {
-      await this.requireClient().events.delete({
+      await this.withCalendar((calendar) => calendar.events.delete({
         calendarId: existing.calendarId,
         eventId: existing.googleEventId,
-      });
+      }));
     } catch (caught) {
       // 410 Gone = already deleted upstream; still prune locally.
       const err = caught as GoogleApiError | undefined;
@@ -465,29 +566,7 @@ export class GoogleCalendarService {
   }
 
   private getCalendarColorById(calendarId: string): string {
-    // Generate a consistent color based on calendar ID
-    const colors = [
-      '#1a73e8', // Blue
-      '#34a853', // Green
-      '#ea4335', // Red
-      '#ff9800', // Orange
-      '#9c27b0', // Purple
-      '#795548', // Brown
-      '#607d8b', // Blue Grey
-      '#e91e63', // Pink
-      '#4caf50', // Light Green
-      '#ff5722', // Deep Orange
-      '#3f51b5', // Indigo
-      '#009688', // Teal
-    ];
-
-    // Create a simple hash from the calendar ID to get consistent colors
-    let hash = 0;
-    for (let i = 0; i < calendarId.length; i++) {
-      hash = ((hash << 5) - hash + calendarId.charCodeAt(i)) & 0xffffffff;
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
+    return calendarFallbackColor(calendarId);
   }
 }
 

@@ -41,8 +41,11 @@ function updateRow(b: DiagnosticsBundle, now: Date): DiagnosticsRow {
 }
 
 function googleRow(b: DiagnosticsBundle): DiagnosticsRow {
-  if (b.auth.mode === "none") return { label: "Google Calendar", value: "Not set up (no key file)", warn: true };
-  if (b.auth.connected) return { label: "Google Calendar", value: "Connected (service account)", warn: false };
+  if (b.auth.mode === "none") return { label: "Google Calendar", value: "Not connected (no Google sign-in or key file)", warn: true };
+  if (b.auth.connected) {
+    const how = b.auth.mode === "oauth" ? "signed in with Google" : "service account";
+    return { label: "Google Calendar", value: `Connected (${how})`, warn: false };
+  }
   return { label: "Google Calendar", value: `Not connected: ${b.auth.error ?? "starting up"}`, warn: true };
 }
 

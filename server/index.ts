@@ -26,6 +26,10 @@ const UNLOGGED_BODY_PATHS = new Set([
   "/api/system/network/scan",
   "/api/system/network/connect",
   "/api/system/network/forget",
+  // Brief 02: the sign-in URL, and the signed-in account's address.
+  "/api/google/start",
+  "/api/google/status",
+  "/api/calendar/auth-status",
 ]);
 
 app.use((req, res, next) => {

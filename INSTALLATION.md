@@ -14,7 +14,7 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
 4. [Connect and calibrate the touchscreen](#4-connect-and-calibrate-the-touchscreen)
 5. [Install Node.js and system dependencies](#5-install-nodejs-and-system-dependencies)
 6. [Get the calendar app onto the Pi](#6-get-the-calendar-app-onto-the-pi)
-7. [Create a Google service account](#7-create-a-google-service-account)
+7. [Connect your Google account (on the kiosk)](#7-connect-your-google-account-on-the-kiosk)
 8. [Configure the `.env` file](#8-configure-the-env-file)
 9. [Build and first run](#9-build-and-first-run)
 10. [Set up auto-start kiosk mode](#10-set-up-auto-start-kiosk-mode)
@@ -23,6 +23,8 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
 13. [Updating the app](#13-updating-the-app)
 14. [Troubleshooting](#14-troubleshooting)
 15. [Use the API from a laptop on your network (pairing)](#15-use-the-api-from-a-laptop-on-your-network-pairing)
+
+Appendix A. [Advanced: Google service account](#appendix-a--advanced-google-service-account)
 
 ---
 
@@ -44,7 +46,7 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
 ### Accounts and credentials
 
 - A Google account that owns the calendars you want to display.
-- A Google Cloud project with the **Google Calendar API** enabled and a **service account** key file (we'll create both in Step 7 — it's free).
+- Nothing else from Google: you sign in on the kiosk in step 7. (Self-hosters who prefer a key file can use a service account instead, [Appendix A](#appendix-a--advanced-google-service-account).)
 
 ---
 
@@ -238,58 +240,23 @@ npm install
 
 ---
 
-## 7. Create a Google service account
+## 7. Connect your Google account (on the kiosk)
 
-The kiosk talks to Google Calendar using a **service account** — a Google identity that belongs to the app itself. The Pi authenticates with a JSON key file, so there's no browser sign-in, no consent screen, and the kiosk never gets logged out. This takes about 5 minutes.
+There is nothing to prepare here. Once the app is running (step 9), you connect Google on the touchscreen, the way you add an account to a phone:
 
-### Part A — Create the Cloud project
-1. Go to <https://console.cloud.google.com/>.
-2. Click the project dropdown → **New Project**.
-3. Name it `Calendar Kiosk` and click **Create**.
-4. Make sure the new project is selected at the top of the page.
+1. The **Google Calendar Not Connected** dialog opens at first boot (it is also the setup wizard's Google step, and Settings → **Calendars** has the same button). Tap **Connect Google**.
+2. Google's sign-in page opens in the kiosk browser. Choose the Google account whose calendars the kiosk should show and allow access to its calendars and events.
+3. Google sends the browser back to the dashboard and a **Choose which calendars to show** list opens. Calendars other people share with that account are in it too, so there is no separate sharing step. Switch off any you don't want and tap **Done**; events appear within one sync.
 
-### Part B — Enable the Calendar API
-1. Go to <https://console.cloud.google.com/apis/library/calendar-json.googleapis.com>.
-2. Click **Enable**.
+What happens to the sign-in:
 
-### Part C — Create the service account
-1. Go to <https://console.cloud.google.com/iam-admin/serviceaccounts>.
-2. Click **+ Create Service Account** at the top.
-3. **Service account name:** `calendar-kiosk` (the ID auto-fills — leave it).
-4. Click **Create and Continue**.
-5. Skip the optional "Grant this service account access to project" step — click **Continue**, then **Done**.
+- Google issues the tokens to the kiosk, and they are stored only on it, in `data/google-oauth.json` (readable only by the app's user, kept across updates). The developer holds nothing that can read your calendars.
+- The kiosk asks for two permissions: read and change **events**, and read the **list of calendars**. It cannot create or delete calendars.
+- **Sign out** (Settings → Calendars) removes the kiosk's access at Google, deletes the token file and deletes the kiosk's copy of the events. Your Google account and calendars are not changed. You can also remove the kiosk from your Google account's security page; the kiosk then shows the Connect screen with the reason and keeps the last events on screen until you connect again.
+- Rootboard's on-screen keyboard does not appear on Google's own pages. If Google asks you to type an address or password, plug in a USB keyboard for that step.
+- **Beta limit:** while Rootboard's Google app is in Google's "Testing" status, only accounts the developer has listed as testers can sign in, and a sign-in lasts 7 days before Google asks for it again. This goes away when the app moves to production.
 
-### Part D — Generate a JSON key
-1. In the service account list, click the account you just created.
-2. Open the **Keys** tab at the top.
-3. Click **Add Key → Create new key**.
-4. Choose **JSON** and click **Create**. A JSON file downloads.
-5. Open the file in a text editor and note the **`client_email`** value — it looks like `calendar-kiosk@your-project-id.iam.gserviceaccount.com`. You'll need it in Part F.
-
-> **Treat the JSON file like a password.** Anyone with it can read every calendar shared with the service account. Don't commit it to git or post it anywhere — the project's `.gitignore` already excludes `service-account.json`.
-
-### Part E — Copy the JSON key onto the Pi
-Place the file inside the app folder and rename it to `service-account.json`.
-
-```bash
-# From your laptop:
-scp ~/Downloads/your-key-file.json pi@<PI_IP>:/home/pi/calendar-app/service-account.json
-
-# Verify on the Pi:
-ls -la /home/pi/calendar-app/service-account.json
-```
-
-USB-drive equivalent: copy the JSON onto a USB stick → plug it into the Pi → drag it into `/home/pi/calendar-app` and rename it to `service-account.json`.
-
-### Part F — Share each calendar with the service account
-A new service account has zero access. You have to explicitly share every calendar you want the kiosk to display.
-
-1. Open <https://calendar.google.com/> on a regular computer.
-2. In the left sidebar under **My calendars**, hover a calendar → three-dot menu → **Settings and sharing**.
-3. Under **Share with specific people or groups**, click **Add people and groups**.
-4. Paste the service account's `client_email` from the JSON file.
-5. Set permission to **Make changes to events** (lets the kiosk create events later) and click **Send**. No email is sent — service accounts don't receive notifications.
-6. Repeat for every calendar you want displayed.
+Prefer a key file and no sign-in on the screen (for example on a self-hosted unit)? Use a service account instead: [Appendix A](#appendix-a--advanced-google-service-account). If both are present, the Google sign-in is used and a log line says so.
 
 ---
 
@@ -301,7 +268,7 @@ cp .env.example .env
 nano .env
 ```
 
-The only required key tells the app where to find your service-account JSON:
+Signing in with Google on the kiosk (step 7) needs nothing here. Only with a service account ([Appendix A](#appendix-a--advanced-google-service-account)) do you tell the app where its JSON key is (this is also the default):
 
 ```bash
 GOOGLE_SERVICE_ACCOUNT_KEY_FILE=./service-account.json
@@ -322,7 +289,7 @@ Save with `Ctrl+O`, `Enter`, then `Ctrl+X`.
 
 > **`NODE_ENV=production` is required.** Without it, Express defaults to development mode and tries to start the Vite dev server, causing a "Failed to load url /src/main.tsx" error.
 
-> **No session secret needed.** Service-account auth doesn't use browser sessions, so `SESSION_SECRET` is irrelevant on a self-hosted Pi.
+> **No session secret needed.** Neither the Google sign-in nor a service account uses browser sessions, so `SESSION_SECRET` is irrelevant on a self-hosted Pi.
 
 ---
 
@@ -341,9 +308,9 @@ serving on port 5000
 ```
 
 On the Pi's desktop, open Chromium and go to <http://localhost:5000>:
-1. The [setup wizard](#first-boot-the-setup-wizard) opens first. Work through it (or skip what you've already done here); after **Done** the calendar loads and immediately starts its first sync of the calendars you shared with the service account.
+1. The [setup wizard](#first-boot-the-setup-wizard) opens first. Work through it (or skip what you've already done here); after **Done** the calendar loads and immediately starts its first sync of the account's calendars (or, with a service account, the calendars you shared with it).
 2. If you instead see a "Service account key file could not be loaded" message, jump to [Troubleshooting](#14-troubleshooting) — usually the file isn't at the path in `GOOGLE_SERVICE_ACCOUNT_KEY_FILE`.
-3. If the calendars look empty but no error appears, you probably haven't shared them with the service account's `client_email` yet — revisit Step 7 Part F.
+3. If the calendars look empty but no error appears: signed in with Google, check Settings → Calendars that they are switched on; with a service account, you probably haven't shared them with its `client_email` yet — revisit [A.6](#a6--share-each-calendar-with-the-service-account).
 
 If everything looks right, stop the server with `Ctrl+C` — we're about to make it auto-start.
 
@@ -354,7 +321,7 @@ The first time the app starts on a unit (no `setup` record in `data/config/dashb
 1. **Welcome.**
 2. **Network** — lists nearby Wi-Fi networks (strongest first); tap one, type the password, **Connect**. A hidden network has a "Network not listed? Type its name" option. With Ethernet plugged in, or a saved network that comes up on its own, the step confirms in one line and moves on. Network cannot be skipped.
 3. **Time zone** — a searchable list, starting on the zone the browser reports, with the current time shown so a wrong zone is obvious.
-4. **Google Calendar** — for now this shows the service-account instructions from [step 7](#7-create-a-google-service-account) (an on-screen sign-in replaces it in a later release). Skip it if you have already set the key up.
+4. **Google Calendar** — **How to connect** opens the connect dialog: **Connect Google** signs in on the kiosk ([step 7](#7-connect-your-google-account-on-the-kiosk)); **Advanced: service account** shows the key-file steps ([Appendix A](#appendix-a--advanced-google-service-account)). Skip it if Google is already connected. (Signing in from here reloads the app; the wizard's own Google step comes in a later release.)
 5. **Weather** — the same postal-code lookup as **Settings → System → Weather**.
 6. **Done** — the dashboard appears.
 
@@ -707,7 +674,7 @@ node -e "JSON.parse(require('fs').readFileSync('/home/pi/calendar-app/service-ac
 If the path in `.env` is relative (like `./service-account.json`), it's resolved against the app folder — the file must live at `/home/pi/calendar-app/service-account.json`.
 
 ### Calendars load but show no events
-If Diagnostics shows a **Calendar sync** error, that error says why. Otherwise the service account doesn't have access to those calendars yet. Re-do Step 7 Part F: share each calendar in Google Calendar with the `client_email` from the JSON key file. After sharing, refresh the calendar in the kiosk (the header refresh button).
+If Diagnostics shows a **Calendar sync** error, that error says why. Signed in with Google, check that the calendars are switched on in Settings → Calendars. With a service account, it doesn't have access to those calendars yet. Re-do [A.6](#a6--share-each-calendar-with-the-service-account): share each calendar in Google Calendar with the `client_email` from the JSON key file. After sharing, refresh the calendar in the kiosk (the header refresh button).
 
 ### `EADDRINUSE: address already in use :::5000`
 A previous instance is still running:
@@ -810,6 +777,64 @@ For a hosted or development install with no touchscreen, `LAN_API_OPEN=true` in 
 | `/home/pi/calendar-app/service-account.json` | Google service account JSON key (gitignored, never leaves the Pi) |
 | `/home/pi/calendar-app/.update-backups/` | Auto-update rollback snapshots |
 | `/home/pi/calendar-app/data/paired-devices.json` | Paired laptops/agents (token hashes only; delete to revoke all) |
+| `/home/pi/calendar-app/data/google-oauth.json` | Google sign-in tokens (mode 0600, never leave the Pi; Sign out deletes it) |
 | `/home/pi/kiosk.sh` | Launches server + Chromium |
 | `/home/pi/.config/autostart/calendar-kiosk.desktop` | Boot autostart entry |
 | `/home/pi/calendar-app.log` | Server stdout/stderr |
+
+---
+
+## Appendix A — Advanced: Google service account
+
+The advanced alternative to [step 7](#7-connect-your-google-account-on-the-kiosk): the kiosk talks to Google Calendar using a **service account** — a Google identity that belongs to the app itself. The Pi authenticates with a JSON key file, so there's no browser sign-in, no consent screen, and the kiosk never gets logged out. This takes about 5 minutes.
+
+### A.1 — Create the Cloud project
+1. Go to <https://console.cloud.google.com/>.
+2. Click the project dropdown → **New Project**.
+3. Name it `Calendar Kiosk` and click **Create**.
+4. Make sure the new project is selected at the top of the page.
+
+### A.2 — Enable the Calendar API
+1. Go to <https://console.cloud.google.com/apis/library/calendar-json.googleapis.com>.
+2. Click **Enable**.
+
+### A.3 — Create the service account
+1. Go to <https://console.cloud.google.com/iam-admin/serviceaccounts>.
+2. Click **+ Create Service Account** at the top.
+3. **Service account name:** `calendar-kiosk` (the ID auto-fills — leave it).
+4. Click **Create and Continue**.
+5. Skip the optional "Grant this service account access to project" step — click **Continue**, then **Done**.
+
+### A.4 — Generate a JSON key
+1. In the service account list, click the account you just created.
+2. Open the **Keys** tab at the top.
+3. Click **Add Key → Create new key**.
+4. Choose **JSON** and click **Create**. A JSON file downloads.
+5. Open the file in a text editor and note the **`client_email`** value — it looks like `calendar-kiosk@your-project-id.iam.gserviceaccount.com`. You'll need it in A.6.
+
+> **Treat the JSON file like a password.** Anyone with it can read every calendar shared with the service account. Don't commit it to git or post it anywhere — the project's `.gitignore` already excludes `service-account.json`.
+
+### A.5 — Copy the JSON key onto the Pi
+Place the file inside the app folder and rename it to `service-account.json`.
+
+```bash
+# From your laptop:
+scp ~/Downloads/your-key-file.json pi@<PI_IP>:/home/pi/calendar-app/service-account.json
+
+# Verify on the Pi:
+ls -la /home/pi/calendar-app/service-account.json
+```
+
+USB-drive equivalent: copy the JSON onto a USB stick → plug it into the Pi → drag it into `/home/pi/calendar-app` and rename it to `service-account.json`.
+
+### A.6 — Share each calendar with the service account
+A new service account has zero access. You have to explicitly share every calendar you want the kiosk to display.
+
+1. Open <https://calendar.google.com/> on a regular computer.
+2. In the left sidebar under **My calendars**, hover a calendar → three-dot menu → **Settings and sharing**.
+3. Under **Share with specific people or groups**, click **Add people and groups**.
+4. Paste the service account's `client_email` from the JSON file.
+5. Set permission to **Make changes to events** (lets the kiosk create events later) and click **Send**. No email is sent — service accounts don't receive notifications.
+6. Repeat for every calendar you want displayed.
+
+Then set `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` in `.env` (step 8) and restart the app.

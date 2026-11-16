@@ -3,6 +3,8 @@ import type { LucideIcon } from "lucide-react";
 import { SettingsMenu } from "@/components/calendar/settings-menu";
 import { PowerSavingOverlay } from "@/components/screensaver/power-saving-overlay";
 import { UpdateNotification } from "@/components/calendar/update-notification";
+import { CalendarPickerDialog } from "@/components/calendar/calendar-picker-dialog";
+import { readCallbackOutcome, withoutCallbackParams, type GoogleAuthStatus } from "@/lib/google-sign-in";
 import { NavRail, DEFAULT_NAV_ICON, COMMUNITY_FALLBACK_ICON, type NavRailItem } from "@/components/nav-rail";
 import { WidgetHostMount, type WidgetHostMountEntry } from "@/components/widget-host-mount";
 import { WidgetHostErrorBoundary } from "@/components/widget-host-error-boundary";
@@ -50,11 +52,7 @@ const SECTION_STORAGE_KEY = "rootboard-section";
 const EMPTY_WIDGET_MANIFESTS: WidgetManifest[] = [];
 const EMPTY_INVALID_WIDGETS: WidgetDiscoveryResponse["invalid"] = [];
 
-interface AuthStatus {
-  authenticated: boolean;
-  needsAuth: boolean;
-  error?: string;
-}
+type AuthStatus = GoogleAuthStatus;
 
 interface DashboardConfigResponse {
   config: DashboardConfig;
@@ -557,6 +555,20 @@ export default function AppShell() {
     refetchOnWindowFocus: false,
     staleTime: 60 * 1000,
   });
+
+  // Back from Google sign-in (brief 02): the callback reloads the app at
+  // `/?google=connected` or `/?google=failed&reason=`. Read once at mount,
+  // then take the parameters off the URL so a later reload doesn't repeat
+  // it. The picker waits for the dashboard if the boot wizard is showing.
+  const [googleCallback] = useState(() => readCallbackOutcome(window.location.search));
+  const [calendarPickerOpen, setCalendarPickerOpen] = useState(googleCallback?.kind === "connected");
+  useEffect(() => {
+    if (!googleCallback) return;
+    window.history.replaceState(null, "", withoutCallbackParams(window.location.href));
+    if (googleCallback.kind === "failed") {
+      toast({ title: "Google isn't connected", description: googleCallback.sentence, variant: "destructive" });
+    }
+  }, [googleCallback, toast]);
 
   // --- Dashboard config writes ---------------------------------------------
   // The shell owns the single read-merge-PUT-invalidate implementation for
@@ -1166,6 +1178,7 @@ export default function AppShell() {
             // Unknown (still loading, or paused offline) reads as connected,
             // so a working unit never flashes "not connected".
             googleConnected={authStatus ? authStatus.authenticated : true}
+            googleAuth={authStatus}
             hiddenCalendars={hiddenCalendars}
             onCalendarToggle={handleCalendarVisibilityToggle}
             setBrightness={screensaver.setBrightness}
@@ -1251,6 +1264,18 @@ export default function AppShell() {
 
       {/* Settings → System → Run setup again / Network / Time zone */}
       {wizard}
+
+      {/* Right after Google sign-in: choose the calendars to show (brief 02) */}
+      <CalendarPickerDialog
+        open={calendarPickerOpen && !isPowerSavingActive}
+        onOpenChange={setCalendarPickerOpen}
+        hiddenCalendars={hiddenCalendars}
+        onCalendarToggle={handleCalendarVisibilityToggle}
+        onDone={() => {
+          setCalendarPickerOpen(false);
+          window.dispatchEvent(new CustomEvent(CALENDAR_SUBSCRIBE_SUCCESS_EVENT));
+        }}
+      />
 
       {/* Power Saving Overlay (manual SLEEP button or auto after 2 min inactivity) */}
       {powerSavingOverlay}

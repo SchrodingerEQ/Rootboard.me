@@ -40,9 +40,13 @@ describe("diagnosticsRows", () => {
     const b = healthy();
     expect(row(b, "Google Calendar").value).toBe("Connected (service account)");
     b.auth = { mode: "none", connected: false, error: "key file not found" };
-    expect(row(b, "Google Calendar")).toMatchObject({ value: "Not set up (no key file)", warn: true });
+    expect(row(b, "Google Calendar")).toMatchObject({ value: "Not connected (no Google sign-in or key file)", warn: true });
     b.auth = { mode: "service-account", connected: false, error: "invalid_grant" };
     expect(row(b, "Google Calendar")).toMatchObject({ value: "Not connected: invalid_grant", warn: true });
+    b.auth = { mode: "oauth", connected: true, error: null };
+    expect(row(b, "Google Calendar")).toMatchObject({ value: "Connected (signed in with Google)", warn: false });
+    b.auth = { mode: "oauth", connected: false, error: "Google stopped accepting this kiosk's sign-in." };
+    expect(row(b, "Google Calendar")).toMatchObject({ value: "Not connected: Google stopped accepting this kiosk's sign-in.", warn: true });
   });
 
   test("weather failing more recently than its last success warns", () => {

@@ -1,6 +1,6 @@
 # 00 — Google device-flow spike and OAuth verification submission
 
-**Status:** Not started.
+**Status:** §3.0 done 2026-11-16 (consent screen in Testing, Desktop client); §3.1–3.3 pending.
 **Type:** Spike + founder actions outside the repo. Produces a decision, not shipped code.
 **Depends on:** nothing. Start on day one — verification waits on Google.
 **Unblocks:** 02 (§3.0 alone is enough to start it; §3.1 decides whether

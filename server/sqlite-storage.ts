@@ -208,6 +208,10 @@ export class SQLiteStorage implements IStorage {
     return result.changes;
   }
 
+  async deleteAllCalendarEvents(): Promise<number> {
+    return this.db.prepare('DELETE FROM calendar_events').run().changes;
+  }
+
   async getAppState(key: string): Promise<string | null> {
     const row = this.db.prepare('SELECT value FROM app_state WHERE key = ?').get(key) as AppStateRow | undefined;
     return row ? row.value : null;

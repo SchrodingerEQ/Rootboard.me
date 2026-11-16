@@ -163,8 +163,13 @@ function primaryInterface(): { name: string; ip: string } | null {
   return candidates.sort((a, b) => rank(a.name) - rank(b.name))[0] ?? null;
 }
 
-/** Only the service-account path exists today; brief 02 adds "oauth". */
-function authMode(): DiagnosticsBundle["auth"]["mode"] {
+/**
+ * "oauth" when a Google sign-in exists (brief 02), else "service-account"
+ * when a key file is on disk, loaded or not, so a broken key still reads
+ * as "set up but not connected".
+ */
+function authMode(oauthMode: boolean): DiagnosticsBundle["auth"]["mode"] {
+  if (oauthMode) return "oauth";
   const keyFile = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || "./service-account.json";
   return fs.existsSync(keyFile) ? "service-account" : "none";
 }
@@ -204,8 +209,8 @@ async function collectFull(): Promise<DiagnosticsBundle> {
     });
 
   const update = getUpdateStatus();
-  const connected = googleCalendarService.isConnected();
-  const initError = googleCalendarService.getInitError();
+  // The email in the auth status is never copied into the bundle.
+  const auth = googleCalendarService.getAuthStatus();
   const calendarSync = googleCalendarService.getSyncStatus();
   const weather = getWeatherStatus();
   const iface = primaryInterface();
@@ -227,7 +232,7 @@ async function collectFull(): Promise<DiagnosticsBundle> {
       error: update.error ?? null,
       lastCheck: getLastUpdateCheck(),
     },
-    auth: { mode: authMode(), connected, error: initError },
+    auth: { mode: authMode(auth.mode === "oauth"), connected: auth.authenticated, error: auth.error },
     calendarSync,
     weather,
     widgets: {

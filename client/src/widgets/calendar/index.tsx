@@ -308,9 +308,8 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
     manualRefresh();
   };
 
-  // Service account auth has no interactive sign-in flow — clicking the header's
-  // auth button just surfaces the error dialog (which explains how to install
-  // the key file). Keep this handler so the header's onAuth prop stays wired.
+  // The header's auth button opens the connect dialog (Connect Google, or
+  // the service-account steps under Advanced).
   const handleAuth = () => {
     setAuthDialogOpen(true);
   };
@@ -415,6 +414,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
         open={authDialogOpen && !isPowerSavingActive}
         onOpenChange={setAuthDialogOpen}
         error={authStatus?.error}
+        mode={authStatus?.mode}
       />
     </div>
   );

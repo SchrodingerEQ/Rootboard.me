@@ -25,10 +25,12 @@ vi.mock("./storage", () => ({
     getCalendarEvents: vi.fn(async () => []),
     deleteCalendarEventsByCalendarNotIn: vi.fn(async () => 0),
     getAppState: vi.fn(async () => null),
+    deleteAllCalendarEvents: vi.fn(async () => 0),
     setAppState: vi.fn(async () => undefined),
   },
 }));
 vi.mock("./services/googleCalendar", () => ({
+  SIGNED_IN_LIST_MESSAGE: "Signed in with Google",
   googleCalendarService: {
     getCalendarList: vi.fn(async () => []),
     unsubscribeFromCalendar: vi.fn(async () => undefined),
@@ -39,9 +41,18 @@ vi.mock("./services/googleCalendar", () => ({
     syncCalendarEvents: vi.fn(async () => []),
     getSyncStatus: vi.fn(() => ({ lastSyncAt: null, lastSyncError: null, syncing: false })),
     getServiceAccountEmail: vi.fn(() => null),
-    isConnected: vi.fn(() => false),
     getInitError: vi.fn(() => null),
+    getAuthStatus: vi.fn(() => ({ mode: "oauth", authenticated: true, error: null, email: null })),
+    beginAccountChange: vi.fn(async () => undefined),
   },
+}));
+vi.mock("./services/googleOAuth", () => ({
+  googleOAuthService: {
+    startSignIn: vi.fn(() => "https://accounts.example.test/o/oauth2/v2/auth"),
+    handleCallback: vi.fn(async () => ({ ok: false, reason: "bad-request" })),
+    signOut: vi.fn(async () => ({ revoked: true })),
+  },
+  KIOSK_APP_URL: "http://localhost:5000/",
 }));
 vi.mock("./services/updateService", () => ({
   checkForUpdate: vi.fn(async () => ({ updateAvailable: false })),
@@ -82,6 +93,9 @@ const LOCALHOST_ONLY = new Set([
   "POST /api/system/network/connect",
   "POST /api/system/network/forget",
   "POST /api/system/timezone",
+  "POST /api/google/start",
+  "GET /api/google/callback",
+  "POST /api/google/signout",
 ]);
 /** Every /api route and its expected guard. A new route fails the inventory test until it is listed here. */
 const INVENTORY = [
@@ -123,6 +137,10 @@ const INVENTORY = [
   "POST /api/system/network/forget",
   "GET /api/system/timezone",
   "POST /api/system/timezone",
+  "POST /api/google/start",
+  "GET /api/google/callback",
+  "GET /api/google/status",
+  "POST /api/google/signout",
 ];
 
 let now = Date.parse("2026-11-14T12:00:00Z");
@@ -182,6 +200,8 @@ async function call(method: string, urlPath: string, opts: CallOptions = {}) {
   const res = await fetch(base + urlPath, {
     method,
     headers,
+    // The sign-in callback answers with a redirect to the app; the status is what matters here.
+    redirect: "manual",
     body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
   });
   const text = await res.text();

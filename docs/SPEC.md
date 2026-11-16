@@ -2,7 +2,8 @@
 
 Regenerated from the code at v1.4.1 (2026-07-23); maintained
 incrementally through the widget-system phases and current as of v1.7.3
-(2026-10-22). This documents what the app **actually does**, including
+(2026-10-22), plus the unreleased beta-launch work on main (latest:
+Google sign-in, brief 02, 2026-11-16). This documents what the app **actually does**, including
 quirks. Update it when behavior changes.
 Public document — no deployment specifics (hostnames, IPs, real names).
 
@@ -84,7 +85,11 @@ even with a token.
 | POST | `/api/calendar/sync` | Pull a date window from Google into storage | LAN token |
 | GET | `/api/calendar/sync-status` | `{lastSyncAt,lastSyncError,syncing}`, no-store | LAN token |
 | GET | `/api/calendar/service-account-email` | Service account `client_email` | LAN token |
-| GET | `/api/calendar/auth-status` | `{authenticated,needsAuth,error}`, no-store | LAN token |
+| GET | `/api/calendar/auth-status` | `{authenticated,needsAuth,error,mode,email}`, no-store; `mode` is `oauth`\|`service-account`\|`none` (2.3); body kept out of the request log | LAN token |
+| POST | `/api/google/start` | Begin Google sign-in (2.3): `{url}` of Google's page for the kiosk browser; replaces any earlier unfinished sign-in; body kept out of the request log | **kiosk only** + JSON body + not cross-site |
+| GET | `/api/google/callback?code&state` (or `?error&state`) | Google's loopback redirect: exchanges the code with the PKCE verifier, saves the tokens, empties the event cache, then 302 to `http://localhost:5000/?google=connected` or `?google=failed&reason=` (`denied`, `expired`, `bad-request`, `no-refresh-token`, `exchange-failed`) | **kiosk only** |
+| GET | `/api/google/status` | Same `{mode, authenticated, error, email}` as auth-status, no-store; body kept out of the request log | LAN token |
+| POST | `/api/google/signout` | Revoke at Google (best effort), delete `data/google-oauth.json`, empty the event cache → `{signedOut, revoked, cleared}`; 409 when not signed in with Google | **kiosk only** + JSON body + not cross-site |
 | GET | `/api/update/check` | Compare `APP_VERSION` vs the newest release on this kiosk's channel (§4.1); includes `channel` | LAN token |
 | GET | `/api/update/status` | In-memory update progress plus the effective `channel` | LAN token |
 | POST | `/api/update/apply` | Trigger update (fire-and-forget) | **kiosk only** |
@@ -114,11 +119,14 @@ even with a token.
   compares `req.ip`/socket address to `127.0.0.1`, `::1`,
   `::ffff:127.0.0.1`, `localhost`; violations get 403. Applied to update
   `apply`/`rollback`, to issuing/cancelling a pairing code, and to the four
-  `/api/system/*` Wi-Fi/time-zone mutations (`server/system-routes.ts`) —
+  `/api/system/*` Wi-Fi/time-zone mutations (`server/system-routes.ts`)
+  and the three Google sign-in mutations (`server/google-routes.ts`) —
   a paired LAN device cannot change them either. The system mutations also
   require a JSON body and refuse `Sec-Fetch-Site: cross-site`/`same-site`,
   so a web page open in the kiosk's own browser cannot form-POST to
-  localhost (update/rollback do not have this yet). The same check is what
+  localhost (update/rollback do not have this yet); so do Google start and
+  sign out. The Google callback cannot (it *is* Google's cross-site
+  redirect) and relies on the single-use `state` instead. The same check is what
   lets the kiosk skip the LAN token (2.7). No `trust proxy` is configured,
   so both check the direct socket peer; a reverse proxy would make every
   caller look local — re-verify if one is ever added.
@@ -157,14 +165,53 @@ even with a token.
 
 ### 2.3 Google Calendar service (`server/services/googleCalendar.ts`)
 
-- Auth: `GoogleAuth` with service-account key at
+- **Two identities, one seam** (brief 02, decision 0017):
+  `calendarClient()` returns the signed-in owner's `OAuth2Client` when
+  `data/google-oauth.json` exists, else the service account. Every Google
+  call (list, sync, insert/patch/delete, subscribe) goes through
+  `withCalendar()`, so the code below the seam is the same for both.
+  `getAuthStatus()` → `{mode, authenticated, error, email}`:
+  - `oauth` whenever the token file exists. Connected while it holds a
+    refresh token; after `invalid_grant` it holds `lost: {at, reason}`
+    and no tokens, so `authenticated` is false and `error` is the
+    one-sentence reason. Wins over a service-account key; a boot log line
+    says so when both exist.
+  - `service-account` when the key loaded; `none` otherwise (`error` is
+    the key-file error).
+- **Google sign-in** (`server/services/googleOAuth.ts`, flow B): Desktop
+  client (`shared/google-oauth-client.ts`, committed on purpose), scopes
+  `calendar.events` + `calendar.readonly`, `access_type=offline`,
+  `prompt=consent`, PKCE S256 (43-char verifier), redirect
+  `http://127.0.0.1:5000/api/google/callback`. One pending sign-in at a
+  time (in memory, 15 min, single use; a restart cancels it). The
+  account address is the primary calendar's id (no extra scope), for
+  display only. The library refreshes the access token; each refresh is
+  written back. Token file: mode 0600, atomic `.tmp` + rename; a
+  damaged file reads as signed out and is left in place. `invalid_grant`
+  on any call → `markLost()` once, `GoogleAccessLostError`, and later
+  calls fail fast without contacting Google (no retry loop).
+- **Testing-status limit:** while the OAuth consent screen is in
+  Testing, only listed test users can sign in and Google expires the
+  refresh token after 7 days (→ the lost state above). Production status
+  removes both.
+- Service-account auth: `GoogleAuth` with the key at
   `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` (default `./service-account.json`),
-  scope `https://www.googleapis.com/auth/calendar`.
-- Eager init at construction: existence-check the key file, then
-  `auth.getClient()` preflight so bad keys fail at startup, not first use.
-  All public methods await the init promise.
-- Calendars = everything in the service account's `calendarList`.
-  Subscribe/unsubscribe = `calendarList.insert`/`.delete` (404 swallowed).
+  scope `https://www.googleapis.com/auth/calendar`. Eager init at
+  construction: existence-check the key file, then `auth.getClient()`
+  preflight so bad keys fail at startup, not first use. All public
+  methods await the init promise.
+- Calendars = everything in the identity's `calendarList` (signed in:
+  the owner's list, which includes calendars shared with them).
+  Subscribe/unsubscribe = `calendarList.insert`/`.delete` (404
+  swallowed); service account only: signed in, both routes answer 409
+  ("add or remove calendars in Google Calendar") without calling Google,
+  since the OAuth scopes do not allow them and the list is the owner's.
+- **Account change:** the callback (after saving the tokens) and sign
+  out first call `beginAccountChange()`: it bumps a generation counter
+  and waits for any running sync, which stops before its next storage
+  write (`AccountChangedError`), then the event cache is emptied. So a
+  sync started under the old identity can never write its events back
+  after the clear.
 - **Sync** (`POST /api/calendar/sync` only — no server timer):
   - Concurrent syncs coalesce into a single in-flight promise.
   - Per calendar: paginated `events.list` (`singleEvents:true`,
@@ -179,9 +226,11 @@ even with a token.
   date-only events are parsed as *local* midnight (never UTC — avoids
   double-bucketing) and stored with `endTime` = end of the last day
   (exclusive end − 1 ms), making the stored range inclusive.
-- Event colors: calendar `backgroundColor`, else a deterministic
-  hash-derived color from the calendar id. (A colorId→color map exists in
-  the file but is not wired into sync.)
+- Event colors: calendar `backgroundColor`, else
+  `calendarFallbackColor(id)` from `shared/calendar-color.ts`, the same
+  function the client's `getCalendarColor()` uses for Settings, chips and
+  avatars, so an uncolored calendar matches everywhere. (A colorId→color
+  map exists in the file but is not wired into sync.)
 - Writes go to Google first (insert/patch/delete by stored
   `calendarId` + `googleEventId`), then mirror locally; deletes swallow
   Google 404/410 and still prune the local row. Timed events send the
@@ -264,7 +313,7 @@ retries upstream when a client asks, so this is also the retry cadence.
 
 | Var | Default / behavior |
 |---|---|
-| `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | `./service-account.json` |
+| `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | `./service-account.json`; only for the service-account path. Google sign-in needs no env var (its tokens are in `data/google-oauth.json`) |
 | `DATABASE_URL` | no longer used; if set, a startup log line says it is ignored (see 2.4) |
 | `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | `SchrodingerEQ` / `Rootboard.me` |
 | `UPDATE_CHANNEL` | `stable` or `beta`; fallback only when `dashboard.json` has no `update` key (§4.1); anything else logs a warning and means `stable` |
@@ -713,15 +762,52 @@ capped at 100 % (decision 0011); 100 % paints nothing.
 
 Settings is a 416 px Radix popover from the nav rail, in every auth state
 (brief 05 goal 3: a unit that has lost Google is the one that most needs
-it; `app-shell.tsx` passes `googleConnected`, and only the calendar list
-and add-calendar hide while it is false — the calendar list query is not
-even sent). On a unit with no key file the calendar widget's "Google
-Calendar Not Connected" dialog still opens at boot; Close it to reach the
-rail. Contents: brightness slider (30–100 %, step 5; its own component so a drag
+it; `app-shell.tsx` passes `googleConnected` and the full `googleAuth`
+status, and only the calendar list and add-calendar hide while it is
+false — the calendar list query is not even sent). On a unit that is not
+connected the calendar widget's "Google Calendar Not Connected" dialog
+still opens at boot; Close it to reach the rail.
+
+**Google sign-in (brief 02).** That dialog (`auth-dialog.tsx`) has two
+tabs: **Connect Google** (`google-connect-panel.tsx`: one button →
+`POST /api/google/start` → the kiosk browser goes to Google; the panel
+makes no dialog or popover assumptions, so the wizard can embed it) and
+**Advanced: service account** (the key-file steps, Retry, Setup Guide
+link, and the key-file error). With `mode: oauth` the auth status's
+`error` is the lost-access reason and shows on the Connect tab. Back
+from Google, the shell reads `?google=` once at mount and strips it:
+`connected` opens **Choose which calendars to show**
+(`calendar-picker-dialog.tsx`, switches writing the same
+`hiddenCalendars` as Settings; Done syncs), `failed` shows a toast with
+one sentence per reason (`lib/google-sign-in.ts`). In boot mode the
+picker waits until the wizard closes. After Google refuses the sign-in,
+the events query keeps running (`shouldShowSyncedEvents`), so the last
+synced events stay on screen with the header's sync error; a failed sync
+re-reads auth-status so the connect dialog opens within that sync.
+
+Settings → **Calendars**, Google account (`google-account-settings.tsx`):
+signed in → "Signed in with Google as <address>" and **Sign out**
+(confirm: stops showing the calendars, removes access at Google,
+deletes the kiosk's copy of the events; the account is not changed).
+Not connected (`none`, or a lost sign-in) → the Connect Google panel
+(with the reason when lost), and a lost sign-in keeps Sign out. On a
+service-account kiosk a "Sign in with a Google account instead" link
+opens the same panel (the sign-in then takes over; Sign out returns to
+the service account). With
+`mode: oauth` the service-account rows hide: the share-email box,
+per-calendar Remove and Add by ID (a hint says shared calendars appear
+on their own). With `none`, a link offers the service account via the
+Setup Guide. The Calendars warning dot means Google needs setup (no
+key and no sign-in, or a lost sign-in). Calendar dots use
+`getCalendarColor()` from `lib/calendar-meta.ts` (no local copy).
+
+Contents: brightness slider (30–100 %, step 5; its own component so a drag
 re-renders only the slider, saved on release), OSK mode (Auto/Always/Off),
-per-calendar visibility switches + unsubscribe, add-calendar-by-ID
-(`POST /api/calendar/subscribe`), service-account email display with
-copy button (or a "key file not found" warning linking `/setup`),
+the Google account row above, per-calendar visibility switches +
+unsubscribe, add-calendar-by-ID (`POST /api/calendar/subscribe`),
+service-account email display with copy button (or a "key file not
+found" warning linking `/setup`) — the last three for the service
+account only,
 Check-for-Updates and Roll Back buttons, and the current `APP_VERSION`.
 
 System → **Setup** (brief 03): **Wi-Fi** and **Time zone** open that
@@ -792,6 +878,14 @@ failure during polling is *assumed to be the restart* and reloads after
   `::-webkit-scrollbar` and shrink the bars.
 - **Fullscreen** comes from launching the browser with `--kiosk` — the
   client never calls `requestFullscreen`.
+- **Google sign-in leaves the app.** Firefox kiosk mode follows the
+  navigation to Google's pages and back without leaving kiosk. On
+  Google's pages the app's on-screen keyboard (3.3) does not run, so
+  typing an address or password needs a USB keyboard (the account picker
+  does not). The return is to the absolute `http://localhost:5000/`, so
+  the app stays on one origin (localStorage theme cache and drafts; the
+  feedback service's allowed Origin). Firefox keeps Google's session
+  cookie afterwards; acceptable on a household kiosk.
 - **Fonts are bundled, never fetched.** `client/src/fonts.css` declares
   Nunito (the body face) from woff2 files in `client/src/assets/fonts/`,
   with the subsets and unicode-ranges Google Fonts served; the family's
@@ -1059,8 +1153,11 @@ is a placeholder until brief 02 (session 2).
   clock follows after the next restart." (Firefox keeps the zone it
   started with).
 - **Google step (placeholder):** connected/not connected from
-  `/api/calendar/auth-status`; "How to connect" opens today's
-  `AuthDialog`.
+  `/api/calendar/auth-status`; "How to connect" opens `AuthDialog`,
+  which since brief 02 has the Connect Google tab (3.7). Signing in from
+  there reloads the app on return, so the wizard starts again in boot
+  mode; brief 03 session 2 replaces the step with the embedded
+  `GoogleConnectPanel`.
 - **Weather step:** embeds `WeatherLocationSettings` (3.7) with the
   shell's `saveWeatherLocation`; Continue appears once a place is saved.
 - **Managed outside Rootboard:** when nmcli/NetworkManager or
@@ -1192,6 +1289,14 @@ identifies the restored version, then `npm install` + `npm run build`
 - `data/paired-devices.json`: LAN pairing (2.7) — SHA-256 token hashes
   only, never a token; mode 0600; gitignored and preserved across updates
   with the rest of `data/`. Missing or invalid → no paired devices.
+- `data/google-oauth.json`: Google sign-in (2.3) — `{version: 1, email,
+  refreshToken, accessToken, expiryDate, scope, signedInAt}` while signed
+  in, `{version: 1, email, lost: {at, reason}}` after `invalid_grant`;
+  mode 0600, atomic writes, never logged, never in the diagnostics
+  bundle. Gitignored and preserved with `data/`. Its presence makes
+  `mode: oauth`; Sign out deletes it.
+- The event cache (`calendar_events`) belongs to one identity: a Google
+  sign-in and a sign-out each empty it, and the next sync refills it.
 - `widgets/`: sideloaded folder-drop community widgets (SD card/SSH).
   Gitignored — never tracked, never in the release tarball — and on
   both updater preserve lists (`PRESERVE_PATHS` in `updateService.ts`,

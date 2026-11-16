@@ -1,7 +1,7 @@
 # 0002 — SQLite + Google service account for the self-hosted default
 
 Date: 2026-07-23 (reconstructed as-built rationale)
-Status: accepted; amended 2026-11-11 — the `DATABASE_URL` path was removed, see the update at the end
+Status: accepted; amended 2026-11-11 — the `DATABASE_URL` path was removed, see the update at the end; the **auth half** is superseded by [0017](0017-oauth-over-service-account.md) (2026-11-16): Google sign-in on the kiosk is the default, the service account stays as the advanced option
 
 ## Decision
 

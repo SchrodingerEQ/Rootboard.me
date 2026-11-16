@@ -6,6 +6,8 @@ describe("scrubLogLine", () => {
     expect(scrubLogLine("Calendar family@example.com not found")).toBe("Calendar [email] not found");
     expect(scrubLogLine("Authorization: Bearer abc.def-123")).toBe("Authorization: Bearer [token]");
     expect(scrubLogLine("issued rbp_Zm9vYmFy-_baz")).toBe("issued [token]");
+    expect(scrubLogLine("refresh failed for ya29.a0Abc-def_123.x")).toBe("refresh failed for [token]");
+    expect(scrubLogLine('{"refresh_token":"1//0gAbcDEF-ghi_jkl"}')).toBe('{"refresh_token":"[token]"}');
   });
 
   test("drops the response body from request log lines, keeps the request line", () => {
