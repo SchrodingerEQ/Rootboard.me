@@ -174,6 +174,9 @@ export default function SetupPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-900">
+              <strong>Self-hosting?</strong> The kiosk first needs a Google sign-in client: in the Google Cloud Console, enable the Calendar API, set up the OAuth consent screen (External, Testing, scopes <code className="bg-amber-100 px-1 rounded">calendar.events</code> and <code className="bg-amber-100 px-1 rounded">calendar.readonly</code>, yourself as a test user), create an OAuth client of type <strong>Desktop app</strong>, download its JSON and save it on the kiosk as <code className="bg-amber-100 px-1 rounded">data/google-oauth-client.json</code>. It is never in the app's repository. INSTALLATION.md step 7.1 has the details. A Rootboard you received already has it.
+            </div>
             <ol className="list-decimal list-inside space-y-3 text-gray-700">
               <li>Once the app is running (Step 4), the <strong>Google Calendar Not Connected</strong> dialog opens. You can also open it from Settings → Calendars.</li>
               <li>Tap <strong>Connect Google</strong>. Google's sign-in page opens on the kiosk.</li>

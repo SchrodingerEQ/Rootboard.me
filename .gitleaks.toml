@@ -22,7 +22,8 @@ keywords = ["gserviceaccount.com"]
 
 # Google OAuth client secrets. gitleaks' default rules do not match this
 # prefix (checked with 8.30.1 on 2026-11-16), so without this rule a client
-# secret would pass silently. The one intended copy is allowlisted by path below.
+# secret would pass silently. None is allowlisted anywhere: the unit's client
+# lives in data/google-oauth-client.json, never in the repo (decision 0017).
 [[rules]]
 id = "rootboard-google-oauth-client-secret"
 description = "Google OAuth client secret (GOCSPX-...)"
@@ -48,16 +49,6 @@ regexes = [
   '''your-project-id\.iam\.gserviceaccount\.com''', # documentation placeholder
   '''key\.client_email''',                          # source field reference, not a value
 ]
-# Rootboard's Google OAuth "Desktop app" client id and secret, committed on
-# purpose (beta-launch brief 02 decision 2, decision 0017). Google issues that
-# secret to installed apps, documents it as not confidential, and protects the
-# flow with PKCE and a loopback redirect; it reads no calendar by itself. Scoped
-# to this ONE file by path, so a GOCSPX- secret (or any other finding) anywhere
-# else is still caught by the hook and the CI scan.
-[[allowlists]]
-description = "Non-confidential installed-app OAuth client (decision 0017)"
-paths = ['''^shared/google-oauth-client\.ts$''']
-
 # Historical commits (2025-07-01 to 2025-08-12) that tracked google_credentials.json,
 # a legacy OAuth token file holding a Google access and refresh token. The file was
 # removed in 127ab64 and the grant was revoked by the founder on 2026-10-14.

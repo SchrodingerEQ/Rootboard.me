@@ -1003,6 +1003,11 @@ export function SettingsMenu({
                 <Label className="text-sm font-medium">Calendar Visibility</Label>
               </div>
               <GoogleAccountSettings status={googleAuth} />
+              {googleAuth?.oauthClient && (
+                <p className="text-xs text-rb-faint leading-snug" data-testid="google-client-status">
+                  Google sign-in client: {googleAuth.oauthClient === "invalid" ? "invalid file" : googleAuth.oauthClient}
+                </p>
+              )}
               {oauthMode ? null : googleAuth?.mode === "none" ? (
                 <Link href="/setup" onClick={() => setIsOpen(false)} className="block text-xs text-rb-muted underline">
                   Advanced: use a service account instead (Setup Guide)

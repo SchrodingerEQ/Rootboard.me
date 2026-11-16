@@ -27,7 +27,14 @@ export interface DiagnosticsBundle {
     lastCheck: { at: string; ok: boolean; latestVersion: string | null; updateAvailable: boolean } | null;
   };
   /** How the unit reads Google Calendar. Never carries the account email. */
-  auth: { mode: "service-account" | "oauth" | "none"; connected: boolean; error: string | null };
+  auth: {
+    mode: "service-account" | "oauth" | "none";
+    connected: boolean;
+    error: string | null;
+    /** data/google-oauth-client.json (brief 02). Never the secret or the full
+     *  client id: only the Cloud project number, when configured. */
+    oauthClient?: { status: "missing" | "configured" | "invalid"; projectNumber: string | null };
+  };
   calendarSync: { lastSyncAt: string | null; lastSyncError: string | null; syncing: boolean };
   weather: { configured: boolean; lastSuccessAt: string | null; lastError: { at: string; reason: string } | null };
   widgets: {

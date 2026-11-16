@@ -7,15 +7,22 @@
  * | GET  /api/google/callback   | kiosk only (Google's redirect is cross-site) |
  * | POST /api/google/signout    | kiosk only + JSON body + not cross-site      |
  * | GET  /api/google/status     | LAN token (the /api guard), like other reads |
+ * | PUT  /api/google/client     | LAN token + JSON body + not cross-site       |
  *
  * Start is kiosk only because a sign-in started from a LAN device would put
  * Google's page on that device, and the loopback redirect would then fail
  * there. The callback is kiosk only because Google sends the kiosk's own
  * browser to 127.0.0.1; it is also bound to the sign-in by `state`.
+ *
+ * PUT /api/google/client installs the unit's OAuth client JSON (decision
+ * 0017: never in the repo). A paired device may call it, so a client can be
+ * replaced without a release or SSH; it answers `{configured: true}` and
+ * never echoes the secret.
  */
 
 import type { Express, Request, Response } from "express";
-import { KIOSK_APP_URL, type CallbackResult, type GoogleOAuthService } from "./services/googleOAuth";
+import { KIOSK_APP_URL, OAuthClientNotConfiguredError, type CallbackResult, type GoogleOAuthService } from "./services/googleOAuth";
+import { MAX_CLIENT_FILE_BYTES } from "./services/googleOAuthClient";
 import type { GoogleAuthStatus } from "./services/googleCalendar";
 
 export interface GoogleRoutesDeps {
@@ -26,6 +33,8 @@ export interface GoogleRoutesDeps {
   /** Empties the synced-event cache, so the views never mix two accounts. */
   clearSyncedEvents: () => Promise<number>;
   isLocalRequest: (req: Request) => boolean;
+  /** Validates and saves Google's client JSON (googleOAuthClient.ts); false when invalid. */
+  saveClient: (value: unknown) => boolean;
 }
 
 export const GOOGLE_ROUTE_PATHS = {
@@ -33,6 +42,7 @@ export const GOOGLE_ROUTE_PATHS = {
   callback: "/api/google/callback",
   status: "/api/google/status",
   signout: "/api/google/signout",
+  client: "/api/google/client",
 } as const;
 
 const KIOSK_ONLY_MESSAGE = "Google sign-in can only be changed on the kiosk's own screen";
@@ -49,7 +59,7 @@ export function callbackRedirectUrl(result: CallbackResult): string {
 }
 
 export function registerGoogleRoutes(app: Express, deps: GoogleRoutesDeps): void {
-  const { oauth, authStatus, beginAccountChange, clearSyncedEvents, isLocalRequest } = deps;
+  const { oauth, authStatus, beginAccountChange, clearSyncedEvents, isLocalRequest, saveClient } = deps;
 
   // The socket peer must be this machine, and the body JSON with no
   // cross-site Sec-Fetch-Site, so a web page open in the kiosk's own browser
@@ -66,7 +76,39 @@ export function registerGoogleRoutes(app: Express, deps: GoogleRoutesDeps): void
   app.post(GOOGLE_ROUTE_PATHS.start, (req, res) => {
     if (!kioskPost(req, res)) return;
     noStore(res);
-    res.json({ url: oauth.startSignIn() });
+    try {
+      res.json({ url: oauth.startSignIn() });
+    } catch (error) {
+      if (error instanceof OAuthClientNotConfiguredError) {
+        return res.status(409).json({ message: error.message, oauthClient: error.clientStatus });
+      }
+      throw error;
+    }
+  });
+
+  // The guard in front of /api already admitted only the kiosk or a paired
+  // device. JSON only, and not from a cross-site page in the kiosk browser.
+  app.put(GOOGLE_ROUTE_PATHS.client, (req, res) => {
+    noStore(res);
+    const site = req.get("Sec-Fetch-Site");
+    if (!req.is("application/json") || (site && site !== "same-origin" && site !== "none")) {
+      return res.status(403).json({ message: "Send the client JSON as application/json" });
+    }
+    if (Number(req.get("content-length") ?? 0) > MAX_CLIENT_FILE_BYTES) {
+      return res.status(413).json({ message: "That file is too large to be a Google OAuth client" });
+    }
+    try {
+      if (!saveClient(req.body)) {
+        return res.status(400).json({
+          message:
+            'Not a Google "Desktop app" OAuth client: expected the JSON Google Cloud downloads, with installed.client_id ending in .apps.googleusercontent.com and installed.client_secret',
+        });
+      }
+    } catch (error) {
+      console.error("[google-oauth] could not save the sign-in client:", (error as Error).message);
+      return res.status(500).json({ message: "Couldn't save the client file on the kiosk" });
+    }
+    res.json({ configured: true });
   });
 
   app.get(GOOGLE_ROUTE_PATHS.callback, async (req, res) => {

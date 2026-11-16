@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { LogIn, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { startFailureSentence } from "@/lib/google-sign-in";
+import { Link } from "wouter";
+import { missingClientSentence, startFailureSentence, type OAuthClientStatus } from "@/lib/google-sign-in";
 
 interface GoogleConnectPanelProps {
   /** Why the kiosk is not connected (a lost sign-in, a failed attempt), shown above the button. */
   reason?: string | null;
   /** Larger type and button, for a full-screen host such as the setup wizard. */
   size?: "default" | "large";
+  /** The auth status's `oauthClient`. Missing or invalid: say so instead of
+   *  offering a button that can't work (decision 0017: the client is on the unit). */
+  clientStatus?: OAuthClientStatus;
 }
 
 /**
@@ -20,10 +24,24 @@ interface GoogleConnectPanelProps {
  * so the auth dialog, Settings and the setup wizard (brief 03 session 2)
  * can each drop it in as-is.
  */
-export function GoogleConnectPanel({ reason, size = "default" }: GoogleConnectPanelProps) {
+export function GoogleConnectPanel({ reason, size = "default", clientStatus }: GoogleConnectPanelProps) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const large = size === "large";
+  const noClient = missingClientSentence(clientStatus);
+
+  if (noClient) {
+    return (
+      <div className="space-y-2" data-testid="google-connect-no-client">
+        <p className={`${large ? "text-base" : "text-sm"} text-rb-warn-ink leading-snug`}>{noClient}</p>
+        <p className={`${large ? "text-base" : "text-sm"} text-rb-muted leading-snug`}>
+          The{" "}
+          <Link href="/setup" className="underline">setup guide</Link>{" "}
+          explains how to add one. Or connect with a Google service account instead (Advanced).
+        </p>
+      </div>
+    );
+  }
 
   const start = async () => {
     setStarting(true);

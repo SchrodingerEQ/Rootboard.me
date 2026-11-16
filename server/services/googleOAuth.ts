@@ -23,11 +23,8 @@ import fs from "fs";
 import path from "path";
 import { OAuth2Client, type Credentials } from "google-auth-library";
 import { google } from "googleapis";
-import {
-  GOOGLE_OAUTH_CLIENT_ID,
-  GOOGLE_OAUTH_CLIENT_SECRET,
-  GOOGLE_OAUTH_SCOPES,
-} from "@shared/google-oauth-client";
+import { GOOGLE_OAUTH_SCOPES } from "@shared/google-oauth-client";
+import { DEFAULT_CLIENT_FILE, readClientFile, type OAuthClientStatus } from "./googleOAuthClient";
 
 /** The kiosk server always listens on 5000 (server/index.ts). */
 export const KIOSK_PORT = 5000;
@@ -51,7 +48,19 @@ export const LOST_ACCESS_REASON =
   "Google stopped accepting this kiosk's sign-in (access was removed or has expired). Connect Google again to keep the calendar up to date.";
 
 /** Why a callback did not sign in. Sent to the app as `?google=failed&reason=`. */
-export type CallbackFailure = "denied" | "expired" | "bad-request" | "no-refresh-token" | "exchange-failed";
+export type CallbackFailure = "denied" | "expired" | "bad-request" | "no-refresh-token" | "exchange-failed" | "no-client";
+
+/** data/google-oauth-client.json is missing or not a valid Desktop client. */
+export class OAuthClientNotConfiguredError extends Error {
+  constructor(readonly clientStatus: Exclude<OAuthClientStatus, "configured">) {
+    super(
+      clientStatus === "missing"
+        ? "This Rootboard has no Google sign-in client configured (data/google-oauth-client.json)"
+        : "This Rootboard's Google sign-in client file (data/google-oauth-client.json) is not valid",
+    );
+    this.name = "OAuthClientNotConfiguredError";
+  }
+}
 
 export type CallbackResult = { ok: true } | { ok: false; reason: CallbackFailure };
 
@@ -84,6 +93,8 @@ interface PendingSignIn {
 
 export interface GoogleOAuthDeps {
   tokenFile?: string;
+  /** Google's Desktop client JSON for this unit (never in the repo). */
+  clientFile?: string;
   now?: () => number;
   /** Tests point the client at a mock token server. */
   makeClient?: () => OAuth2Client;
@@ -102,10 +113,13 @@ export function createPkcePair(): { codeVerifier: string; codeChallenge: string 
   return { codeVerifier, codeChallenge };
 }
 
-function defaultClient(): OAuth2Client {
+/** An OAuth2Client for the unit's client file, read now (so a new file needs no restart). */
+function clientFromFile(clientFile: string): OAuth2Client {
+  const read = readClientFile(clientFile);
+  if (read.status !== "configured") throw new OAuthClientNotConfiguredError(read.status);
   return new OAuth2Client({
-    clientId: GOOGLE_OAUTH_CLIENT_ID,
-    clientSecret: GOOGLE_OAUTH_CLIENT_SECRET,
+    clientId: read.credentials.clientId,
+    clientSecret: read.credentials.clientSecret,
     redirectUri: OAUTH_REDIRECT_URI,
   });
 }
@@ -125,8 +139,10 @@ export function isInvalidGrant(error: unknown): boolean {
 
 export class GoogleOAuthService {
   private readonly tokenFile: string;
+  private readonly clientFile: string;
   private readonly now: () => number;
   private readonly makeClient: () => OAuth2Client;
+  private readonly injectedClient: boolean;
   private readonly lookupEmail: (client: OAuth2Client) => Promise<string | null>;
   private pending: PendingSignIn | null = null;
   private client: OAuth2Client | null = null;
@@ -134,7 +150,9 @@ export class GoogleOAuthService {
   constructor(deps: GoogleOAuthDeps = {}) {
     this.tokenFile = deps.tokenFile ?? DEFAULT_TOKEN_FILE;
     this.now = deps.now ?? Date.now;
-    this.makeClient = deps.makeClient ?? defaultClient;
+    this.clientFile = deps.clientFile ?? DEFAULT_CLIENT_FILE;
+    this.injectedClient = deps.makeClient !== undefined;
+    this.makeClient = deps.makeClient ?? (() => clientFromFile(this.clientFile));
     this.lookupEmail = deps.lookupEmail ?? defaultLookupEmail;
   }
 
@@ -143,12 +161,16 @@ export class GoogleOAuthService {
   /**
    * The Google page to send the kiosk browser to. Only the newest sign-in is
    * honoured: starting again replaces an earlier one that never came back.
+   * Throws OAuthClientNotConfiguredError without a valid client file.
    */
   startSignIn(): string {
+    // First, so a unit without a client file throws OAuthClientNotConfiguredError
+    // and leaves no half-started sign-in behind.
+    const client = this.makeClient();
     const { codeVerifier, codeChallenge } = createPkcePair();
     const state = base64url(crypto.randomBytes(24));
     this.pending = { state, codeVerifier, expiresAt: this.now() + SIGN_IN_TTL_MS };
-    return this.makeClient().generateAuthUrl({
+    return client.generateAuthUrl({
       access_type: "offline",
       // Always show consent, so Google always returns a refresh token —
       // also when this account signed in to this kiosk before.
@@ -175,7 +197,13 @@ export class GoogleOAuthService {
     if (typeof query.error === "string") return { ok: false, reason: "denied" };
     if (typeof query.code !== "string" || !query.code) return { ok: false, reason: "bad-request" };
 
-    const client = this.makeClient();
+    let client: OAuth2Client;
+    try {
+      client = this.makeClient();
+    } catch (error) {
+      if (error instanceof OAuthClientNotConfiguredError) return { ok: false, reason: "no-client" };
+      throw error;
+    }
     let tokens: Credentials;
     try {
       ({ tokens } = await client.getToken({
@@ -212,6 +240,21 @@ export class GoogleOAuthService {
   }
 
   // --- Use ----------------------------------------------------------------
+
+  /**
+   * Whether this unit has a sign-in client, and its project number (the only
+   * part of it that is ever shown). An injected test client counts as configured.
+   */
+  clientStatus(): { status: OAuthClientStatus; projectNumber: string | null } {
+    if (this.injectedClient) return { status: "configured", projectNumber: null };
+    try {
+      const read = readClientFile(this.clientFile);
+      if (read.status === "configured") return { status: "configured", projectNumber: read.projectNumber };
+      return { status: read.status, projectNumber: null };
+    } catch {
+      return { status: "invalid", projectNumber: null };
+    }
+  }
 
   status(): OAuthStatus {
     const stored = this.readToken();

@@ -9,20 +9,10 @@ Status: accepted for flow B (beta-launch brief 02); on main via the brief 02 PR,
    the kiosk's own server: `http://127.0.0.1:5000/api/google/callback`.
    The device flow (A, "type this code at google.com/device") is not
    built: it waits on the spike below.
-2. **The client id and secret are in the repo**, in
-   `shared/google-oauth-client.ts`, on purpose. For installed apps Google
-   documents the secret as not confidential: the flow is protected by
-   PKCE and the loopback redirect, and the two values read no calendar by
-   themselves. `.gitleaks.toml` gains a rule for `GOCSPX-` secrets (the
-   default ruleset does not match them; checked with 8.30.1) and
-   allowlists that one file by path, so a client secret anywhere else is
-   still blocked by the hook and the CI scan. Nothing in `client/`
-   imports the file, so it is not in the browser bundle (tested).
-   **Open (2026-11-16):** GitHub push protection on this repository
-   flags both the client id and the secret and refused the push. The
-   brief 02 PR therefore carries placeholders in that file; the owner
-   decides whether to allow the two values at GitHub (then they go in as
-   decided here) or to deliver them another way. Brief 02 does not choose.
+2. **The client id and secret are never in the repo.** Each unit reads
+   them from `data/google-oauth-client.json`. See "Client credentials"
+   below (founder decision, 2026-11-16), which replaced the brief's
+   original choice to commit them.
 3. **Scopes:** `calendar.events` and `calendar.readonly`. Not the full
    `calendar` scope. No `openid`/`email` scope either: the account address
    shown in Settings is the primary calendar's id.
@@ -34,7 +24,8 @@ Status: accepted for flow B (beta-launch brief 02); on main via the brief 02 PR,
 5. **Provider precedence:** a token file wins over `service-account.json`,
    with a boot log line when both exist. The service account is unchanged
    and remains the advanced path for self-hosters. `auth-status` and the
-   new `GET /api/google/status` report `mode: oauth | service-account | none`.
+   new `GET /api/google/status` report `mode: oauth | service-account | none`
+   and `oauthClient: missing | configured | invalid`.
 6. **Loss of access:** `invalid_grant` (revoked, or Testing's 7-day
    expiry) rewrites the token file to `{email, lost: {at, reason}}` with
    no tokens. The connect screen shows the reason; the last synced events
@@ -90,8 +81,9 @@ Google project owns the identity that reads the tester's calendars.
 
 - **Testing status limits:** only listed test users can sign in, and a
   sign-in lasts 7 days. Production status (brief 00 §3.2 step 3) must
-  come before the tester's unit ships; a fresh client created then
-  replaces the two values in `shared/google-oauth-client.ts`.
+  come before the tester's unit ships. A fresh client created then goes
+  onto each unit as a new `data/google-oauth-client.json` (scp or
+  `PUT /api/google/client`); no release is needed.
 - Google's pages show in the kiosk browser, where Rootboard's on-screen
   keyboard does not run. A USB keyboard covers typing an address or a
   password; the account picker needs none.
@@ -101,6 +93,56 @@ Google project owns the identity that reads the tester's calendars.
 - The published privacy text that says the kiosk reaches Google Calendar
   "through a Google service account that you create" must say "the Google
   account you sign in with" before the release that ships this.
+
+## Client credentials
+
+Date: 2026-11-16. Founder decision (relayed by the coordinating session:
+"go ahead with B then. I'm aligned with it.").
+
+**Decision.** The Desktop client's id and secret are delivered **on the
+unit**, in `data/google-oauth-client.json`, and are **never committed**:
+not in source, docs, tests, fixtures, commit messages or release notes.
+
+- The file is the JSON Google Cloud's console downloads, as-is:
+  `{"installed": {"client_id", "client_secret", …}}`. It is read on
+  demand, so a file that appears works without a restart.
+- It lives in `data/`, which is gitignored, in `PRESERVE_PATHS`
+  (`updateService.ts`) and in the `start.sh` rollback case. When the app
+  writes it, the write is atomic and mode 0600.
+- `PUT /api/google/client` (the kiosk or a paired device; JSON only; not
+  cross-site; 8 KB max) validates and replaces it without a release. It
+  answers `{configured: true}` and never echoes the secret.
+- Nothing logs, returns or puts the secret in the diagnostics bundle.
+  The only part ever shown is the client id's project number:
+  "configured: yes, project NNN".
+- With no file (or an invalid one), the Connect Google tab says so and
+  points to the setup guide and the service-account tab. The status
+  endpoints report `oauthClient`, and the service-account path is
+  unchanged.
+- `shared/google-oauth-client.ts` holds only the scopes. The
+  `rootboard-google-oauth-client-secret` gitleaks rule (`GOCSPX-…`) has
+  **no allowlist**; it now guards the whole repo, and
+  `server/secret-scan-rules.spec.ts` pins the rule and scans every
+  tracked file.
+
+**Why.**
+- Google's OAuth policy says not to commit client credentials to public
+  repositories.
+- GitHub push protection blocks them (it refused this PR's first push,
+  flagging both the id and the secret).
+- GitHub reports Google client secrets found in public repos to Google,
+  which may revoke them. That would break every unit at once.
+- Units the project ships get the file when their card is built
+  (brief 09). Self-hosters create their own Desktop client, the norm for
+  open-source Google integrations.
+
+**Alternatives rejected.**
+- *Commit the values* (the brief's original decision 2): the policy and
+  the revocation risk above.
+- *A small project server that hands the values out:* an open address is
+  the same as publishing them. A locked-down one needs a per-unit key on
+  the card anyway, plus a server to run, and it would break the privacy
+  page's "no server" promise.
 
 ## Spike results (brief 00 §3.1)
 

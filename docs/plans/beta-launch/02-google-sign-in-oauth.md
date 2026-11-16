@@ -1,6 +1,6 @@
 # 02 — Google sign-in with OAuth (tokens stay on the unit)
 
-**Status:** Flow B built 2026-11-16 in PR #38 (soft flag, awaiting the founder). Merge is blocked on a founder decision: GitHub push protection refused the committed client id and secret, so the PR carries placeholders. Flow A (device flow) waits on brief 00 §3.1, as a follow-up session.
+**Status:** Flow B built 2026-11-16 in PR #38 (soft flag, awaiting the founder). The founder chose option B the same day: the client id and secret ship on each unit in `data/google-oauth-client.json`, never in the repo (decision 0017). Flow A (device flow) waits on brief 00 §3.1, as a follow-up session.
 **Type:** Server auth refactor + client dialog. One to two sessions.
 **Depends on:** 00 §3.0 only: a consent screen in Testing and a Desktop
 OAuth client, about 30 minutes of founder work. Flow B is the whole
@@ -25,7 +25,7 @@ stays as the documented advanced option for self-hosters.
 | # | Decision | Choice |
 |---|---|---|
 | 1 | Auth model | OAuth 2.0 authorization code with PKCE, Google "Desktop app" client type, loopback redirect to the kiosk's own server (`http://127.0.0.1:5000/api/google/callback`). Device flow added as a second entry point only if brief 00 confirms a Calendar scope is accepted. |
-| 2 | Client id in the repo | The OAuth **client id** (and, for the Desktop type, the non-confidential client secret Google issues with it) is committed in `shared/google-oauth-client.ts`. Google's own guidance is that installed-app secrets are not confidential; several open-source Calendar tools ship theirs. Add a `.gitleaks.toml` allowlist for that file **by path** with a comment explaining why, so the hook and CI keep flagging any *other* `GOCSPX-` string. Record this in decision 0017. |
+| 2 | Client id in the repo | The OAuth **client id** (and, for the Desktop type, the non-confidential client secret Google issues with it) is committed in `shared/google-oauth-client.ts`. Google's own guidance is that installed-app secrets are not confidential; several open-source Calendar tools ship theirs. Add a `.gitleaks.toml` allowlist for that file **by path** with a comment explaining why, so the hook and CI keep flagging any *other* `GOCSPX-` string. Record this in decision 0017. **Founder 2026-11-16: client credentials ship on the unit in `data/google-oauth-client.json`, never in the repo (decision 0017).** |
 | 3 | Scopes | `calendar.events` + `calendar.readonly` (events read/write, calendar list read). Not the full `calendar` scope — the app never creates or deletes calendars. If 00 shows the device flow needs a different scope string, follow 00. |
 | 4 | Token storage | `data/google-oauth.json`, file mode 0600, inside the already-gitignored and update-preserved `data/` folder. Never logged. Refresh token + access token + expiry + the signed-in account's email (for display only). |
 | 5 | Which calendars show | After sign-in, list the account's calendars and let the owner tick which to display. Calendars already shared *to* the owner by family members appear in that list because Google shows them in the owner's calendar list; no sharing step is needed. |

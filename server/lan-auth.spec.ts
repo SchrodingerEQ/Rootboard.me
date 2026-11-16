@@ -53,6 +53,7 @@ vi.mock("./services/googleOAuth", () => ({
     signOut: vi.fn(async () => ({ revoked: true })),
   },
   KIOSK_APP_URL: "http://localhost:5000/",
+  OAuthClientNotConfiguredError: class extends Error {},
 }));
 vi.mock("./services/updateService", () => ({
   checkForUpdate: vi.fn(async () => ({ updateAvailable: false })),
@@ -141,6 +142,7 @@ const INVENTORY = [
   "GET /api/google/callback",
   "GET /api/google/status",
   "POST /api/google/signout",
+  "PUT /api/google/client",
 ];
 
 let now = Date.parse("2026-11-14T12:00:00Z");

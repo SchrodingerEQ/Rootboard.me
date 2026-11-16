@@ -415,6 +415,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
         onOpenChange={setAuthDialogOpen}
         error={authStatus?.error}
         mode={authStatus?.mode}
+        oauthClient={authStatus?.oauthClient}
       />
     </div>
   );

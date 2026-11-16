@@ -68,12 +68,13 @@ spike's answer nor the verification outcome. It needs only:
    being built.
 2. An OAuth client of type **Desktop app** in the same project.
 3. That client's id and the installed-app secret Google issues with it,
-   handed to the brief-02 session. Brief 02 commits both on purpose (its
-   decision 2): for this client type they are not confidential. Nothing
+   handed to the brief-02 session. (Founder 2026-11-16: they are **not**
+   committed after all; they ship on each unit in
+   `data/google-oauth-client.json`, decision 0017.) Nothing
    else from the console goes into the repo or a chat. If you create a
    fresh client when moving to production (§2 suggests it), its id and
-   secret replace these in `shared/google-oauth-client.ts` in a small PR
-   before brief 09 builds the image.
+   secret go onto the units as a new `data/google-oauth-client.json`
+   (no PR) before brief 09 builds the image.
 
 Record the date in this brief's Status line. §3.1 to §3.3 can follow at
 their own pace, but §3.2 step 3 (In production) must be done before the

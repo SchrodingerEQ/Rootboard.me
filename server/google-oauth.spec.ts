@@ -40,6 +40,7 @@ import {
 } from "./services/googleOAuth";
 import { GoogleAccessLostError, GoogleCalendarService, SIGNED_IN_LIST_MESSAGE } from "./services/googleCalendar";
 import { registerGoogleRoutes, callbackRedirectUrl } from "./google-routes";
+import { MAX_CLIENT_FILE_BYTES, parseClientJson, projectNumberOf, readClientFile, writeClientFile } from "./services/googleOAuthClient";
 
 // --- Mock Google -------------------------------------------------------------
 
@@ -80,10 +81,16 @@ function makeClient(): OAuth2Client {
 
 let tmpDir = "";
 let tokenFile = "";
+let clientFile = "";
+
+/** The shape Google's console downloads. Test values only. */
+function clientJson(clientId = "123456789-abc.apps.googleusercontent.com", clientSecret = "test-only-secret") {
+  return { installed: { client_id: clientId, project_id: "test", client_secret: clientSecret, redirect_uris: ["http://localhost"] } };
+}
 let now = Date.parse("2026-11-16T12:00:00Z");
 
 function newService(lookupEmail = vi.fn(async () => "owner@example.com")) {
-  return new GoogleOAuthService({ tokenFile, now: () => now, makeClient, lookupEmail });
+  return new GoogleOAuthService({ tokenFile, clientFile, now: () => now, makeClient, lookupEmail });
 }
 
 function readStored() {
@@ -141,6 +148,7 @@ afterAll(async () => {
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "rootboard-google-oauth-"));
   tokenFile = path.join(tmpDir, "data", "google-oauth.json");
+  clientFile = path.join(tmpDir, "data", "google-oauth-client.json");
   google.tokenRequests = [];
   google.revokeRequests = [];
   google.revokeStatus = 200;
@@ -163,6 +171,62 @@ async function signIn(service: GoogleOAuthService) {
   const { state } = start(service);
   return service.handleCallback({ code: "auth-code", state });
 }
+
+// --- The unit's client file (decision 0017: never in the repo) ---------------------
+
+describe("client file", () => {
+  test("accepts Google's download as-is, and nothing else", () => {
+    expect(parseClientJson(clientJson())).toEqual({ clientId: "123456789-abc.apps.googleusercontent.com", clientSecret: "test-only-secret" });
+    expect(parseClientJson({ web: clientJson().installed })).toBeNull(); // a Web client, not Desktop
+    expect(parseClientJson(clientJson("123-abc.example.com"))).toBeNull();
+    expect(parseClientJson(clientJson(undefined, ""))).toBeNull();
+    expect(parseClientJson(null)).toBeNull();
+    expect(projectNumberOf("123456789-abc.apps.googleusercontent.com")).toBe("123456789");
+  });
+
+  test("missing, invalid and configured; written at 0600 and read again without a restart", () => {
+    const service = new GoogleOAuthService({ tokenFile, clientFile, now: () => now });
+    expect(readClientFile(clientFile)).toEqual({ status: "missing" });
+    expect(service.clientStatus()).toEqual({ status: "missing", projectNumber: null });
+    expect(() => service.startSignIn()).toThrow(/no Google sign-in client/);
+
+    fs.mkdirSync(path.dirname(clientFile), { recursive: true });
+    fs.writeFileSync(clientFile, "{not json");
+    expect(service.clientStatus().status).toBe("invalid");
+
+    expect(writeClientFile(clientJson(), clientFile)).toBe(true);
+    expect(fs.statSync(clientFile).mode & 0o777).toBe(0o600);
+    expect(service.clientStatus()).toEqual({ status: "configured", projectNumber: "123456789" });
+    const url = new URL(service.startSignIn());
+    expect(url.searchParams.get("client_id")).toBe("123456789-abc.apps.googleusercontent.com");
+    expect(url.toString()).not.toContain("test-only-secret");
+  });
+
+  test("an invalid client is never written", () => {
+    expect(writeClientFile({ installed: { client_id: "x" } }, clientFile)).toBe(false);
+    expect(fs.existsSync(clientFile)).toBe(false);
+    expect(writeClientFile(clientJson("1-a.apps.googleusercontent.com", "s".repeat(MAX_CLIENT_FILE_BYTES)), clientFile)).toBe(false);
+  });
+
+  test("a callback with the client file gone fails with a reason, not a crash", async () => {
+    writeClientFile(clientJson(), clientFile);
+    const service = new GoogleOAuthService({ tokenFile, clientFile, now: () => now });
+    const state = new URL(service.startSignIn()).searchParams.get("state");
+    fs.rmSync(clientFile);
+    expect(await service.handleCallback({ code: "c", state })).toEqual({ ok: false, reason: "no-client" });
+  });
+
+  test("auth status reports the client; signed in without one is not connected", async () => {
+    const oauth = new GoogleOAuthService({ tokenFile, clientFile, now: () => now, lookupEmail: async () => "owner@example.com" });
+    process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE = path.join(tmpDir, "missing.json");
+    const calendar = new GoogleCalendarService(oauth);
+    expect(calendar.getAuthStatus()).toMatchObject({ mode: "none", oauthClient: "missing" });
+    // Signed in earlier, then the client file disappeared.
+    await signIn(newService());
+    expect(calendar.getAuthStatus()).toMatchObject({ mode: "oauth", authenticated: false, oauthClient: "missing" });
+    expect(calendar.getAuthStatus().error).toMatch(/no Google sign-in client/);
+  });
+});
 
 // --- PKCE and the start URL -----------------------------------------------------
 
@@ -403,7 +467,7 @@ describe("provider precedence", () => {
     writeServiceAccountKey();
     const calendar = new GoogleCalendarService(newService());
     await vi.waitFor(() => expect(calendar.getAuthStatus().mode).toBe("service-account"));
-    expect(calendar.getAuthStatus()).toEqual({ mode: "service-account", authenticated: true, error: null, email: null });
+    expect(calendar.getAuthStatus()).toEqual({ mode: "service-account", authenticated: true, error: null, email: null, oauthClient: "configured" });
   });
 
   test("a key file and a sign-in → the sign-in wins, with a log line", async () => {
@@ -413,7 +477,7 @@ describe("provider precedence", () => {
     const log = vi.spyOn(console, "log");
     const calendar = new GoogleCalendarService(oauth);
     await vi.waitFor(() => expect(log.mock.calls.flat().join("\n")).toMatch(/Service account auth initialized/));
-    expect(calendar.getAuthStatus()).toEqual({ mode: "oauth", authenticated: true, error: null, email: "owner@example.com" });
+    expect(calendar.getAuthStatus()).toEqual({ mode: "oauth", authenticated: true, error: null, email: "owner@example.com", oauthClient: "configured" });
     expect(log.mock.calls.flat().join("\n")).toMatch(/Google sign-in .* is used instead of the service account/);
     log.mockRestore();
   });
@@ -427,7 +491,7 @@ describe("provider precedence", () => {
     const calendar = new GoogleCalendarService(oauth);
 
     await expect(calendar.getCalendarList()).rejects.toBeInstanceOf(GoogleAccessLostError);
-    expect(calendar.getAuthStatus()).toEqual({ mode: "oauth", authenticated: false, error: LOST_ACCESS_REASON, email: "owner@example.com" });
+    expect(calendar.getAuthStatus()).toEqual({ mode: "oauth", authenticated: false, error: LOST_ACCESS_REASON, email: "owner@example.com", oauthClient: "configured" });
     expect(readStored().refreshToken).toBeUndefined();
     expect(fs.statSync(tokenFile).mode & 0o777).toBe(0o600);
 
@@ -459,8 +523,9 @@ describe("routes", () => {
     });
     registerGoogleRoutes(app, {
       oauth,
-      authStatus: () => ({ mode, authenticated: mode !== "none", error: null, email: null }),
+      authStatus: () => ({ mode, authenticated: mode !== "none", error: null, email: null, oauthClient: "configured" }),
       beginAccountChange: async () => undefined,
+      saveClient: (value) => writeClientFile(value, clientFile),
       clearSyncedEvents: storageMock.deleteAllCalendarEvents,
       isLocalRequest: (req) => (req.ip ?? "") === "127.0.0.1",
     });
@@ -553,6 +618,37 @@ describe("routes", () => {
     vi.spyOn(oauth, "handleCallback").mockRejectedValueOnce(new Error("ENOSPC"));
     const res = await fetch(`${base}/api/google/callback?code=c&state=s`, { headers: { "x-test-peer": "127.0.0.1" }, redirect: "manual" });
     expect(res.headers.get("location")).toBe("http://localhost:5000/?google=failed&reason=exchange-failed");
+  });
+
+  test("start without a client file: 409 saying so, nothing started", async () => {
+    const bare = new GoogleOAuthService({ tokenFile, clientFile, now: () => now });
+    vi.spyOn(oauth, "startSignIn").mockImplementation(() => bare.startSignIn());
+    const res = await fetch(`${base}/api/google/start`, { method: "POST", headers: kioskJson, body: "{}" });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ oauthClient: "missing" });
+  });
+
+  test("PUT /api/google/client saves Google's JSON at 0600 and never echoes the secret", async () => {
+    const res = await fetch(`${base}/api/google/client`, { method: "PUT", headers: kioskJson, body: JSON.stringify(clientJson()) });
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(JSON.parse(text)).toEqual({ configured: true });
+    expect(text).not.toContain("test-only-secret");
+    expect(fs.statSync(clientFile).mode & 0o777).toBe(0o600);
+    expect(readClientFile(clientFile).status).toBe("configured");
+  });
+
+  test("PUT /api/google/client refuses a bad client, a form post, a cross-site post and an oversized body", async () => {
+    const bad = await fetch(`${base}/api/google/client`, { method: "PUT", headers: kioskJson, body: JSON.stringify({ installed: { client_id: "nope", client_secret: "test-only-secret" } }) });
+    expect(bad.status).toBe(400);
+    expect(await bad.text()).not.toContain("test-only-secret");
+    const form = await fetch(`${base}/api/google/client`, { method: "PUT", headers: { "content-type": "application/x-www-form-urlencoded", "x-test-peer": "127.0.0.1" }, body: "a=1" });
+    expect(form.status).toBe(403);
+    const crossSite = await fetch(`${base}/api/google/client`, { method: "PUT", headers: { ...kioskJson, "sec-fetch-site": "cross-site" }, body: JSON.stringify(clientJson()) });
+    expect(crossSite.status).toBe(403);
+    const big = await fetch(`${base}/api/google/client`, { method: "PUT", headers: kioskJson, body: JSON.stringify({ ...clientJson(), pad: "x".repeat(MAX_CLIENT_FILE_BYTES) }) });
+    expect(big.status).toBe(413);
+    expect(fs.existsSync(clientFile)).toBe(false);
   });
 
   test("status is a plain read", async () => {

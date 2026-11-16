@@ -15,6 +15,7 @@ import { networkService } from "./services/networkService";
 import { registerSystemRoutes } from "./system-routes";
 import { registerGoogleRoutes } from "./google-routes";
 import { googleOAuthService } from "./services/googleOAuth";
+import { writeClientFile } from "./services/googleOAuthClient";
 import { pairingService as defaultPairingService, type PairingService } from "./services/pairingService";
 import { getDiagnostics } from "./services/diagnosticsService";
 import { createLanAuthGuard, isLocalRequest, sendPairingRequired } from "./middleware/lanAuth";
@@ -319,6 +320,7 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
       error: status.error,
       mode: status.mode,
       email: status.email,
+      oauthClient: status.oauthClient,
     });
   });
 
@@ -326,6 +328,7 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     oauth: googleOAuthService,
     authStatus: () => googleCalendarService.getAuthStatus(),
     beginAccountChange: () => googleCalendarService.beginAccountChange(),
+    saveClient: (value) => writeClientFile(value),
     clearSyncedEvents: () => storage.deleteAllCalendarEvents(),
     isLocalRequest,
   });

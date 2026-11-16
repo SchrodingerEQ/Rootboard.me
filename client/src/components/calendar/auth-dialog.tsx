@@ -16,6 +16,8 @@ interface AuthDialogProps {
    *  service-account error (shown on the Advanced tab). */
   error?: string | null;
   mode?: GoogleAuthStatus["mode"];
+  /** Whether this unit has its Google sign-in client (data/google-oauth-client.json). */
+  oauthClient?: GoogleAuthStatus["oauthClient"];
 }
 
 /**
@@ -23,7 +25,7 @@ interface AuthDialogProps {
  * the sign-in on the kiosk, and **Advanced: service account**, the
  * self-hoster path's instructions as they were before brief 02.
  */
-export function AuthDialog({ open, onOpenChange, error, mode }: AuthDialogProps) {
+export function AuthDialog({ open, onOpenChange, error, mode, oauthClient }: AuthDialogProps) {
   const lostReason = mode === "oauth" ? error : null;
   const serviceAccountError = mode === "oauth" ? null : error;
   const [isRetrying, setIsRetrying] = useState(false);
@@ -58,7 +60,7 @@ export function AuthDialog({ open, onOpenChange, error, mode }: AuthDialogProps)
           </TabsList>
 
           <TabsContent value="connect" className="pt-2 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">
-            <GoogleConnectPanel reason={lostReason} />
+            <GoogleConnectPanel reason={lostReason} clientStatus={oauthClient} />
           </TabsContent>
 
           <TabsContent value="service-account" className="pt-2 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0">

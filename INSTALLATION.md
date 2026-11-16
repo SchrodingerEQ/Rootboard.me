@@ -46,7 +46,7 @@ Appendix A. [Advanced: Google service account](#appendix-a--advanced-google-serv
 ### Accounts and credentials
 
 - A Google account that owns the calendars you want to display.
-- Nothing else from Google: you sign in on the kiosk in step 7. (Self-hosters who prefer a key file can use a service account instead, [Appendix A](#appendix-a--advanced-google-service-account).)
+- A Google account to sign in with on the kiosk (step 7). Self-hosters also create a free Google Cloud "Desktop app" sign-in client (step 7.1), or use a service account instead ([Appendix A](#appendix-a--advanced-google-service-account)).
 
 ---
 
@@ -242,7 +242,38 @@ npm install
 
 ## 7. Connect your Google account (on the kiosk)
 
-There is nothing to prepare here. Once the app is running (step 9), you connect Google on the touchscreen, the way you add an account to a phone:
+Once the app is running (step 9), you connect Google on the touchscreen, the way you add an account to a phone. First the kiosk needs a **Google sign-in client**: a small JSON file, `data/google-oauth-client.json`, that identifies "this Rootboard" to Google. It is never in the repository (decision 0017).
+
+- **A Rootboard unit you received** already has it on the card. Skip to the steps below.
+- **Self-hosting:** create your own (about 15 minutes, free) and put it in place. This is the usual setup for open-source Google integrations; the file stays on your kiosk.
+
+### 7.1 Self-hosters: create your Google sign-in client
+
+1. Go to <https://console.cloud.google.com/>, create a project (for example `My Rootboard`) and select it.
+2. **Enable the Calendar API:** <https://console.cloud.google.com/apis/library/calendar-json.googleapis.com> → **Enable**.
+3. **OAuth consent screen** (APIs & Services → OAuth consent screen): User type **External**. Fill in the app name and your email. Under **Scopes**, add `.../auth/calendar.events` and `.../auth/calendar.readonly`. Under **Test users**, add the Google account(s) that will sign in on the kiosk. Leave it in **Testing**.
+4. **Create the client** (APIs & Services → Credentials → **Create credentials → OAuth client ID**): Application type **Desktop app**, any name → **Create** → **Download JSON**.
+5. Put that file on the kiosk as `data/google-oauth-client.json`, either way:
+
+   ```bash
+   # From the computer you downloaded it on (placeholders: your file, the kiosk's user and address):
+   scp ~/Downloads/client_secret_XXXX.json <user>@<kiosk-address>:<app-folder>/data/google-oauth-client.json
+   ssh <user>@<kiosk-address> chmod 600 <app-folder>/data/google-oauth-client.json
+   ```
+
+   or from a paired laptop ([section 15](#15-use-the-api-from-a-laptop-on-your-network-pairing)) without SSH:
+
+   ```bash
+   curl -X PUT -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+        --data @client_secret_XXXX.json http://<kiosk-address>:5000/api/google/client
+   # → {"configured":true}
+   ```
+
+   No restart is needed. Settings → Calendars then shows "Google sign-in client: configured". Treat the file like a password: don't commit it or post it anywhere.
+
+**Testing status:** while your consent screen is in Testing, only the test users you listed can sign in, and a sign-in lasts 7 days before Google asks for it again. Publishing the app to production removes both limits; for a personal kiosk Google may show an "unverified app" screen, which you can click through for your own account.
+
+### 7.2 Sign in on the kiosk
 
 1. The **Google Calendar Not Connected** dialog opens at first boot (it is also the setup wizard's Google step, and Settings → **Calendars** has the same button). Tap **Connect Google**.
 2. Google's sign-in page opens in the kiosk browser. Choose the Google account whose calendars the kiosk should show and allow access to its calendars and events.
@@ -254,7 +285,8 @@ What happens to the sign-in:
 - The kiosk asks for two permissions: read and change **events**, and read the **list of calendars**. It cannot create or delete calendars.
 - **Sign out** (Settings → Calendars) removes the kiosk's access at Google, deletes the token file and deletes the kiosk's copy of the events. Your Google account and calendars are not changed. You can also remove the kiosk from your Google account's security page; the kiosk then shows the Connect screen with the reason and keeps the last events on screen until you connect again.
 - Rootboard's on-screen keyboard does not appear on Google's own pages. If Google asks you to type an address or password, plug in a USB keyboard for that step.
-- **Beta limit:** while Rootboard's Google app is in Google's "Testing" status, only accounts the developer has listed as testers can sign in, and a sign-in lasts 7 days before Google asks for it again. This goes away when the app moves to production.
+- **Beta limit:** while the Google sign-in client's consent screen is in "Testing", only accounts listed as test users can sign in, and a sign-in lasts 7 days before Google asks for it again. This goes away when the app moves to production.
+- **No sign-in client?** The Connect Google tab says "This Rootboard has no Google sign-in client configured" and points here; use 7.1, or the service account ([Appendix A](#appendix-a--advanced-google-service-account)).
 
 Prefer a key file and no sign-in on the screen (for example on a self-hosted unit)? Use a service account instead: [Appendix A](#appendix-a--advanced-google-service-account). If both are present, the Google sign-in is used and a log line says so.
 
@@ -778,6 +810,7 @@ For a hosted or development install with no touchscreen, `LAN_API_OPEN=true` in 
 | `/home/pi/calendar-app/.update-backups/` | Auto-update rollback snapshots |
 | `/home/pi/calendar-app/data/paired-devices.json` | Paired laptops/agents (token hashes only; delete to revoke all) |
 | `/home/pi/calendar-app/data/google-oauth.json` | Google sign-in tokens (mode 0600, never leave the Pi; Sign out deletes it) |
+| `/home/pi/calendar-app/data/google-oauth-client.json` | Google sign-in client (Desktop app JSON from Google Cloud; mode 0600; never in git) |
 | `/home/pi/kiosk.sh` | Launches server + Chromium |
 | `/home/pi/.config/autostart/calendar-kiosk.desktop` | Boot autostart entry |
 | `/home/pi/calendar-app.log` | Server stdout/stderr |

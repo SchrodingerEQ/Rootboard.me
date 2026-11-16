@@ -47,7 +47,7 @@ export function GoogleAccountSettings({ status }: { status: GoogleAuthStatus | u
           This kiosk reads calendars through a service account. Once you sign in with Google, the sign-in is used
           instead; Sign out returns to the service account.
         </p>
-        <GoogleConnectPanel />
+        <GoogleConnectPanel clientStatus={status.oauthClient} />
       </div>
     ) : (
       <button
@@ -100,7 +100,7 @@ export function GoogleAccountSettings({ status }: { status: GoogleAuthStatus | u
           </div>
         </div>
       )}
-      {!status.authenticated && <GoogleConnectPanel reason={status.mode === "oauth" ? status.error : null} />}
+      {!status.authenticated && <GoogleConnectPanel reason={status.mode === "oauth" ? status.error : null} clientStatus={status.oauthClient} />}
       {status.mode === "oauth" && (
         <Button
           variant="outline"

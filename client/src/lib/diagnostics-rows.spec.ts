@@ -47,6 +47,13 @@ describe("diagnosticsRows", () => {
     expect(row(b, "Google Calendar")).toMatchObject({ value: "Connected (signed in with Google)", warn: false });
     b.auth = { mode: "oauth", connected: false, error: "Google stopped accepting this kiosk's sign-in." };
     expect(row(b, "Google Calendar")).toMatchObject({ value: "Not connected: Google stopped accepting this kiosk's sign-in.", warn: true });
+    // ...the sign-in client: project number only, never the id or secret.
+    b.auth = { mode: "oauth", connected: true, error: null, oauthClient: { status: "configured", projectNumber: "123456789" } };
+    expect(row(b, "Google sign-in client")).toMatchObject({ value: "configured: yes, project 123456789", warn: false });
+    b.auth = { mode: "none", connected: false, error: null, oauthClient: { status: "missing", projectNumber: null } };
+    expect(row(b, "Google sign-in client")).toMatchObject({ value: "missing", warn: true });
+    b.auth = { mode: "service-account", connected: true, error: null, oauthClient: { status: "missing", projectNumber: null } };
+    expect(row(b, "Google sign-in client")).toMatchObject({ value: "missing", warn: false });
   });
 
   test("weather failing more recently than its last success warns", () => {

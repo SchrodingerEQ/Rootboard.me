@@ -19,6 +19,7 @@ import choresManifest from "../../client/src/widgets/chores/manifest.json";
 import dinnerManifest from "../../client/src/widgets/dinner/manifest.json";
 import whatToWearManifest from "../../client/src/widgets/what-to-wear/manifest.json";
 import { googleCalendarService } from "./googleCalendar";
+import { googleOAuthService } from "./googleOAuth";
 import { getLastUpdateCheck, getUpdateStatus, isSupervised } from "./updateService";
 import { getWeatherStatus } from "./weatherService";
 import { readDashboardConfig } from "./configService";
@@ -232,7 +233,12 @@ async function collectFull(): Promise<DiagnosticsBundle> {
       error: update.error ?? null,
       lastCheck: getLastUpdateCheck(),
     },
-    auth: { mode: authMode(auth.mode === "oauth"), connected: auth.authenticated, error: auth.error },
+    auth: {
+      mode: authMode(auth.mode === "oauth"),
+      connected: auth.authenticated,
+      error: auth.error,
+      oauthClient: googleOAuthService.clientStatus(),
+    },
     calendarSync,
     weather,
     widgets: {

@@ -4,7 +4,8 @@ import { existsSync, readFileSync } from 'fs';
 import { storage } from '../storage';
 import { normalizeGoogleEventTimes } from './googleEventTimes';
 import { logPrivate } from './logRing';
-import { googleOAuthService, isInvalidGrant, LOST_ACCESS_REASON, type GoogleOAuthService } from './googleOAuth';
+import { googleOAuthService, isInvalidGrant, LOST_ACCESS_REASON, OAuthClientNotConfiguredError, type GoogleOAuthService } from './googleOAuth';
+import type { OAuthClientStatus } from './googleOAuthClient';
 import { calendarFallbackColor } from '@shared/calendar-color';
 import type { CalendarEvent, InsertCalendarEvent } from '@shared/schema';
 
@@ -23,6 +24,8 @@ export interface GoogleAuthStatus {
   error: string | null;
   /** The signed-in account, OAuth only (display only). */
   email: string | null;
+  /** data/google-oauth-client.json: whether Connect Google can work on this unit. */
+  oauthClient: OAuthClientStatus;
 }
 
 export const SIGNED_IN_LIST_MESSAGE =
@@ -189,18 +192,25 @@ export class GoogleCalendarService {
 
   getAuthStatus(): GoogleAuthStatus {
     const oauth = this.oauth.status();
+    const oauthClient = this.oauth.clientStatus().status;
     if (oauth.present) {
+      // Signed in, but the client file has since gone: nothing can refresh.
+      if (oauth.connected && oauthClient !== 'configured') {
+        const error = new OAuthClientNotConfiguredError(oauthClient).message;
+        return { mode: 'oauth', authenticated: false, error, email: oauth.email, oauthClient };
+      }
       return {
         mode: 'oauth',
         authenticated: oauth.connected,
         error: oauth.connected ? null : (oauth.lostReason ?? LOST_ACCESS_REASON),
         email: oauth.email,
+        oauthClient,
       };
     }
     if (this.isInitialized) {
-      return { mode: 'service-account', authenticated: true, error: null, email: null };
+      return { mode: 'service-account', authenticated: true, error: null, email: null, oauthClient };
     }
-    return { mode: 'none', authenticated: false, error: this.initError, email: null };
+    return { mode: 'none', authenticated: false, error: this.initError, email: null, oauthClient };
   }
 
   getServiceAccountEmail(): string | null {

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   CALLBACK_FAILURE_COPY,
+  missingClientSentence,
   readCallbackOutcome,
   shouldShowSyncedEvents,
   startFailureSentence,
@@ -17,7 +18,7 @@ describe("the return from Google", () => {
   });
 
   test("every reason the server sends has a sentence", () => {
-    for (const reason of ["denied", "expired", "bad-request", "no-refresh-token", "exchange-failed"]) {
+    for (const reason of ["denied", "expired", "bad-request", "no-refresh-token", "exchange-failed", "no-client"]) {
       expect(CALLBACK_FAILURE_COPY[reason]).toMatch(/\.$/);
     }
   });
@@ -38,25 +39,15 @@ describe("which state shows the last synced events", () => {
   });
 });
 
-test("start failures in words", () => {
-  expect(startFailureSentence(403)).toMatch(/kiosk's own screen/);
-  expect(startFailureSentence(500)).toMatch(/try again/);
+test("no sign-in client on the unit, in words", () => {
+  expect(missingClientSentence("missing")).toMatch(/no Google sign-in client configured/);
+  expect(missingClientSentence("invalid")).toMatch(/isn't valid/);
+  expect(missingClientSentence("configured")).toBeNull();
+  expect(missingClientSentence(undefined)).toBeNull();
 });
 
-test("nothing in the client imports the OAuth client file (it stays out of the browser bundle)", async () => {
-  const fs = await import("fs");
-  const path = await import("path");
-  const root = path.resolve(import.meta.dirname, "..");
-  const offenders: string[] = [];
-  const walk = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (/\.(tsx?|jsx?)$/.test(entry.name) && !entry.name.endsWith(".spec.ts")) {
-        if (fs.readFileSync(full, "utf-8").includes("google-oauth-client")) offenders.push(full);
-      }
-    }
-  };
-  walk(root);
-  expect(offenders).toEqual([]);
+test("start failures in words", () => {
+  expect(startFailureSentence(403)).toMatch(/kiosk's own screen/);
+  expect(startFailureSentence(409)).toMatch(/no Google sign-in client/);
+  expect(startFailureSentence(500)).toMatch(/try again/);
 });

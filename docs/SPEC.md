@@ -85,10 +85,11 @@ even with a token.
 | POST | `/api/calendar/sync` | Pull a date window from Google into storage | LAN token |
 | GET | `/api/calendar/sync-status` | `{lastSyncAt,lastSyncError,syncing}`, no-store | LAN token |
 | GET | `/api/calendar/service-account-email` | Service account `client_email` | LAN token |
-| GET | `/api/calendar/auth-status` | `{authenticated,needsAuth,error,mode,email}`, no-store; `mode` is `oauth`\|`service-account`\|`none` (2.3); body kept out of the request log | LAN token |
-| POST | `/api/google/start` | Begin Google sign-in (2.3): `{url}` of Google's page for the kiosk browser; replaces any earlier unfinished sign-in; body kept out of the request log | **kiosk only** + JSON body + not cross-site |
-| GET | `/api/google/callback?code&state` (or `?error&state`) | Google's loopback redirect: exchanges the code with the PKCE verifier, saves the tokens, empties the event cache, then 302 to `http://localhost:5000/?google=connected` or `?google=failed&reason=` (`denied`, `expired`, `bad-request`, `no-refresh-token`, `exchange-failed`) | **kiosk only** |
-| GET | `/api/google/status` | Same `{mode, authenticated, error, email}` as auth-status, no-store; body kept out of the request log | LAN token |
+| GET | `/api/calendar/auth-status` | `{authenticated,needsAuth,error,mode,email,oauthClient}`, no-store; `mode` is `oauth`\|`service-account`\|`none`, `oauthClient` is `missing`\|`configured`\|`invalid` (2.3); body kept out of the request log | LAN token |
+| POST | `/api/google/start` | Begin Google sign-in (2.3): `{url}` of Google's page for the kiosk browser; replaces any earlier unfinished sign-in; 409 `{message, oauthClient}` when the unit has no valid sign-in client; body kept out of the request log | **kiosk only** + JSON body + not cross-site |
+| GET | `/api/google/callback?code&state` (or `?error&state`) | Google's loopback redirect: exchanges the code with the PKCE verifier, saves the tokens, empties the event cache, then 302 to `http://localhost:5000/?google=connected` or `?google=failed&reason=` (`denied`, `expired`, `bad-request`, `no-refresh-token`, `exchange-failed`, `no-client`) | **kiosk only** |
+| GET | `/api/google/status` | Same `{mode, authenticated, error, email, oauthClient}` as auth-status, no-store; body kept out of the request log | LAN token |
+| PUT | `/api/google/client` | Install the unit's Google sign-in client: Google's Desktop-client JSON as downloaded (`installed.client_id` ending `.apps.googleusercontent.com`, non-empty `installed.client_secret`, ≤ 8 KB) → `data/google-oauth-client.json` (tmp + rename, 0600) → `{configured: true}` only, never echoing the secret; 400 invalid, 413 too large, 403 non-JSON or cross-site | LAN token (kiosk or paired) + JSON body + not cross-site |
 | POST | `/api/google/signout` | Revoke at Google (best effort), delete `data/google-oauth.json`, empty the event cache → `{signedOut, revoked, cleared}`; 409 when not signed in with Google | **kiosk only** + JSON body + not cross-site |
 | GET | `/api/update/check` | Compare `APP_VERSION` vs the newest release on this kiosk's channel (§4.1); includes `channel` | LAN token |
 | GET | `/api/update/status` | In-memory update progress plus the effective `channel` | LAN token |
@@ -178,8 +179,21 @@ even with a token.
     says so when both exist.
   - `service-account` when the key loaded; `none` otherwise (`error` is
     the key-file error).
+- **Sign-in client** (`server/services/googleOAuthClient.ts`, decision
+  0017 "Client credentials"): the Desktop client's id and secret are
+  never in the repo. Each unit reads `data/google-oauth-client.json`,
+  Google's download as-is (`{"installed": {client_id, client_secret, …}}`),
+  on demand, so a new file needs no restart. It is written by `PUT
+  /api/google/client` or put in place by scp / the provision script.
+  `oauthClient` in the auth status is `missing`, `configured` or `invalid`
+  (unparseable, wrong shape, or > 8 KB). The secret is never logged or
+  returned; diagnostics carry only `{status, projectNumber}` (the leading
+  digits of the client id). Without a valid file, start answers 409, a
+  signed-in unit reports `authenticated: false` with that reason, and the
+  service-account path is unaffected. `shared/google-oauth-client.ts`
+  holds only the scopes.
 - **Google sign-in** (`server/services/googleOAuth.ts`, flow B): Desktop
-  client (`shared/google-oauth-client.ts`, committed on purpose), scopes
+  client from the file above, scopes
   `calendar.events` + `calendar.readonly`, `access_type=offline`,
   `prompt=consent`, PKCE S256 (43-char verifier), redirect
   `http://127.0.0.1:5000/api/google/callback`. One pending sign-in at a
@@ -313,7 +327,7 @@ retries upstream when a client asks, so this is also the retry cadence.
 
 | Var | Default / behavior |
 |---|---|
-| `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | `./service-account.json`; only for the service-account path. Google sign-in needs no env var (its tokens are in `data/google-oauth.json`) |
+| `GOOGLE_SERVICE_ACCOUNT_KEY_FILE` | `./service-account.json`; only for the service-account path. Google sign-in needs no env var: its client is `data/google-oauth-client.json` and its tokens `data/google-oauth.json` (2.3), never `.env` and never the repo |
 | `DATABASE_URL` | no longer used; if set, a startup log line says it is ignored (see 2.4) |
 | `GITHUB_REPO_OWNER` / `GITHUB_REPO_NAME` | `SchrodingerEQ` / `Rootboard.me` |
 | `UPDATE_CHANNEL` | `stable` or `beta`; fallback only when `dashboard.json` has no `update` key (§4.1); anything else logs a warning and means `stable` |
@@ -353,8 +367,9 @@ stripped. At most 20 devices. `code` may be a string or a whole number
 **Diagnostics** (`server/services/diagnosticsService.ts`, type in
 `shared/diagnostics.ts`): `version`, app and system uptime, Node version,
 platform/arch, `supervised`, update status + last check (in memory,
-`getLastUpdateCheck`), auth `{mode: service-account|none, connected,
-error}` (never the email; `oauth` arrives with brief 02), calendar sync
+`getLastUpdateCheck`), auth `{mode: oauth|service-account|none, connected,
+error, oauthClient: {status, projectNumber}}` (never the email, the
+client id or its secret; brief 02), calendar sync
 status, weather status, enabled widgets with versions (built-ins from
 their manifests) and errors, widget-folder errors, theme id, network
 `{interface, connected, internetReachable}`, disk free/total on the app
@@ -771,7 +786,10 @@ still opens at boot; Close it to reach the rail.
 **Google sign-in (brief 02).** That dialog (`auth-dialog.tsx`) has two
 tabs: **Connect Google** (`google-connect-panel.tsx`: one button →
 `POST /api/google/start` → the kiosk browser goes to Google; the panel
-makes no dialog or popover assumptions, so the wizard can embed it) and
+makes no dialog or popover assumptions, so the wizard can embed it; with
+`oauthClient` missing or invalid it shows "This Rootboard has no Google
+sign-in client configured…" with the setup-guide link instead of the
+button) and
 **Advanced: service account** (the key-file steps, Retry, Setup Guide
 link, and the key-file error). With `mode: oauth` the auth status's
 `error` is the lost-access reason and shows on the Connect tab. Back
@@ -797,7 +815,8 @@ the service account). With
 `mode: oauth` the service-account rows hide: the share-email box,
 per-calendar Remove and Add by ID (a hint says shared calendars appear
 on their own). With `none`, a link offers the service account via the
-Setup Guide. The Calendars warning dot means Google needs setup (no
+Setup Guide. A read-only line under it says "Google sign-in client:
+configured / missing / invalid file". The Calendars warning dot means Google needs setup (no
 key and no sign-in, or a lost sign-in). Calendar dots use
 `getCalendarColor()` from `lib/calendar-meta.ts` (no local copy).
 
@@ -1295,6 +1314,10 @@ identifies the restored version, then `npm install` + `npm run build`
   mode 0600, atomic writes, never logged, never in the diagnostics
   bundle. Gitignored and preserved with `data/`. Its presence makes
   `mode: oauth`; Sign out deletes it.
+- `data/google-oauth-client.json`: the unit's Google Desktop client
+  (2.3), Google's download as-is; mode 0600 when the app writes it;
+  gitignored and preserved with `data/`; never committed (the
+  `GOCSPX-` gitleaks rule has no allowlist; `server/secret-scan-rules.spec.ts`).
 - The event cache (`calendar_events`) belongs to one identity: a Google
   sign-in and a sign-out each empty it, and the next sync refills it.
 - `widgets/`: sideloaded folder-drop community widgets (SD card/SSH).
