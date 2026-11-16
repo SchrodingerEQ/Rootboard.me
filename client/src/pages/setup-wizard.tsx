@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { WeatherLocationSettings } from "@/components/calendar/weather-location-settings";
 import {
+  canContinueWithoutNetwork,
   canSkip,
   connectFailureSentence,
   defaultTimezone,
@@ -116,7 +117,14 @@ export function SetupWizard({ mode, weatherLocation, onSaveWeatherLocation, goog
         </div>
 
         {step === "welcome" && <WelcomeStep onNext={next} />}
-        {step === "network" && <NetworkStep autoPass={mode !== "rerun" && mode !== "network"} onNext={next} lastStep={index === steps.length - 1} />}
+        {step === "network" && (
+          <NetworkStep
+            autoPass={mode !== "rerun" && mode !== "network"}
+            offlineExit={canContinueWithoutNetwork(mode)}
+            onNext={next}
+            lastStep={index === steps.length - 1}
+          />
+        )}
         {step === "timezone" && <TimezoneStep onNext={next} lastStep={index === steps.length - 1} />}
         {step === "google" && <GoogleStep connected={googleConnected} error={googleError} onNext={next} />}
         {step === "weather" && <WeatherStep location={weatherLocation} onSave={onSaveWeatherLocation} onNext={next} />}
@@ -222,7 +230,19 @@ type JoinState =
   | { kind: "failed"; sentence: string }
   | { kind: "joined"; internet: "checking" | "reachable" | "unreachable" };
 
-function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext: () => void; lastStep: boolean }) {
+function NetworkStep({
+  autoPass,
+  offlineExit,
+  onNext,
+  lastStep,
+}: {
+  autoPass: boolean;
+  /** Boot with no network only (founder 2026-11-16): a way back to the
+   *  dashboard, which works offline. First-run Network stays required. */
+  offlineExit: boolean;
+  onNext: () => void;
+  lastStep: boolean;
+}) {
   const [status, setStatus] = useState<NetworkStatus | null>(null);
   const [statusFailed, setStatusFailed] = useState(false);
   const [scan, setScan] = useState<ScanState>({ kind: "idle" });
@@ -511,8 +531,25 @@ function NetworkStep({ autoPass, onNext, lastStep }: { autoPass: boolean; onNext
           {/* Principle 5: say what leaves the kiosk. */}
           <p className="text-sm text-rb-faint leading-snug">
             The Wi-Fi password is stored only by this computer's own network settings — never in Rootboard's files or logs.
-            After joining, Rootboard checks the internet with one request to www.googleapis.com, Google's API address; it
-            sends nothing about you.
+            When Rootboard checks its internet connection (after joining Wi-Fi or tapping Retry), it sends one request
+            to www.googleapis.com, Google's API address, and nothing about you.
+          </p>
+        </div>
+      )}
+
+      {offlineExit && !connected && !target && (
+        <div className="space-y-2 pt-2 border-t border-rb-grid-line">
+          <Button
+            variant="outline"
+            className="h-14 px-6 text-lg"
+            onClick={() => { passedRef.current = true; onNext(); }}
+            data-testid="setup-continue-offline"
+          >
+            Continue without network
+          </Button>
+          <p className="text-sm text-rb-muted leading-snug">
+            Chores, dinner and the calendar you already have keep working offline. The calendar and weather update
+            again once the network is back.
           </p>
         </div>
       )}

@@ -1,6 +1,6 @@
 # 0018 — On-device setup through NetworkManager and polkit
 Date: 2026-11-14
-Status: accepted (beta-launch brief 03, decisions locked 2026-11-08); session 1 in review, not yet merged
+Status: accepted (beta-launch brief 03, decisions locked 2026-11-08; founder approved session 1 on 2026-11-16, with Continue without network added)
 
 ## Decision
 
@@ -8,7 +8,10 @@ Status: accepted (beta-launch brief 03, decisions locked 2026-11-08); session 1 
    Wi-Fi, sets the time zone and the weather location, using the
    on-screen keyboard. It opens at boot when `dashboard.json` has no
    `setup` record, or when the OS booted with no network (after a 90 s
-   grace for NetworkManager). Settings → System replays it.
+   grace for NetworkManager). Settings → System replays it. The boot
+   no-network screen offers **Continue without network** back to the
+   dashboard, which works offline (founder 2026-11-16, principle 4); the
+   first-run Network step stays required.
 2. Wi-Fi goes through **NetworkManager's `nmcli`**, the time zone through
    **`timedatectl`**, both run by the app as its own ordinary user. A
    **polkit rule** (`scripts/polkit/50-rootboard-network.rules`) grants
@@ -25,7 +28,10 @@ Status: accepted (beta-launch brief 03, decisions locked 2026-11-08); session 1 
    in a POST body, to `nmcli`, and into NetworkManager's system profile.
    The app never writes, logs or returns them.
 5. The one new outside call is a HEAD request to `www.googleapis.com`
-   after a join (and when Retry is tapped) — the host the app needs anyway.
+   when Rootboard checks its internet connection (after joining Wi-Fi or
+   tapping Retry) — the host the app needs anyway. A paired LAN device can
+   also trigger it via `GET /api/system/network/status?internet=1`; the
+   answer is reused for 15 s.
 
 ## Context and alternatives
 

@@ -4,6 +4,7 @@ import {
   BOOT_NETWORK_GRACE_SECONDS,
   BOOT_WINDOW_SECONDS,
   bootNetworkDecision,
+  canContinueWithoutNetwork,
   canSkip,
   connectFailureSentence,
   defaultTimezone,
@@ -38,6 +39,16 @@ describe("steps", () => {
     expect(canSkip("timezone")).toBe(true);
     expect(canSkip("google")).toBe(true);
     expect(canSkip("weather")).toBe(true);
+  });
+
+  test("Continue without network: the boot-time Network screen only, never first run", () => {
+    expect(canContinueWithoutNetwork("network-only")).toBe(true);
+    expect(canContinueWithoutNetwork("first-run")).toBe(false);
+    expect(canContinueWithoutNetwork("rerun")).toBe(false);
+    expect(canContinueWithoutNetwork("network")).toBe(false);
+    expect(canContinueWithoutNetwork("timezone")).toBe(false);
+    // …and leaving it never records setup as complete (nothing to undo).
+    expect(recordsCompletion("network-only")).toBe(false);
   });
 
   test("only the full runs record completion; only Settings' entries overlay the dashboard", () => {

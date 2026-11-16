@@ -360,7 +360,7 @@ The first time the app starts on a unit (no `setup` record in `data/config/dashb
 
 Every step but Network has **Skip this step**, and the whole wizard can be replayed later from **Settings → System → Run setup again** (or open **Wi-Fi** / **Time zone** there directly). Nothing changes until you confirm it in a step.
 
-The wizard also opens — on the Network step only — if the unit **boots** with no network at all (for example after moving house): it waits about 90 seconds for NetworkManager to bring a saved connection up first, and moves on by itself the moment one does. A network drop while the dashboard is running never opens it.
+The wizard also opens — on the Network step only — if the unit **boots** with no network at all (for example after moving house): it waits about 90 seconds for NetworkManager to bring a saved connection up first, and moves on by itself the moment one does. If the router is simply off, tap **Continue without network**: chores, dinner and the calendar you already have keep working, and the calendar and weather update again once the network is back. That screen does not come back while the dashboard runs, and a network drop while the dashboard is running never opens it.
 
 The Network and Time zone steps need NetworkManager (`nmcli`), `timedatectl` and the polkit rule in [step 11](#let-the-app-change-wi-fi-and-the-time-zone-polkit). On a computer without them (a laptop running `npm run dev`) those two steps say "managed outside Rootboard" and pass.
 

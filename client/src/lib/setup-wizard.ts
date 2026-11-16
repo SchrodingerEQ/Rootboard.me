@@ -50,6 +50,16 @@ export function canSkip(step: SetupStepId): boolean {
   return step === "timezone" || step === "google" || step === "weather";
 }
 
+/**
+ * "Continue without network" (founder 2026-11-16): only on the boot-time
+ * Network screen, where the unit was set up before and its dashboard works
+ * offline. The first-run Network step stays required (brief 03 decision 2),
+ * and from Settings the Close button already leads back.
+ */
+export function canContinueWithoutNetwork(mode: SetupMode): boolean {
+  return mode === "network-only";
+}
+
 /** The run condition's config half: no completion record → the full wizard. */
 export function needsFirstRun(config: DashboardConfig): boolean {
   return !config.setup?.completedAt;

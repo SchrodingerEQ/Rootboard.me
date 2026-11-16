@@ -988,7 +988,10 @@ is a placeholder until brief 02 (session 2).
 
 - **Steps:** Welcome → Network → Time zone → Google → Weather → Done.
   Every step but Network has "Skip this step"; Welcome and Done only move
-  on. Each step changes something only when its own button is tapped.
+  on. The boot-time Network screen (`network-only`) alone also offers
+  **Continue without network** (founder 2026-11-16): back to the
+  dashboard, whose offline handling covers the gap; nothing is written.
+  First-run Network stays required. Each step changes something only when its own button is tapped.
 - **Modes** (`lib/setup-wizard.ts`): `first-run` (every step), `rerun`
   (Settings → System → **Run setup again**: every step, current values
   shown, a Close button), `network` / `timezone` (Settings → System →
@@ -1004,6 +1007,12 @@ is a placeholder until brief 02 (session 2).
     later in the day, never opens the wizard); not connected and uptime
     < 90 s → "Connecting to the network…" splash, re-asking every 5 s;
     still not connected at 90 s → `network-only`.
+  Once decided, it is never re-run in that page: after "Continue without
+  network" (or an auto-pass) the dashboard stays up while offline, and a
+  later drop never reopens it. The rule is "once per page load": a reload
+  counts as a new decision, so only a reload within 300 s of the OS
+  booting, still offline, could show the screen again; any later reload
+  lands on the dashboard.
   At boot the wizard is rendered **instead of** the nav rail and widget
   host, so no widget mounts or fetches until Done (or until a
   `network-only` run passes). From Settings it opens over the running
@@ -1023,7 +1032,11 @@ is a placeholder until brief 02 (session 2).
   "Connected to Wi-Fi, but the internet isn't reachable yet.", plus
   timeout/generic/scan/server variants (`FAILURE_COPY`). The password is
   cleared from component state after a successful join. The step's
-  footnote discloses where the password goes and the HEAD request.
+  footnote discloses where the password goes and the HEAD request ("When
+  Rootboard checks its internet connection (after joining Wi-Fi or
+  tapping Retry) …" — the published privacy page uses the same words). A
+  paired LAN device can also trigger the check with
+  `GET /api/system/network/status?internet=1`.
 - **Time zone step:** searchable list (space matches `_` or `/`, 40
   shown), starting on the browser's reported zone if the system lists it,
   else the system's current zone; the selected zone and every row show
