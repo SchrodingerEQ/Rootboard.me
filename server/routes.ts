@@ -11,6 +11,8 @@ import { getWeather, getWeatherStatus } from "./services/weatherService";
 import { lookupPostalCode } from "./services/weatherLookup";
 import { readDashboardConfig, writeDashboardConfig } from "./services/configService";
 import { discoverWidgets, resolveContainedPath } from "./services/widgetDiscovery";
+import { networkService } from "./services/networkService";
+import { registerSystemRoutes } from "./system-routes";
 import { pairingService as defaultPairingService, type PairingService } from "./services/pairingService";
 import { getDiagnostics } from "./services/diagnosticsService";
 import { createLanAuthGuard, isLocalRequest, sendPairingRequired } from "./middleware/lanAuth";
@@ -512,6 +514,11 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     if (req.body?.weather !== undefined && parsed.data.weather === undefined) {
       return res.status(400).json({ message: "Invalid weather location" });
     }
+    // Same for the first-run wizard's completion record: dropping it would
+    // bring the wizard back on the next boot.
+    if (req.body?.setup !== undefined && parsed.data.setup === undefined) {
+      return res.status(400).json({ message: "Invalid setup record" });
+    }
     if (req.body?.update !== undefined && parsed.data.update === undefined) {
       return res.status(400).json({ message: "Invalid update channel" });
     }
@@ -579,6 +586,10 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     },
     express.static(path.resolve("widgets"), { index: false }),
   );
+
+  // Wi-Fi and time zone for the first-run wizard (brief 03): mutations
+  // localhost-only, like update/rollback above.
+  registerSystemRoutes(app, { service: networkService, isLocalRequest });
 
   const httpServer = createServer(app);
   return httpServer;

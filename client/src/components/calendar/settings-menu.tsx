@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from "react";
-import { Settings, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, Activity, Link2, type LucideIcon } from "lucide-react";
+import { Settings, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, Activity, Link2, Wifi, Clock, PlayCircle, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { WidgetSettingsFields } from "@/components/widget-settings-fields";
 import type { WidgetSettingField } from "@shared/widget-manifest";
@@ -241,6 +241,9 @@ interface SettingsMenuProps {
   weatherLocation?: WeatherLocation;
   /** Saves a picked weather location. Absent hides the Weather row. */
   onSaveWeatherLocation?: (location: WeatherLocation) => void;
+  /** Opens the first-run wizard (brief 03): every step, or one of the two
+   *  system steps directly. Absent hides the Setup row. */
+  onOpenSetup?: (mode: "rerun" | "network" | "timezone") => void;
   /** The saved update channel (dashboard.json `update.channel`), if any.
    *  Absent → the server's effective channel (env, else stable). */
   updateChannel?: UpdateChannel;
@@ -273,6 +276,7 @@ export function SettingsMenu({
   themeErrorEntries = [],
   weatherLocation,
   onSaveWeatherLocation,
+  onOpenSetup,
   updateChannel,
   onSaveUpdateChannel,
 }: SettingsMenuProps) {
@@ -1161,6 +1165,44 @@ export function SettingsMenu({
                 <UpdateChannelSettings channel={effectiveUpdateChannel} onChange={onSaveUpdateChannel} />
               )}
 
+              {/* Setup (beta-launch brief 03): replay the first-run wizard, or
+                  jump straight to Wi-Fi or the time zone. */}
+              {onOpenSetup && (
+                <>
+                  <Separator />
+                  <div className="space-y-1.5" data-testid="settings-setup">
+                    <Label className="text-sm font-medium">Setup</Label>
+                    <div className="flex gap-2">
+                      {([
+                        ["network", "Wi-Fi", Wifi],
+                        ["timezone", "Time zone", Clock],
+                      ] as const).map(([mode, label, Icon]) => (
+                        <Button
+                          key={mode}
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 h-11"
+                          onClick={() => { setIsOpen(false); onOpenSetup(mode); }}
+                          data-testid={`settings-setup-${mode}`}
+                        >
+                          <Icon className="h-4 w-4 mr-2" />
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full h-11"
+                      onClick={() => { setIsOpen(false); onOpenSetup("rerun"); }}
+                      data-testid="settings-setup-rerun"
+                    >
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      Run setup again
+                    </Button>
+                  </div>
+                </>
+              )}
               {/* Diagnostics and pairing (beta-launch brief 05). */}
               <Separator />
               <div className="space-y-1">

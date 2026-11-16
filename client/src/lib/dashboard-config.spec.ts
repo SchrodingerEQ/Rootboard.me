@@ -115,3 +115,28 @@ describe("dashboard config `weather` field (beta-launch brief 01)", () => {
     }
   });
 });
+
+describe("dashboardConfigSchema setup record (first-run wizard)", () => {
+  test("keeps a valid completion record", () => {
+    const setup = { completedAt: "2026-11-14T20:00:00.000Z", version: 1 };
+    const result = dashboardConfigSchema.safeParse({ ...validConfig, setup });
+    expect(result.success && result.data.setup).toEqual(setup);
+  });
+
+  test("a timestamp with an offset (a hand-edit, `date -Iseconds`) is valid", () => {
+    const setup = { completedAt: "2026-11-14T20:00:00+00:00", version: 1 };
+    const result = dashboardConfigSchema.safeParse({ ...validConfig, setup });
+    expect(result.success && result.data.setup).toEqual(setup);
+  });
+
+  test("a malformed record is dropped, never the layout", () => {
+    const result = dashboardConfigSchema.safeParse({ ...validConfig, setup: { completedAt: "yesterday" } });
+    expect(result.success).toBe(true);
+    expect(result.success && result.data.setup).toBeUndefined();
+    expect(result.success && result.data.widgets).toHaveLength(3);
+  });
+
+  test("absent on a fresh kiosk", () => {
+    expect(defaultDashboardConfig().setup).toBeUndefined();
+  });
+});

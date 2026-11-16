@@ -78,6 +78,10 @@ const LOCALHOST_ONLY = new Set([
   "POST /api/system/pairing-code",
   "GET /api/system/pairing-code",
   "DELETE /api/system/pairing-code",
+  "POST /api/system/network/scan",
+  "POST /api/system/network/connect",
+  "POST /api/system/network/forget",
+  "POST /api/system/timezone",
 ]);
 /** Every /api route and its expected guard. A new route fails the inventory test until it is listed here. */
 const INVENTORY = [
@@ -113,6 +117,12 @@ const INVENTORY = [
   "GET /api/config/dashboard",
   "PUT /api/config/dashboard",
   "GET /api/widgets",
+  "GET /api/system/network/status",
+  "POST /api/system/network/scan",
+  "POST /api/system/network/connect",
+  "POST /api/system/network/forget",
+  "GET /api/system/timezone",
+  "POST /api/system/timezone",
 ];
 
 let now = Date.parse("2026-11-14T12:00:00Z");

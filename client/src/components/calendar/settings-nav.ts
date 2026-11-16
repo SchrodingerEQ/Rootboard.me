@@ -30,7 +30,7 @@ export const SETTINGS_CATEGORIES: readonly SettingsCategory[] = [
   { id: "calendars", label: "Calendars", summary: "Share email, show/hide, remove, add by ID", icon: Calendar },
   { id: "widgets", label: "Widgets", summary: "Built-in layout + settings, community, folder errors", icon: LayoutGrid },
   { id: "keyboard", label: "Keyboard", summary: "On-screen keyboard: Auto/Always/Off", icon: Keyboard },
-  { id: "system", label: "System", summary: "Updates, weather, diagnostics, pair a device", icon: RefreshCw },
+  { id: "system", label: "System", summary: "Updates, setup, weather, diagnostics, pair a device", icon: RefreshCw },
 ];
 
 export const SETTINGS_SUBVIEWS: Readonly<Record<SettingsSubView, { label: string; parent: SettingsCategoryId }>> = {

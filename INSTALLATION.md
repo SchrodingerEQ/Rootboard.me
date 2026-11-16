@@ -59,8 +59,8 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
 4. Click the gear icon (or **EDIT SETTINGS**) and pre-configure:
    - **Hostname:** `calendar-pi` (or anything memorable).
    - **Username/password:** `pi` / a strong password. (The instructions below assume the username `pi`. If you pick something else, replace `/home/pi` with `/home/yourname` everywhere.)
-   - **Wi-Fi:** SSID + password.
-   - **Locale:** your timezone and keyboard layout.
+   - **Wi-Fi:** SSID + password. *Optional* — Rootboard's first-run wizard ([step 9](#first-boot-the-setup-wizard)) can join Wi-Fi from the touchscreen. You still need a connection for the terminal steps below (apt, npm), so prefill it here or plug in Ethernet.
+   - **Locale:** your keyboard layout, and optionally your timezone (the wizard asks for the time zone too).
      > **US users:** Raspberry Pi OS defaults to the UK locale (`en_GB`), which makes the browser's date fields display **day-first** (`02/07/2026` for July 2). If your dates look "wrong" in the event form, that's why. Set the locale here in Imager, or fix it later with `sudo raspi-config nonint do_change_locale en_US.UTF-8` and reboot.
    - **Enable SSH** (optional but recommended — makes remote setup much easier).
 5. Click **Write**, wait for it to finish, then move the card to the Pi.
@@ -72,7 +72,7 @@ A complete, step-by-step guide for setting up Rootboard on a Raspberry Pi with a
 
 Once you see the desktop:
 
-1. Connect to your Wi-Fi if you didn't pre-configure it.
+1. Make sure the Pi is online (Wi-Fi from Imager, the desktop's network menu, or Ethernet) — the next steps download packages.
 2. Open **Terminal** and run a full update — this is the single most important step for a 24/7 device:
    ```bash
    sudo apt update
@@ -316,7 +316,7 @@ GITHUB_REPO_NAME=your-repo-name
 
 Save with `Ctrl+O`, `Enter`, then `Ctrl+X`.
 
-> **Weather is not set here.** Once the app is running and Google is connected, set the weather location on the touchscreen: **Settings → System → Weather**, type a postal code, tap **Look up**, pick your place. The older `WEATHER_*` keys in `.env.example` still work as a fallback but are no longer needed on a kiosk.
+> **Weather and time zone are not set here.** The first-run wizard asks for both on the touchscreen ([step 9](#first-boot-the-setup-wizard)); later, use **Settings → System**. The older `WEATHER_*` keys in `.env.example` still work as a fallback but are no longer needed on a kiosk.
 
 > **Database:** nothing to set. The app stores its data in SQLite (`calendar.db` in the project folder).
 
@@ -341,11 +341,28 @@ serving on port 5000
 ```
 
 On the Pi's desktop, open Chromium and go to <http://localhost:5000>:
-1. The calendar should load and immediately start its first sync of the calendars you shared with the service account.
+1. The [setup wizard](#first-boot-the-setup-wizard) opens first. Work through it (or skip what you've already done here); after **Done** the calendar loads and immediately starts its first sync of the calendars you shared with the service account.
 2. If you instead see a "Service account key file could not be loaded" message, jump to [Troubleshooting](#14-troubleshooting) — usually the file isn't at the path in `GOOGLE_SERVICE_ACCOUNT_KEY_FILE`.
 3. If the calendars look empty but no error appears, you probably haven't shared them with the service account's `client_email` yet — revisit Step 7 Part F.
 
 If everything looks right, stop the server with `Ctrl+C` — we're about to make it auto-start.
+
+### First boot: the setup wizard
+
+The first time the app starts on a unit (no `setup` record in `data/config/dashboard.json`), it opens a full-screen setup wizard instead of the dashboard. Everything is done by touch with the on-screen keyboard:
+
+1. **Welcome.**
+2. **Network** — lists nearby Wi-Fi networks (strongest first); tap one, type the password, **Connect**. A hidden network has a "Network not listed? Type its name" option. With Ethernet plugged in, or a saved network that comes up on its own, the step confirms in one line and moves on. Network cannot be skipped.
+3. **Time zone** — a searchable list, starting on the zone the browser reports, with the current time shown so a wrong zone is obvious.
+4. **Google Calendar** — for now this shows the service-account instructions from [step 7](#7-create-a-google-service-account) (an on-screen sign-in replaces it in a later release). Skip it if you have already set the key up.
+5. **Weather** — the same postal-code lookup as **Settings → System → Weather**.
+6. **Done** — the dashboard appears.
+
+Every step but Network has **Skip this step**, and the whole wizard can be replayed later from **Settings → System → Run setup again** (or open **Wi-Fi** / **Time zone** there directly). Nothing changes until you confirm it in a step.
+
+The wizard also opens — on the Network step only — if the unit **boots** with no network at all (for example after moving house): it waits about 90 seconds for NetworkManager to bring a saved connection up first, and moves on by itself the moment one does. If the router is simply off, tap **Continue without network**: chores, dinner and the calendar you already have keep working, and the calendar and weather update again once the network is back. That screen does not come back while the dashboard runs, and a network drop while the dashboard is running never opens it.
+
+The Network and Time zone steps need NetworkManager (`nmcli`), `timedatectl` and the polkit rule in [step 11](#let-the-app-change-wi-fi-and-the-time-zone-polkit). On a computer without them (a laptop running `npm run dev`) those two steps say "managed outside Rootboard" and pass.
 
 ---
 
@@ -451,6 +468,23 @@ It's already invoked from `kiosk.sh` above, so you get this for free.
 The supervisor advertises itself to the app via the `MANAGED_BY_SUPERVISOR=1` env var. The auto-update flow only calls `process.exit(0)` when this var is set, so it won't ever leave the kiosk dead waiting for a manual restart.
 
 > **Optional:** if you'd rather use systemd than the desktop autostart, see `scripts/start.sh` — it's drop-in compatible. Run it from a `systemd --user` service or a system unit, whichever suits your setup.
+
+### Let the app change Wi-Fi and the time zone (polkit)
+
+The setup wizard joins Wi-Fi and sets the time zone by running `nmcli` and `timedatectl` as the **same ordinary user the app runs as** — the user that starts `kiosk.sh` or `scripts/start.sh` (on a systemd install, the unit's `User=`). It never uses `sudo` or root. A polkit rule shipped in `scripts/polkit/` lets that user do exactly four things without a password prompt: change system connection profiles, activate connections, scan for Wi-Fi, and set the time zone.
+
+The rule grants these to a group, not a named user, so install it like this (replace `<kiosk-user>` with that user):
+
+```bash
+cd /home/pi/calendar-app
+sudo groupadd --system rootboard-system
+sudo usermod -aG rootboard-system <kiosk-user>
+sudo install -m 0644 -o root -g root scripts/polkit/50-rootboard-network.rules /etc/polkit-1/rules.d/
+```
+
+polkit reads the new file straight away; no reboot needed. To check it took, run as that user: `timedatectl --no-ask-password set-timezone "$(timedatectl show -p Timezone --value)"` — no output means it worked; "Interactive authentication required" means the rule or the group membership is missing.
+
+Without the rule the wizard still works, but its Wi-Fi and Time zone steps report that they couldn't make the change. Wi-Fi passwords entered in the wizard are stored by NetworkManager in its own system connection profile, never in the app's files or logs.
 
 ---
 

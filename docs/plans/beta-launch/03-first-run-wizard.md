@@ -1,6 +1,6 @@
 # 03 — First-run setup wizard (Wi-Fi, time zone, Google, weather)
 
-**Status:** Not started.
+**Status:** Session 1 (wizard shell, Network, Time zone, Weather, Settings entries, polkit rule) in PR #35, awaiting the founder (soft flag) — 2026-11-14. Session 2 (the Google step) not started; this line and the `TASKS.md` item stay open until it merges.
 **Type:** Client wizard + server network control + Pi image policy. Two sessions.
 **Depends on:** session 1: 01 (merged 2026-11-11), so it can run now.
 Session 2: 02 (Google sign-in).
@@ -38,7 +38,7 @@ on-screen keyboard already (`client/src/lib/osk.ts`,
 | # | Decision | Choice |
 |---|---|---|
 | 1 | When it runs | On boot when `data/config/dashboard.json` has no `setup.completedAt`, **or** when the Pi has no active network connection (so a moved unit re-enters Wi-Fi setup by itself). Otherwise never, unless opened from Settings. The network condition is **checked once, at boot**, after NetworkManager has had time to bring a saved connection up (allow about 90 s: a reconnect after an access-point drop took 45–70 s on the reference kiosk). A drop while the dashboard is running never opens the wizard; the `wifi-selfheal` timer (`INSTALLATION.md` §12.3) reconnects, and the app's offline handling covers the gap. |
-| 2 | Steps and order | Welcome → Network → Time zone → Google → Weather → Done. Each step has Skip except Network. Ethernet detected = Network step auto-passes with a one-line confirmation. While the Network step is showing, it also passes on its own the moment any saved connection comes up, so a router that is slow to return after a power cut never strands the unit on the wizard. |
+| 2 | Steps and order | Welcome → Network → Time zone → Google → Weather → Done. Each step has Skip except Network. Ethernet detected = Network step auto-passes with a one-line confirmation. While the Network step is showing, it also passes on its own the moment any saved connection comes up, so a router that is slow to return after a power cut never strands the unit on the wizard. Founder 2026-11-16: the boot-time Network screen (decision 1's no-network case) offers Continue without network; first-run Network still has no Skip. |
 | 3 | Network control | NetworkManager via `nmcli`, which the Pi image already uses and which `INSTALLATION.md` §12 already depends on. The server runs nmcli as the app's own user; a **polkit rule** on the image grants that user `org.freedesktop.NetworkManager.settings.modify.system`, `.network-control` and `.wifi.scan` — no sudo, no root. The rule file is shipped in `scripts/` and installed by brief 06's provision script: whichever of 03 and 06 merges second adds the install step to `scripts/provision.sh`. |
 | 4 | Where Wi-Fi secrets go | NetworkManager's own store (system connection profile), never our files or logs. The API accepts the password in a POST body over the loopback interface only and discards it after `nmcli` returns. |
 | 5 | Localhost-only | Every wizard endpoint that changes system state is guarded by `isLocalRequest` (as update/rollback are today). A phone on the LAN must not be able to re-point the kiosk's Wi-Fi. |

@@ -35,7 +35,10 @@ import {
   withCalendarId,
   type PowerSavingChangeDetail,
 } from "@/widgets/calendar/shell-bridge";
-import { defaultDashboardConfig, type DashboardConfig, type WeatherLocation } from "@shared/dashboard-config";
+import { defaultDashboardConfig, SETUP_WIZARD_VERSION, type DashboardConfig, type WeatherLocation } from "@shared/dashboard-config";
+import { SetupWizard } from "@/pages/setup-wizard";
+import { useSetupRunCondition } from "@/hooks/use-setup-run-condition";
+import { recordsCompletion, type SetupMode } from "@/lib/setup-wizard";
 import type { UpdateChannel } from "@shared/release-version";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
@@ -716,6 +719,30 @@ export default function AppShell() {
     [writeDashboardConfig, queryClient],
   );
 
+  // --- First-run setup wizard (beta-launch brief 03) -----------------------
+  // At boot the run condition decides (once) whether the wizard replaces the
+  // widget host; Settings → System opens it over the dashboard. Finishing a
+  // full run records `setup` in dashboard.json; nothing else is written by
+  // the wizard itself — each step saves only what the user confirms.
+  const configSettled = configQuery.data !== undefined || configQuery.isError;
+  const setupRun = useSetupRunCondition(configQuery.data?.config, configSettled);
+  const [settingsWizardMode, setSettingsWizardMode] = useState<SetupMode | null>(null);
+  const wizardMode = setupRun.bootMode ?? settingsWizardMode;
+  const { clearBootMode } = setupRun;
+  const closeWizard = useCallback(
+    (finished: boolean) => {
+      if (finished && wizardMode && recordsCompletion(wizardMode)) {
+        void writeDashboardConfig(
+          (current) => ({ ...current, setup: { completedAt: new Date().toISOString(), version: SETUP_WIZARD_VERSION } }),
+          "Couldn't save setup",
+        );
+      }
+      clearBootMode();
+      setSettingsWizardMode(null);
+    },
+    [wizardMode, writeDashboardConfig, clearBootMode],
+  );
+
   // Settings → System → Updates (beta-launch brief 08): sets the top-level
   // `update` key through the same read-merge-PUT, re-reads the server's
   // effective channel, then checks again so a pending offer from the old
@@ -1087,6 +1114,44 @@ export default function AppShell() {
     [renderableEntries, badges],
   );
 
+  const wizard = wizardMode ? (
+    <SetupWizard
+      // A new key per mode so a Settings entry always starts on its first step.
+      key={wizardMode}
+      mode={wizardMode}
+      weatherLocation={dashboardConfig.weather}
+      onSaveWeatherLocation={configQuery.data ? saveWeatherLocation : undefined}
+      googleConnected={authStatus?.authenticated === true}
+      googleError={authStatus?.error ?? null}
+      onClose={closeWizard}
+    />
+  ) : null;
+
+  const powerSavingOverlay = (
+    <PowerSavingOverlay isActive={isPowerSavingActive} pageDimmed={screensaver.isActive} onWake={handleWake} />
+  );
+
+  // Boot: until the run condition is decided, and while the wizard runs in
+  // place of the dashboard, the widget host does not mount (brief 03).
+  if (setupRun.gate !== "ready") {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background" data-testid="boot-splash">
+        <p className="text-lg text-rb-muted">
+          {setupRun.gate === "waiting-for-network" ? "Connecting to the network…" : "Starting…"}
+        </p>
+        {powerSavingOverlay}
+      </div>
+    );
+  }
+  if (setupRun.bootMode) {
+    return (
+      <div className="h-screen bg-background">
+        {wizard}
+        {powerSavingOverlay}
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex bg-background">
       <NavRail
@@ -1125,6 +1190,7 @@ export default function AppShell() {
             themeErrorEntries={theme.failed}
             weatherLocation={dashboardConfig.weather}
             onSaveWeatherLocation={configQuery.data ? saveWeatherLocation : undefined}
+            onOpenSetup={setSettingsWizardMode}
             updateChannel={dashboardConfig.update?.channel}
             onSaveUpdateChannel={configQuery.data ? saveUpdateChannel : undefined}
           />
@@ -1183,12 +1249,11 @@ export default function AppShell() {
         isUpdating={isUpdating}
       />
 
+      {/* Settings → System → Run setup again / Network / Time zone */}
+      {wizard}
+
       {/* Power Saving Overlay (manual SLEEP button or auto after 2 min inactivity) */}
-      <PowerSavingOverlay
-        isActive={isPowerSavingActive}
-        pageDimmed={screensaver.isActive}
-        onWake={handleWake}
-      />
+      {powerSavingOverlay}
     </div>
   );
 }

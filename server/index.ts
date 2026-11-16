@@ -13,13 +13,19 @@ app.use(express.urlencoded({ extended: false }));
 
 // Responses whose body must not reach the journal; the request line still
 // does. Personal data (the place names a postal-code lookup returns), the
-// pairing code and token, and the full diagnostics view (SSID, IP, hostname).
+// pairing code and token, the full diagnostics view (SSID, IP, hostname),
+// and the Wi-Fi views (the kiosk's and its neighbours' network names, its
+// address).
 const UNLOGGED_BODY_PATHS = new Set([
   "/api/weather/lookup",
   "/api/pair",
   "/api/system/pairing-code",
   "/api/system/diagnostics",
   "/api/system/paired-devices",
+  "/api/system/network/status",
+  "/api/system/network/scan",
+  "/api/system/network/connect",
+  "/api/system/network/forget",
 ]);
 
 app.use((req, res, next) => {
