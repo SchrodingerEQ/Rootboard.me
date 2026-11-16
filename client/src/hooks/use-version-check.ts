@@ -106,6 +106,9 @@ export function useVersionCheck(): VersionCheckResult {
 
       if (data.updateAvailable && !isDismissedToday()) {
         setShowNotification(true);
+      } else if (!data.updateAvailable) {
+        // e.g. the update channel changed: an earlier offer no longer applies.
+        setShowNotification(false);
       }
     } catch (error) {
       console.log('Update check error (this is normal if GitHub is unreachable):', error);

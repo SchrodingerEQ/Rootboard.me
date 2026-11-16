@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { widgetIdSchema } from "./widget-manifest";
 import { themeIdSchema } from "./theme-manifest";
+import { UPDATE_CHANNELS } from "./release-version";
 
 const dashboardWidgetEntrySchema = z.object({
   id: widgetIdSchema,
@@ -28,6 +29,16 @@ export const weatherLocationSchema = z.object({
 
 export type WeatherLocation = z.infer<typeof weatherLocationSchema>;
 
+/**
+ * Which releases this kiosk updates to (beta-launch brief 08, decision
+ * 0022): `stable` (the default) or `beta`, which also gets prereleases.
+ */
+export const updateSettingsSchema = z.object({
+  channel: z.enum(UPDATE_CHANNELS),
+});
+
+export type UpdateSettings = z.infer<typeof updateSettingsSchema>;
+
 export const dashboardConfigSchema = z
   .object({
     configVersion: z.literal(1),
@@ -46,6 +57,12 @@ export const dashboardConfigSchema = z
      * invalidating the widget layout. Absent on a fresh kiosk.
      */
     weather: weatherLocationSchema.optional().catch(undefined),
+    /**
+     * Update channel. LENIENT like `theme`: a malformed value becomes
+     * undefined (→ the UPDATE_CHANNEL env var, else stable). Absent on a
+     * fresh kiosk.
+     */
+    update: updateSettingsSchema.optional().catch(undefined),
     widgets: z
       .array(dashboardWidgetEntrySchema)
       .min(1)

@@ -512,6 +512,9 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     if (req.body?.weather !== undefined && parsed.data.weather === undefined) {
       return res.status(400).json({ message: "Invalid weather location" });
     }
+    if (req.body?.update !== undefined && parsed.data.update === undefined) {
+      return res.status(400).json({ message: "Invalid update channel" });
+    }
     try {
       writeDashboardConfig(parsed.data);
       res.json({ success: true });

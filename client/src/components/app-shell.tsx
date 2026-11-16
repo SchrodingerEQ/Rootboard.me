@@ -36,6 +36,7 @@ import {
   type PowerSavingChangeDetail,
 } from "@/widgets/calendar/shell-bridge";
 import { defaultDashboardConfig, type DashboardConfig, type WeatherLocation } from "@shared/dashboard-config";
+import type { UpdateChannel } from "@shared/release-version";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
 
@@ -715,6 +716,18 @@ export default function AppShell() {
     [writeDashboardConfig, queryClient],
   );
 
+  // Settings → System → Updates (beta-launch brief 08): sets the top-level
+  // `update` key through the same read-merge-PUT, re-reads the server's
+  // effective channel, then checks again so a pending offer from the old
+  // channel is replaced (the switch is a tap, so this GitHub call is too).
+  const saveUpdateChannel = useCallback(
+    (channel: UpdateChannel) =>
+      void writeDashboardConfig((current) => ({ ...current, update: { channel } }), "Couldn't save update channel")
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/update/status"] }))
+        .then(() => checkForUpdates()),
+    [writeDashboardConfig, queryClient, checkForUpdates],
+  );
+
   // Layout picker writes (Task 9): `mutateWidgets` receives the CURRENT
   // `widgets` array and returns the next one (reordered/toggled), or null
   // for "nothing to write" — same guard/race-safety properties as
@@ -1112,6 +1125,8 @@ export default function AppShell() {
             themeErrorEntries={theme.failed}
             weatherLocation={dashboardConfig.weather}
             onSaveWeatherLocation={configQuery.data ? saveWeatherLocation : undefined}
+            updateChannel={dashboardConfig.update?.channel}
+            onSaveUpdateChannel={configQuery.data ? saveUpdateChannel : undefined}
           />
         }
       />

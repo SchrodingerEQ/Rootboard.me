@@ -1,6 +1,6 @@
 # 08 — Beta update channel
 
-**Status:** Not started.
+**Status:** Built 2026-11-14 (channel logic, Settings toggle, `docs/RELEASING.md`, decision 0022); the `--channel` provision flag waits for brief 06; the founder's prerelease acceptance steps are in `docs/RELEASING.md` and the PR.
 **Type:** Update service + Settings toggle + release process. One session.
 **Depends on:** nothing, so it can run now, before brief 00. Ship before the tester's unit leaves, so it can be flipped later.
 **Unblocks:** 09 (which channel the shipped unit is on).

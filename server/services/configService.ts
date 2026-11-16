@@ -69,7 +69,7 @@ export function readDashboardConfig(): ReadDashboardConfigResult {
     };
   }
 
-  // `theme` and `weather` are lenient: a malformed value is dropped rather
+  // `theme`, `weather` and `update` are lenient: a malformed value is dropped rather
   // than failing the whole file. Say so for the weather location, or the
   // owner only sees weather quietly fall back to .env / switch off.
   const warnings: string[] = [];
@@ -81,6 +81,10 @@ export function readDashboardConfig(): ReadDashboardConfigResult {
   const rawTheme = (parsedJson as { theme?: unknown } | null)?.theme;
   if (rawTheme !== undefined && result.data.theme === undefined) {
     warnings.push(`${CONFIG_LABEL}: the saved theme id is malformed; the default theme is used`);
+  }
+  const rawUpdate = (parsedJson as { update?: unknown } | null)?.update;
+  if (rawUpdate !== undefined && result.data.update === undefined) {
+    console.error(`Dashboard config at ${CONFIG_PATH}: saved update channel is invalid (use "stable" or "beta"), ignoring it`);
   }
 
   return { config: result.data, source: "file", warnings };
