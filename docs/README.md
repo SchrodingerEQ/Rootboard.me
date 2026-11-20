@@ -20,7 +20,9 @@ on the project up to date (see
   `NNNN-slug.md`. Add one whenever a non-obvious design choice is made.
 - **[plans/](plans/)** — briefs and execution plans for larger pieces of
   work, one folder per initiative (widget system, theme system, What to
-  Wear, [beta launch](plans/beta-launch/README.md)). A brief is written so
+  Wear, [beta launch](plans/beta-launch/README.md), the
+  [Node runtime upgrade](plans/node-runtime-upgrade/BRIEF.md)). A brief
+  is written so
   a fresh session can execute it without the planning conversation.
 
 ## Decision record format
