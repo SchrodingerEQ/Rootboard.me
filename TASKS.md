@@ -70,6 +70,8 @@
 
 - [ ] `/api/update/apply` and `/api/update/rollback` are localhost-only by socket address alone, so any web page open in the kiosk's own browser could form-POST to them. Give them the guard the `/api/system/*` mutations got in #35 (JSON body required, cross-site `Sec-Fetch-Site` refused) — brief 05 or a small follow-up (added 2026-11-14)
 - [ ] Refresh `server/services/networkService.fixtures.ts` from the real kiosk's `nmcli -t` output (hand-written from nmcli's documented format in #35; swap SSIDs, MACs and addresses for placeholders before committing) (added 2026-11-14)
+- [ ] Node runtime upgrade: move kiosks off Node 20 (end of life 2026-04-30) so the `better-sqlite3` lock (12.4.6) can move to a release that supports Node 26; releases from 12.10.0 on drop the ready-made Node 20 build for the Pi, and the current lock does not install on Node 26 on Windows without a compiler. Brief with the facts, the four founder decisions and the order of work: `docs/plans/node-runtime-upgrade/BRIEF.md` (added 2026-11-19)
+- [ ] `server/google-oauth.spec.ts`: five tests assert file mode `0600` and fail on Windows, where that mode cannot be set (`expected 438 to be 384`); they pass in CI on Linux. Make the mode assertions conditional on the platform so `npm test` is green on a Windows development machine (added 2026-11-19)
 
 ## Deferred (recorded, not scheduled)
 
