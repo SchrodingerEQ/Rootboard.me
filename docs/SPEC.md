@@ -1,9 +1,9 @@
 # Rootboard.me — As-Built Specification
 
 Regenerated from the code at v1.4.1 (2026-07-23); maintained
-incrementally through the widget-system phases and current as of v1.7.3
-(2026-10-22), plus the unreleased beta-launch work on main (latest:
-Google sign-in, brief 02, 2026-11-16). This documents what the app **actually does**, including
+incrementally through the widget-system phases and current as of v1.8.0
+(2026-11-21), the release that ships the beta-launch work merged through
+2026-11-16 (latest: Google sign-in, brief 02). This documents what the app **actually does**, including
 quirks. Update it when behavior changes.
 Public document — no deployment specifics (hostnames, IPs, real names).
 
