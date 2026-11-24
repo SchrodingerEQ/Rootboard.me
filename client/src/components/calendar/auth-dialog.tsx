@@ -18,6 +18,9 @@ interface AuthDialogProps {
   mode?: GoogleAuthStatus["mode"];
   /** Whether this unit has its Google sign-in client (data/google-oauth-client.json). */
   oauthClient?: GoogleAuthStatus["oauthClient"];
+  /** The tab it opens on. The setup wizard's manual-setup path opens it on
+   *  the service-account steps. */
+  initialTab?: "connect" | "service-account";
 }
 
 /**
@@ -25,7 +28,7 @@ interface AuthDialogProps {
  * the sign-in on the kiosk, and **Advanced: service account**, the
  * self-hoster path's instructions as they were before brief 02.
  */
-export function AuthDialog({ open, onOpenChange, error, mode, oauthClient }: AuthDialogProps) {
+export function AuthDialog({ open, onOpenChange, error, mode, oauthClient, initialTab = "connect" }: AuthDialogProps) {
   const lostReason = mode === "oauth" ? error : null;
   const serviceAccountError = mode === "oauth" ? null : error;
   const [isRetrying, setIsRetrying] = useState(false);
@@ -53,7 +56,7 @@ export function AuthDialog({ open, onOpenChange, error, mode, oauthClient }: Aut
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="connect">
+        <Tabs defaultValue={initialTab}>
           <TabsList className="grid w-full grid-cols-2 h-12">
             <TabsTrigger value="connect" className="h-10" data-testid="tab-connect-google">Connect Google</TabsTrigger>
             <TabsTrigger value="service-account" className="h-10" data-testid="tab-service-account">Advanced: service account</TabsTrigger>
