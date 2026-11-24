@@ -70,8 +70,32 @@ describe("diagnosticsRows", () => {
     b.wifiSelfHealCount24h = 4;
     expect(row(b, "Network").warn).toBe(true);
     expect(row(b, "Internet").warn).toBe(true);
-    expect(row(b, "Disk free")).toMatchObject({ value: "500 MB of 30.0 GB", warn: true });
+    expect(row(b, "Disk")).toMatchObject({ value: "29.5 GB of 30.0 GB used (98%), 500 MB free", warn: true });
     expect(row(b, "Wi-Fi self-heal (24 h)")).toMatchObject({ value: "Reconnected 4 times", warn: true });
+  });
+
+  test("disk warns above 80 % used, even with gigabytes free", () => {
+    const b = healthy();
+    const total = 32 * 1024 ** 3;
+    const atPercent = (p: number) => ({ freeBytes: total * (1 - p / 100), totalBytes: total });
+    b.disk = atPercent(79);
+    expect(row(b, "Disk")).toMatchObject({ value: "25.3 GB of 32.0 GB used (79%), 6.7 GB free", warn: false });
+    b.disk = atPercent(80);
+    expect(row(b, "Disk")).toMatchObject({ value: "25.6 GB of 32.0 GB used (80%), 6.4 GB free", warn: false });
+    b.disk = atPercent(81);
+    expect(row(b, "Disk")).toMatchObject({ value: "25.9 GB of 32.0 GB used (81%), 6.1 GB free", warn: true });
+  });
+
+  test("disk still warns under 1 GB free when under 80 % used", () => {
+    const b = healthy();
+    b.disk = { freeBytes: 900 * 1024 ** 2, totalBytes: 3 * 1024 ** 3 };
+    expect(row(b, "Disk")).toMatchObject({ value: "2.1 GB of 3.0 GB used (71%), 900 MB free", warn: true });
+  });
+
+  test("disk unknown stays neutral", () => {
+    const b = healthy();
+    b.disk = null;
+    expect(row(b, "Disk")).toMatchObject({ value: "Unknown", warn: false });
   });
 
   test("self-heal unavailable is neutral, not zero", () => {
