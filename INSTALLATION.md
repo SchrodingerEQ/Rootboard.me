@@ -188,15 +188,15 @@ We'll do this automatically in Step 10 via `unclutter`.
 
 ## 5. Install Node.js and system dependencies
 
-The app requires **Node.js 18+** (Node 20 LTS recommended).
+The app requires **Node.js 24**. Older Node versions are not supported by the ready-made Raspberry Pi builds of the database module (`better-sqlite3`), and the kiosk does not compile it.
 
 ```bash
-# Install Node 20 from NodeSource (official binaries — much newer than apt's default)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Install Node 24 from NodeSource (official binaries — much newer than apt's default)
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Verify
-node -v   # should print v20.x.x
+node -v   # should print v24.x.x
 npm -v
 ```
 

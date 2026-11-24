@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { BUILTIN_WIDGETS } from "@/widgets/registry";
 import { createWidgetHost, type WidgetHostHandle } from "@/lib/widget-host-services";
 import { applyWidgetSettingsPatch, sanitizeSettingsPatch } from "@/lib/widget-config";
+import { buildFeedbackContext } from "@/lib/feedback-context";
 import {
   useCommunityWidgetLoads,
   filterEnabledManifests,
@@ -678,6 +679,19 @@ export default function AppShell() {
     [theme.themes],
   );
 
+  // What Settings → Send feedback reports as `context` (beta brief 04
+  // decision 3): the enabled widgets with their manifest versions, and the
+  // active theme. Shown on the review screen before anything is sent.
+  const feedbackContext = useMemo(
+    () =>
+      buildFeedbackContext(
+        dashboardConfig.widgets,
+        (id) => builtinById.get(id)?.manifest.version ?? discoveredById.get(id)?.version,
+        theme.activeId,
+      ),
+    [dashboardConfig.widgets, builtinById, discoveredById, theme.activeId],
+  );
+
   const updateWidgetSettings = useCallback(
     (
       widgetId: string,
@@ -1233,6 +1247,7 @@ export default function AppShell() {
             onOpenSetup={setSettingsWizardMode}
             updateChannel={dashboardConfig.update?.channel}
             onSaveUpdateChannel={configQuery.data ? saveUpdateChannel : undefined}
+            feedbackContext={feedbackContext}
           />
         }
       />

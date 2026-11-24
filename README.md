@@ -14,6 +14,7 @@ A 24/7 Google Calendar kiosk application designed for Raspberry Pi with a touchs
 - **Brightness Control** — Dim the screen from 30–100 % in the settings menu (set the monitor's own brightness for the daytime maximum — see [INSTALLATION.md](INSTALLATION.md#set-the-monitors-own-brightness-now))
 - **What to Wear** — A kid-friendly section that reads the weather forecast for the school day and suggests what to wear in the morning, what changes in the afternoon, and what to pack. Off by default: turn it on in Settings → Widgets. It needs a weather location (Settings → System → Weather) or a US zip code in its own settings
 - **Themes** — Built-in Default and Deep Space looks, switchable from the settings menu; the Default manifest is written to be copied as the starting point for new themes
+- **Send feedback** — Settings → Send feedback: tell us what's great, what's broken, or an idea. You see exactly what will be sent before you tap Send, and you get a ticket code back (see [Feedback and privacy](#feedback-and-privacy))
 
 ## Tech Stack
 
@@ -127,6 +128,12 @@ If you are forking or republishing this project, complete these one-time securit
    GITHUB_REPO_OWNER=your-github-username
    GITHUB_REPO_NAME=your-repo-name
    ```
+
+## Feedback and privacy
+
+Feedback you choose to send goes to the Crucible feedback service. It contains what the review screen shows and nothing else.
+
+That is: the kind you picked (great, broken or idea), your message, the email address only if you typed one, the app version, the browser's system and language, the time on the kiosk, and which widgets and theme are on. No account, calendar content, location, or device identifier is included. Nothing is sent until you tap **Send**; with no connection the draft stays on the kiosk until you tap Send again, and it is never sent in the background. The address of the service is in `shared/feedback-endpoint.ts`; no key or token goes with it.
 
 ## License
 

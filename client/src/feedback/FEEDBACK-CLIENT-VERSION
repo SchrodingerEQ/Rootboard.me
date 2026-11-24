@@ -1,0 +1,8 @@
+crucible-feedback c758bc87208f0f47532ff4540a3fe1e2edd69373  (main, 2026-11-23)
+files: feedback-client.js (clients/core), feedback-dialog.jsx (clients/react/feedback-dialog.js)
+
+Copied unchanged except: feedback-dialog.js renamed to .jsx so Vite parses
+its JSX, and its four "../core/feedback-client.js" references point at
+"./feedback-client.js". feedback-dialog.css is not copied: Rootboard styles
+the crc-feedback-* classes with its theme tokens (rootboard-feedback.css).
+A change to either file is made in crucible-feedback first, then copied here.

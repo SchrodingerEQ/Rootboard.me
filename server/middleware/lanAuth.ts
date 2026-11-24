@@ -39,6 +39,20 @@ export function isLocalRequest(req: Request): boolean {
   return LOOPBACK_ADDRESSES.has(ip);
 }
 
+/**
+ * A request a web page on another site could not have made. Any page the
+ * kiosk's own browser happens to open could otherwise auto-submit an HTML
+ * form (urlencoded, no CORS preflight) to localhost. A cross-site fetch
+ * with a JSON body needs a preflight this server never grants, and
+ * Sec-Fetch-Site, where the browser sends it, rules out the rest; an absent
+ * header is a non-browser client (curl, the supervisor), which the socket
+ * check still confines to this machine.
+ */
+export function isSameOriginJsonRequest(req: Request): boolean {
+  const site = req.get("Sec-Fetch-Site");
+  return Boolean(req.is("application/json")) && (!site || site === "same-origin" || site === "none");
+}
+
 export function isLanApiOpen(): boolean {
   return process.env.LAN_API_OPEN === "true";
 }
