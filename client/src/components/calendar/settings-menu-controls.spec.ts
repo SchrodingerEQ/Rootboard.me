@@ -33,6 +33,9 @@ describe("settings-menu.tsx keeps every existing control", () => {
     "onCheckForUpdates",
     "onRollback",
     "APP_VERSION",
+    // send feedback (beta brief 04): the row and the dialog it opens
+    "<FeedbackRow",
+    "<SettingsFeedbackDialog",
   ];
   for (const needle of mustContain) {
     test(needle, () => expect(src).toContain(needle));

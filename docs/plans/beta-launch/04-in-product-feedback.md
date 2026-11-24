@@ -1,10 +1,15 @@
 # 04 — In-product feedback
 
-**Status:** Not started. **Blocked** until (1) the Crucible feedback
-service is live and (2) its shared React client (`clients/react/` in the
-crucible-feedback repo) exists; private planning records track both.
-Rewritten 2026-11-14 to follow the Crucible feedback contract v1 (see the
-note under §2).
+**Status:** Built, waiting on the founder (2026-11-24). Run as WP-01
+(`docs/briefs/2026-11-23-remote-work/`) through the `/add-feedback`
+skill once the feedback service and its React client went live
+(2026-11-23). The pull request is `principle-flag` and waits for the
+founder's label; decision 0019 records what was built. Two departures
+from §2, both settled in WP-01: `os` comes from the browser rather than
+a fixed "Raspberry Pi OS", and the optional `calendar_sync` / `weather`
+/ `update` context words were not added (the `/add-feedback` product
+row names `widgets` and `theme` only). Rewritten 2026-11-14 to follow
+the Crucible feedback contract v1 (see the note under §2).
 **Type:** Client dialog built on the shared reference client. One session.
 **Depends on:** the two external items above, and 05 (merged), which
 makes the Settings entry point open before Google is connected.
