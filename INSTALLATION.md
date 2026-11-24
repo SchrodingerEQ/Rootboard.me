@@ -162,7 +162,7 @@ user_pref("browser.gesture.pinch.out.shift", "");
 
 ### Cap the browser cache (Firefox)
 
-Left alone, Firefox sizes its disk cache by itself, and on a kiosk that never closes it keeps growing on the SD card. Rootboard is one page that the app serves locally, so a small cache costs nothing. Add these lines to the same `user.js`:
+Left alone, Firefox picks its own disk cache size, which is more than a kiosk needs on an SD card. Rootboard is one page that the app serves locally, so a small cache costs nothing. Add these lines to the same `user.js`:
 
 ```js
 // Rootboard kiosk: keep the disk cache small
@@ -170,7 +170,7 @@ user_pref("browser.cache.disk.smart_size.enabled", false); // stop Firefox choos
 user_pref("browser.cache.disk.capacity", 102400);          // cache limit in KB: 102400 KB = 100 MB
 ```
 
-The first line turns off automatic sizing; Firefox ignores the second line while automatic sizing is on. The second line caps the disk cache at 100 MB. Restart Firefox (or reboot) for it to apply.
+The first line turns off automatic sizing; Firefox ignores the second line while automatic sizing is on. The second line caps the disk cache at 100 MB. Restart Firefox (or reboot) for it to apply. This caps Firefox's page cache only; it does not limit the `remote-settings` data Firefox keeps beside it, so check Settings → System → Diagnostics now and then.
 
 ### Set the monitor's own brightness now
 
