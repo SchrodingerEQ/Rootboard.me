@@ -18,7 +18,7 @@ import { googleOAuthService } from "./services/googleOAuth";
 import { writeClientFile } from "./services/googleOAuthClient";
 import { pairingService as defaultPairingService, type PairingService } from "./services/pairingService";
 import { getDiagnostics } from "./services/diagnosticsService";
-import { createLanAuthGuard, isLocalRequest, sendPairingRequired } from "./middleware/lanAuth";
+import { createLanAuthGuard, isLocalRequest, isSameOriginJsonRequest, sendPairingRequired } from "./middleware/lanAuth";
 import { logPrivate } from "./services/logRing";
 import { APP_VERSION } from "@shared/version";
 import { dashboardConfigSchema } from "@shared/dashboard-config";
@@ -347,9 +347,11 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
     res.json(getUpdateStatus());
   });
 
+  // Kiosk only, and same-origin JSON only, so a web page open in the kiosk's
+  // own browser cannot form-POST an update or a rollback.
   app.post("/api/update/apply", async (req, res) => {
-    if (!isLocalRequest(req)) {
-      return res.status(403).json({ message: "Updates can only be applied from localhost" });
+    if (!isLocalRequest(req) || !isSameOriginJsonRequest(req)) {
+      return res.status(403).json({ message: "Updates can only be started on the kiosk itself" });
     }
     try {
       res.json({ message: "Update started", status: "in-progress" });
@@ -363,8 +365,8 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
   });
 
   app.post("/api/update/rollback", async (req, res) => {
-    if (!isLocalRequest(req)) {
-      return res.status(403).json({ message: "Rollback can only be triggered from localhost" });
+    if (!isLocalRequest(req) || !isSameOriginJsonRequest(req)) {
+      return res.status(403).json({ message: "Rollback can only be started on the kiosk itself" });
     }
     try {
       res.json({ message: "Rollback started", status: "in-progress" });
