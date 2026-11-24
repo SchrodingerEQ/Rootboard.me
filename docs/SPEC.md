@@ -122,10 +122,11 @@ even with a token.
   `apply`/`rollback`, to issuing/cancelling a pairing code, and to the four
   `/api/system/*` Wi-Fi/time-zone mutations (`server/system-routes.ts`)
   and the three Google sign-in mutations (`server/google-routes.ts`) —
-  a paired LAN device cannot change them either. The system mutations also
-  require a JSON body and refuse `Sec-Fetch-Site: cross-site`/`same-site`,
+  a paired LAN device cannot change them either. Update/rollback and the
+  system mutations also require a JSON body and refuse `Sec-Fetch-Site: cross-site`/`same-site`,
   so a web page open in the kiosk's own browser cannot form-POST to
-  localhost (update/rollback do not have this yet); so do Google start and
+  localhost (one shared check, `isSameOriginJsonRequest` in
+  `server/middleware/lanAuth.ts`); so do Google start and
   sign out. The Google callback cannot (it *is* Google's cross-site
   redirect) and relies on the single-use `state` instead. The same check is what
   lets the kiosk skip the LAN token (2.7). No `trust proxy` is configured,
@@ -867,8 +868,10 @@ System → **Diagnostics** (`system-diagnostics.tsx`, rows from
 it opens and shows it as label/value rows, with a warning mark on the
 ones that probably need fixing (supervisor off, update failed, Google not
 set up or not connected, sync error, weather failing, no network,
-internet unreachable, 3+ self-heal reconnects in 24 h, under 1 GB or 5 %
-disk free, widget errors, config warnings). **Copy** puts the same
+internet unreachable, 3+ self-heal reconnects in 24 h, a **Disk** row
+("<used> of <total> used (<n>%), <free> free") warned when over 80 % used or under
+1 GB or 5 % free; root-reserved blocks count as used, so it reads a few
+points above `df`), widget errors, config warnings). **Copy** puts the same
 redacted JSON on the clipboard; **Show details** shows the log tail;
 refresh re-fetches.
 
@@ -963,8 +966,9 @@ sites:
 - `lib/color-utils.ts` — the `rgb()`/`rgba()` string builders and the
   `hexToRgb` parse-failure fallback.
 - `components/chores/confetti-burst.tsx` `CONFETTI_COLORS` — the pinned
-  default; at runtime, callers read `--rb-confetti-1` through `-5` and
-  fall back to this constant only if a variable is missing.
+  default; at burst time `runtimeConfettiColors()` reads `--rb-confetti-1`
+  through `-5` and falls back to this constant only if a variable is
+  missing, logging the first missing token once (console warning).
 - `components/calendar/settings-menu.tsx`'s duplicate calendar-color
   fallback block — a known bug (tracked in TASKS.md), not a styling
   exception; it duplicates `lib/calendar-meta.ts` and should eventually
@@ -1033,6 +1037,10 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   white on surfaces with relative luminance < 0.2 (via `useSurfaceHex`),
   byte-identical on light surfaces; Deep Space event-chip contrast went
   from ~1.2–2.0:1 to ≥ 6.1:1.
+- **Confetti:** the chore check-off burst takes the active theme's
+  `--rb-confetti-1…5` at burst time (`runtimeConfettiColors` in
+  `components/chores/confetti-burst.tsx`), so a theme switch shows on
+  the next burst; tested in `confetti-colors.spec.ts`.
 - **Widgets:** `host.theme.subscribe` now fires on every switch.
 
 ### 3.10 What to Wear (`client/src/widgets/what-to-wear/`)
@@ -1335,6 +1343,12 @@ complete(100). The release **source tarball** is downloaded over HTTPS to
 `.update-temp/`, extracted with `tar`, and applied to the app root. If
 install or build fails, the updater sets an error status, auto-runs
 `rollback()`, and rethrows.
+
+`POST /api/update/apply` and `/api/update/rollback` start only for a
+same-origin JSON request from the kiosk itself (2.2), so a web page open
+in the kiosk's browser cannot form-POST either; the app's update prompt sends
+an empty JSON body. A call by hand on the kiosk needs one too:
+`curl -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:5000/api/update/apply`.
 
 - `PRESERVE_PATHS` (never touched by apply/backup/rollback): `.env`,
   `data`, `node_modules`, `.update-backups`, `.update-temp`,
