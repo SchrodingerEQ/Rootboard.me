@@ -16,8 +16,11 @@ export interface ConfettiParticle {
 
 export const CONFETTI_COLORS = ["#f2655a", "#f5a623", "#16a34a", "#2563eb", "#9333ea"];
 
+export const CONFETTI_PARTICLE_COUNT = 14;
+export const CONFETTI_FADE_MS = 1800;
+
 /** The five theme tokens a burst takes its colours from, in order. */
-export const CONFETTI_TOKEN_NAMES = [1, 2, 3, 4, 5].map((i) => `--rb-confetti-${i}`);
+const CONFETTI_TOKEN_NAMES = [1, 2, 3, 4, 5].map((i) => `--rb-confetti-${i}`);
 
 let warnedConfettiFallback = false;
 
@@ -44,8 +47,6 @@ export function runtimeConfettiColors(
   }
   return CONFETTI_COLORS;
 }
-export const CONFETTI_PARTICLE_COUNT = 14;
-export const CONFETTI_FADE_MS = 1800;
 
 /** ~14 particles (7–13px, circles + squares) fanning upward/outward
  *  45–120px with 270° of rotational spread either direction. */
