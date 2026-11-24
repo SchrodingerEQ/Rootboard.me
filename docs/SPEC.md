@@ -1188,8 +1188,10 @@ Beta-launch brief 03, decision 0018. Session 1 built the wizard; session
     2026-11-24). It opens a warning, not the instructions: one paragraph
     (significant manual setup on a computer — a Google Cloud project, a
     service-account key file copied onto the unit; the steps are in the
-    install guide's service-account appendix and at `/setup`; choosing it
-    leaves the wizard, which opens again at the next start). **Back to
+    install guide's service-account appendix and in the unit's own setup
+    guide, which the next screen links to; choosing it leaves the wizard —
+    on a first run adding that the wizard opens again at the next start,
+    from Settings only that it closes: `manualSetupLeaveSentence`). **Back to
     setup** closes the warning and changes nothing. **Continue with manual
     setup** closes the wizard **without** writing `setup.completedAt` and
     opens `AuthDialog` on its **Advanced: service account** tab over the
@@ -1197,8 +1199,9 @@ Beta-launch brief 03, decision 0018. Session 1 built the wizard; session
     dialog, which opens by itself on an unauthenticated kiosk, is held back
     while those steps show (`lib/service-account-steps.ts`, a store both
     React roots read) and opens as usual once they are closed. Not
-    writing the record is intended: on the next boot a first run opens
-    again; a self-hoster who has put the key file in place by then finds
+    writing the record is intended: after a first run the wizard opens
+    again on the next boot (from Settings the record already exists, so it
+    does not); a self-hoster who has put the key file in place by then finds
     the Google step connected and taps through to Done, which writes it.
   - **Skip this step** stays.
 - **Return from Google's page** (`startingStep`, `lib/setup-wizard.ts`):

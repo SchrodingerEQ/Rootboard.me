@@ -5,6 +5,7 @@
  */
 
 import type { DashboardConfig } from "@shared/dashboard-config";
+import type { GoogleAuthStatus } from "./google-sign-in";
 
 export type SetupStepId = "welcome" | "network" | "timezone" | "google" | "weather" | "done";
 
@@ -90,10 +91,7 @@ export function startingStep(search: string, mode: SetupMode): SetupStepId {
 export type GoogleStepState = "connected" | "needs-client" | "connect";
 
 /** The slice of the auth status (`GET /api/calendar/auth-status`) the step reads. */
-export interface GoogleStatusLike {
-  authenticated: boolean;
-  oauthClient?: "missing" | "configured" | "invalid";
-}
+export type GoogleStatusLike = Pick<GoogleAuthStatus, "authenticated" | "mode" | "oauthClient">;
 
 /**
  * What the Google step shows. Connected in either mode (Google sign-in or a
@@ -120,7 +118,19 @@ export interface ManualSetupOutcome {
   openServiceAccountSteps: boolean;
 }
 
-/** The "Set up manually (self-hosting)" warning's two buttons (founder 2026-11-24). */
+/**
+ * The manual-setup warning's last sentence. Only a first run has no
+ * completion record, so only there does the wizard open again at the next
+ * start; from Settings (`rerun`) it simply closes.
+ */
+export function manualSetupLeaveSentence(mode: SetupMode): string {
+  return mode === "first-run"
+    ? "Choosing this leaves the setup wizard; it opens again the next time Rootboard starts, so you can finish it once the key file is in place."
+    : "Choosing this closes the setup wizard.";
+}
+
+/** The "Set up manually (self-hosting)" warning's two buttons (founder
+ *  2026-11-24). The shell applies every field (app-shell.tsx). */
 export function manualSetupOutcome(choice: ManualSetupChoice): ManualSetupOutcome {
   if (choice === "continue") return { closeWizard: true, recordCompletion: false, openServiceAccountSteps: true };
   return { closeWizard: false, recordCompletion: false, openServiceAccountSteps: false };

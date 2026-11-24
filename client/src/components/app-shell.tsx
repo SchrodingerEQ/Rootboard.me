@@ -42,7 +42,7 @@ import { SetupWizard } from "@/pages/setup-wizard";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
 import { setServiceAccountStepsOpen, useServiceAccountStepsOpen } from "@/lib/service-account-steps";
 import { useSetupRunCondition } from "@/hooks/use-setup-run-condition";
-import { recordsCompletion, type SetupMode } from "@/lib/setup-wizard";
+import { manualSetupOutcome, recordsCompletion, type ManualSetupChoice, type SetupMode } from "@/lib/setup-wizard";
 import type { UpdateChannel } from "@shared/release-version";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
@@ -760,16 +760,20 @@ export default function AppShell() {
     [wizardMode, writeDashboardConfig, clearBootMode],
   );
 
-  // The Google step's "Continue with manual setup" (founder 2026-11-24):
-  // leave the wizard WITHOUT recording completion, so a first run opens again
-  // on the next boot (and finds Google connected once the key file is in
-  // place), and show the service-account steps over the dashboard.
+  // The Google step's manual-setup warning (founder 2026-11-24). Continue
+  // leaves the wizard WITHOUT recording completion, so a first run opens
+  // again on the next boot (and finds Google connected once the key file is
+  // in place), and shows the service-account steps over the dashboard; Back
+  // changes nothing. The rule and its tests: manualSetupOutcome.
   const serviceAccountStepsOpen = useServiceAccountStepsOpen();
-  const leaveWizardForManualGoogle = useCallback(() => {
-    clearBootMode();
-    setSettingsWizardMode(null);
-    setServiceAccountStepsOpen(true);
-  }, [clearBootMode]);
+  const applyManualGoogleChoice = useCallback(
+    (choice: ManualSetupChoice) => {
+      const outcome = manualSetupOutcome(choice);
+      if (outcome.closeWizard) closeWizard(outcome.recordCompletion);
+      if (outcome.openServiceAccountSteps) setServiceAccountStepsOpen(true);
+    },
+    [closeWizard],
+  );
 
   // Settings → System → Updates (beta-launch brief 08): sets the top-level
   // `update` key through the same read-merge-PUT, re-reads the server's
@@ -1151,7 +1155,7 @@ export default function AppShell() {
       onSaveWeatherLocation={configQuery.data ? saveWeatherLocation : undefined}
       googleStatus={authStatus}
       initialSearch={initialSearch}
-      onManualGoogleSetup={leaveWizardForManualGoogle}
+      onManualGoogleSetup={applyManualGoogleChoice}
       onClose={closeWizard}
     />
   ) : null;

@@ -45,7 +45,7 @@ import {
   formatTimeIn,
   googleStepState,
   isOpenedFromSettings,
-  manualSetupOutcome,
+  manualSetupLeaveSentence,
   signalBars,
   startingStep,
   stepsFor,
@@ -75,8 +75,9 @@ export interface SetupWizardProps {
   /** `window.location.search` as the page loaded: the return from Google's
    *  page (`?google=connected`) resumes a first run at the Google step. */
   initialSearch?: string;
-  /** "Continue with manual setup" on the Google step. */
-  onManualGoogleSetup: () => void;
+  /** A button in the Google step's manual-setup warning; the shell applies
+   *  `manualSetupOutcome` (Back changes nothing). */
+  onManualGoogleSetup: (choice: ManualSetupChoice) => void;
   /** `finished` is true when the user reached the end (Done / the last
    *  step), false when they closed it from Settings part-way. */
   onClose: (finished: boolean) => void;
@@ -154,7 +155,7 @@ export function SetupWizard({
           />
         )}
         {step === "timezone" && <TimezoneStep onNext={next} lastStep={index === steps.length - 1} />}
-        {step === "google" && <GoogleStep status={googleStatus} onNext={next} onManualSetup={onManualGoogleSetup} />}
+        {step === "google" && <GoogleStep mode={mode} status={googleStatus} onNext={next} onManualSetup={onManualGoogleSetup} />}
         {step === "weather" && <WeatherStep location={weatherLocation} onSave={onSaveWeatherLocation} onNext={next} />}
         {step === "done" && <DoneStep onFinish={next} />}
 
@@ -746,29 +747,30 @@ function TimezoneStep({ onNext, lastStep }: { onNext: () => void; lastStep: bool
 // --- Google (brief 03 session 2) ----------------------------------------------------
 
 /** One paragraph, the product's voice (founder 2026-11-24): what the manual
- *  path costs, where its steps are, and that it leaves the wizard. */
+ *  path costs, where its steps are, and (manualSetupLeaveSentence) that it
+ *  leaves the wizard. */
 const MANUAL_SETUP_WARNING =
   "Setting up Google by hand takes a significant amount of work on a computer: you create a Google Cloud " +
   "project, make a service-account key file, and copy that file onto this Rootboard. The steps are in the " +
-  "install guide's service-account appendix, and on this screen at /setup. Choosing this leaves the setup " +
-  "wizard; it opens again the next time Rootboard starts, so you can finish it once the key file is in place.";
+  "install guide's service-account appendix and in this Rootboard's own setup guide, which the next screen " +
+  "links to.";
 
 function GoogleStep({
+  mode,
   status,
   onNext,
   onManualSetup,
 }: {
+  mode: SetupMode;
   status?: GoogleAuthStatus;
   onNext: () => void;
-  /** Continue with manual setup: the shell closes the wizard without
-   *  recording completion and opens the service-account steps. */
-  onManualSetup: () => void;
+  onManualSetup: (choice: ManualSetupChoice) => void;
 }) {
   const [warning, setWarning] = useState(false);
   const state = googleStepState(status);
   const choose = (choice: ManualSetupChoice) => {
     setWarning(false);
-    if (manualSetupOutcome(choice).closeWizard) onManualSetup();
+    onManualSetup(choice);
   };
 
   if (state === "connected") {
@@ -809,7 +811,7 @@ function GoogleStep({
         <AlertDialogContent data-testid="setup-google-manual-warning">
           <AlertDialogHeader>
             <AlertDialogTitle>Set up Google manually?</AlertDialogTitle>
-            <AlertDialogDescription className="text-base leading-relaxed">{MANUAL_SETUP_WARNING}</AlertDialogDescription>
+            <AlertDialogDescription className="text-base leading-relaxed">{MANUAL_SETUP_WARNING} {manualSetupLeaveSentence(mode)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="h-12 px-5 text-base" onClick={() => choose("back")} data-testid="setup-google-manual-back">

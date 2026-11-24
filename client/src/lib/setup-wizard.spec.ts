@@ -11,6 +11,7 @@ import {
   filterTimezones,
   formatTimeIn,
   googleStepState,
+  manualSetupLeaveSentence,
   manualSetupOutcome,
   isOpenedFromSettings,
   needsFirstRun,
@@ -153,6 +154,8 @@ describe("Google step (brief 03 session 2)", () => {
   });
 
   test("connected in either mode", () => {
+    expect(googleStepState({ authenticated: true, mode: "oauth", oauthClient: "configured" })).toBe("connected");
+    expect(googleStepState({ authenticated: true, mode: "service-account", oauthClient: "missing" })).toBe("connected");
     expect(googleStepState({ authenticated: true, oauthClient: "configured" })).toBe("connected");
     // A service-account kiosk usually has no sign-in client: still connected.
     expect(googleStepState({ authenticated: true, oauthClient: "missing" })).toBe("connected");
@@ -164,6 +167,11 @@ describe("Google step (brief 03 session 2)", () => {
     expect(googleStepState({ authenticated: false, oauthClient: "configured" })).toBe("connect");
     expect(googleStepState({ authenticated: false })).toBe("connect");
     expect(googleStepState(undefined)).toBe("connect");
+  });
+
+  test("the warning promises a return at the next start only on a first run", () => {
+    expect(manualSetupLeaveSentence("first-run")).toMatch(/opens again the next time Rootboard starts/);
+    expect(manualSetupLeaveSentence("rerun")).toBe("Choosing this closes the setup wizard.");
   });
 
   test("manual setup: Back changes nothing; Continue leaves without recording completion", () => {
