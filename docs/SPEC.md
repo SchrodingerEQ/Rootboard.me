@@ -861,8 +861,9 @@ System → **Diagnostics** (`system-diagnostics.tsx`, rows from
 it opens and shows it as label/value rows, with a warning mark on the
 ones that probably need fixing (supervisor off, update failed, Google not
 set up or not connected, sync error, weather failing, no network,
-internet unreachable, 3+ self-heal reconnects in 24 h, under 1 GB or 5 %
-disk free, widget errors, config warnings). **Copy** puts the same
+internet unreachable, 3+ self-heal reconnects in 24 h, a **Disk** row
+("<used> of <total> used (<n>%)") warned when over 80 % used or under
+1 GB or 5 % free, widget errors, config warnings). **Copy** puts the same
 redacted JSON on the clipboard; **Show details** shows the log tail;
 refresh re-fetches.
 

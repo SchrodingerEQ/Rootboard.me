@@ -10,6 +10,7 @@ export interface DiagnosticsRow {
 }
 
 const LOW_DISK_BYTES = 1024 ** 3;
+const DISK_USED_WARN_PERCENT = 80;
 const SELF_HEAL_WARN_COUNT = 3;
 
 export function formatDuration(seconds: number): string {
@@ -97,11 +98,21 @@ function internetRow(b: DiagnosticsBundle): DiagnosticsRow {
   return { label: "Internet", value, warn: r === false };
 }
 
+// Warn on either rule: a big card can be mostly full with gigabytes left,
+// and a small one can be under 1 GB free while still under 80 % used.
 function diskRow(b: DiagnosticsBundle): DiagnosticsRow {
-  if (!b.disk) return { label: "Disk free", value: "Unknown", warn: false };
+  if (!b.disk) return { label: "Disk", value: "Unknown", warn: false };
   const { freeBytes, totalBytes } = b.disk;
-  const low = freeBytes < LOW_DISK_BYTES || (totalBytes > 0 && freeBytes / totalBytes < 0.05);
-  return { label: "Disk free", value: `${formatBytes(freeBytes)} of ${formatBytes(totalBytes)}`, warn: low };
+  const usedBytes = Math.max(0, totalBytes - freeBytes);
+  const usedPercent = totalBytes > 0 ? Math.round((usedBytes / totalBytes) * 100) : 0;
+  const lowFree = freeBytes < LOW_DISK_BYTES || (totalBytes > 0 && freeBytes / totalBytes < 0.05);
+  // Compared after rounding, so the warning agrees with the percentage shown.
+  const mostlyFull = usedPercent > DISK_USED_WARN_PERCENT;
+  return {
+    label: "Disk",
+    value: `${formatBytes(usedBytes)} of ${formatBytes(totalBytes)} used (${usedPercent}%)`,
+    warn: lowFree || mostlyFull,
+  };
 }
 
 function selfHealRow(b: DiagnosticsBundle): DiagnosticsRow {
