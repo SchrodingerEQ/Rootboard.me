@@ -11,9 +11,11 @@
 // Nothing else goes in: no calendar content, no account, no location.
 
 import type { DashboardWidgetEntry } from "@shared/dashboard-config";
+import { CONTEXT_MAX_BYTES } from "@/feedback/feedback-client.js";
 
-/** The service's cap on `context`, serialized (contract §3). */
-export const FEEDBACK_CONTEXT_MAX_BYTES = 2048;
+/** The service's cap on `context`, serialized (contract §3), as the shared
+ *  client states it. */
+export const FEEDBACK_CONTEXT_MAX_BYTES = CONTEXT_MAX_BYTES;
 
 export interface FeedbackContext {
   widgets: string[];

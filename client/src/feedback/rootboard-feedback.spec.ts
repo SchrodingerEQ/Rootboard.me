@@ -14,6 +14,7 @@ import {
 } from "./rootboard-feedback";
 import { APP_VERSION } from "@shared/version";
 import { FEEDBACK_BASE_URL } from "@shared/feedback-endpoint";
+import { DEFAULT_BASE_URL } from "./feedback-client.js";
 
 class MemoryStorage {
   private values = new Map<string, string>();
@@ -59,8 +60,10 @@ describe("Rootboard's feedback client", () => {
     expect(payload).toMatchObject({ product: "rootboard", version: APP_VERSION, platform: "kiosk", os: "Linux aarch64", locale: "en-US", context });
   });
 
-  test("defaults to the production service", () => {
+  // Guards against committing the local-Worker URL used for test walks.
+  test("points at the production service, the same host the shared client defaults to", () => {
     expect(FEEDBACK_BASE_URL).toBe("https://feedback.cruciblecreations.net");
+    expect(FEEDBACK_BASE_URL).toBe(DEFAULT_BASE_URL);
   });
 
   test("the review text shows every field the request carries; only the ticket is filled in after the tap", async () => {
@@ -143,6 +146,23 @@ describe("Rootboard's feedback client", () => {
     expect(JSON.parse(storage.getItem(FEEDBACK_DRAFT_KEY)!)).toMatchObject({ kind: "idea" });
     await drafts.clear();
     expect(storage.getItem(FEEDBACK_DRAFT_KEY)).toBeNull();
+  });
+});
+
+describe("a saved draft the dialog cannot show", () => {
+  test.each([
+    ["not JSON", "{oops"],
+    ["an unknown kind", JSON.stringify({ kind: "praise", message: "x", contact: "", saved_at: "t" })],
+    ["no message", JSON.stringify({ kind: "idea", contact: "" })],
+  ])("%s is treated as no draft: no marker, nothing prefilled, Review cannot crash", async (_label, raw) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const storage = new MemoryStorage();
+    storage.setItem(FEEDBACK_DRAFT_KEY, raw);
+    expect(hasFeedbackDraft(storage)).toBe(false);
+    const client = createRootboardFeedbackClient({ context, drafts: localStorageDrafts(storage), nav, now });
+    expect(await client.loadDraft()).toBeNull();
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
 

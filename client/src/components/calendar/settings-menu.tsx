@@ -249,8 +249,8 @@ interface SettingsMenuProps {
   /** Saves the update channel. Absent hides the channel toggle. */
   onSaveUpdateChannel?: (channel: UpdateChannel) => void;
   /** What a feedback report carries as `context` (lib/feedback-context.ts).
-   *  Absent hides the Send feedback row. */
-  feedbackContext?: FeedbackContext;
+   *  Required: the Send feedback row shows in every auth state (brief 04). */
+  feedbackContext: FeedbackContext;
 }
 
 export function SettingsMenu({
@@ -496,7 +496,7 @@ export function SettingsMenu({
         </AlertDialogContent>
       </AlertDialog>
 
-      {feedbackOpen && feedbackContext && createPortal(
+      {feedbackOpen && createPortal(
         <SettingsFeedbackDialog context={feedbackContext} onClose={() => setFeedbackOpen(false)} />,
         document.body,
       )}
@@ -603,12 +603,10 @@ export function SettingsMenu({
               })}
             </div>
 
-            {feedbackContext && (
-              <FeedbackRow
-                open={isOpen}
-                onOpen={() => { handleOpenChange(false); setFeedbackOpen(true); }}
-              />
-            )}
+            <FeedbackRow
+              open={isOpen}
+              onOpen={() => { handleOpenChange(false); setFeedbackOpen(true); }}
+            />
 
             <Separator />
 

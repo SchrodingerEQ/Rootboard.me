@@ -2,7 +2,7 @@
 // the Settings main screen, and the shared Crucible feedback dialog opened
 // from it. The dialog's steps, review text and send are the shared client's
 // (client/src/feedback/); this file only configures it for Rootboard.
-import { useMemo, useState, type ComponentProps } from "react";
+import { useState, type ComponentProps } from "react";
 import { ChevronRight, MessageSquare } from "lucide-react";
 import { FeedbackDialog } from "@/feedback/feedback-dialog.jsx";
 import {
@@ -22,10 +22,10 @@ export const FEEDBACK_REVIEW_HINT =
 // cast is the only way to pass one until crucible-feedback widens the type.
 const DIALOG_STRINGS = { reviewHint: FEEDBACK_REVIEW_HINT } as unknown as ComponentProps<typeof FeedbackDialog>["strings"];
 
-/** The Settings main-screen row. `open` is the popover's open state: the
- *  draft marker is re-read each time Settings opens. */
+/** The Settings main-screen row. `open` is the popover's open state; the
+ *  draft marker is read from storage whenever the row renders. */
 export function FeedbackRow({ open, onOpen }: { open: boolean; onOpen: () => void }) {
-  const draftWaiting = useMemo(() => open && hasFeedbackDraft(localStorage), [open]);
+  const draftWaiting = open && hasFeedbackDraft(localStorage);
   return (
     <button
       type="button"

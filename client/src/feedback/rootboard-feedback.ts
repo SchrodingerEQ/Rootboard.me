@@ -2,7 +2,7 @@
 // (feedback-client.js, copied from crucible-feedback; see
 // FEEDBACK-CLIENT-VERSION). Everything here ends up on the review screen.
 
-import { createFeedbackClient, type DraftStore, type FeedbackClient } from "./feedback-client.js";
+import { createFeedbackClient, type Draft, type DraftStore, type FeedbackClient } from "./feedback-client.js";
 import { APP_VERSION } from "@shared/version";
 import { FEEDBACK_BASE_URL } from "@shared/feedback-endpoint";
 import type { FeedbackContext } from "@/lib/feedback-context";
@@ -13,11 +13,40 @@ export const FEEDBACK_DRAFT_KEY = "rootboard-feedback-draft";
 
 type KeyValueStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-/** The client's draft store over localStorage. A value that is not valid
- *  JSON throws on `get`, which the dialog shows as "could not be read". */
+const DRAFT_KINDS: readonly string[] = ["great", "broken", "idea"];
+
+/** The stored draft, or null when there is none or it is not one the dialog
+ *  can show. A draft with an unknown kind would make the shared client throw
+ *  while rendering the review, so it is treated as absent (and logged); the
+ *  next Send overwrites it. */
+export function readFeedbackDraft(storage: KeyValueStorage): Draft | null {
+  const raw = storage.getItem(FEEDBACK_DRAFT_KEY);
+  if (raw === null) return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    console.warn("feedback: the saved draft is not valid JSON; ignoring it");
+    return null;
+  }
+  const draft = value as Partial<Draft> | null;
+  if (
+    !draft ||
+    typeof draft !== "object" ||
+    !DRAFT_KINDS.includes(draft.kind as string) ||
+    typeof draft.message !== "string" ||
+    (draft.contact !== undefined && typeof draft.contact !== "string")
+  ) {
+    console.warn("feedback: the saved draft has an unexpected shape; ignoring it");
+    return null;
+  }
+  return { kind: draft.kind as Draft["kind"], message: draft.message, contact: draft.contact ?? "", saved_at: String(draft.saved_at ?? "") };
+}
+
+/** The client's draft store over localStorage. */
 export function localStorageDrafts(storage: KeyValueStorage): DraftStore {
   return {
-    get: () => JSON.parse(storage.getItem(FEEDBACK_DRAFT_KEY) ?? "null"),
+    get: () => readFeedbackDraft(storage),
     set: (draft) => storage.setItem(FEEDBACK_DRAFT_KEY, JSON.stringify(draft)),
     clear: () => storage.removeItem(FEEDBACK_DRAFT_KEY),
   };
@@ -25,7 +54,7 @@ export function localStorageDrafts(storage: KeyValueStorage): DraftStore {
 
 /** True when an unsent draft is waiting (the Settings marker). */
 export function hasFeedbackDraft(storage: KeyValueStorage): boolean {
-  return storage.getItem(FEEDBACK_DRAFT_KEY) !== null;
+  return readFeedbackDraft(storage) !== null;
 }
 
 interface NavigatorLike {
