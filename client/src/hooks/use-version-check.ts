@@ -161,7 +161,7 @@ export function useVersionCheck(): VersionCheckResult {
     });
 
     try {
-      const response = await fetch('/api/update/apply', { method: 'POST' });
+      const response = await fetch('/api/update/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       if (!response.ok) {
         throw new Error('Failed to start update');
       }
@@ -193,7 +193,7 @@ export function useVersionCheck(): VersionCheckResult {
     });
 
     try {
-      const response = await fetch('/api/update/rollback', { method: 'POST' });
+      const response = await fetch('/api/update/rollback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
       if (!response.ok) {
         throw new Error('Failed to start rollback');
       }

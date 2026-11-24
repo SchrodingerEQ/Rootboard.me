@@ -15,8 +15,38 @@ export interface ConfettiParticle {
 }
 
 export const CONFETTI_COLORS = ["#f2655a", "#f5a623", "#16a34a", "#2563eb", "#9333ea"];
+
 export const CONFETTI_PARTICLE_COUNT = 14;
 export const CONFETTI_FADE_MS = 1800;
+
+/** The five theme tokens a burst takes its colours from, in order. */
+const CONFETTI_TOKEN_NAMES = [1, 2, 3, 4, 5].map((i) => `--rb-confetti-${i}`);
+
+let warnedConfettiFallback = false;
+
+function computedStyleLookup(name: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name);
+}
+
+/** Confetti colours come from the active theme's `--rb-confetti-1…5`
+ *  tokens, read at burst time so a theme switch takes effect on the next
+ *  burst. If any token is empty, the whole burst falls back to the pinned
+ *  CONFETTI_COLORS (an undefined CSS var once made the OSK transparent —
+ *  never trust vars blindly on the kiosk) and the first fallback is logged
+ *  once, naming the first missing token, so it is never silent.
+ *  `lookup` defaults to the document's computed style; tests pass their own. */
+export function runtimeConfettiColors(
+  lookup: (name: string) => string = computedStyleLookup
+): readonly string[] {
+  const colors = CONFETTI_TOKEN_NAMES.map((name) => lookup(name).trim());
+  const missing = CONFETTI_TOKEN_NAMES.find((_, i) => !colors[i]);
+  if (missing === undefined) return colors;
+  if (!warnedConfettiFallback) {
+    warnedConfettiFallback = true;
+    console.warn(`[confetti] theme token ${missing} is empty; using the default confetti colours`);
+  }
+  return CONFETTI_COLORS;
+}
 
 /** ~14 particles (7–13px, circles + squares) fanning upward/outward
  *  45–120px with 270° of rotational spread either direction. */

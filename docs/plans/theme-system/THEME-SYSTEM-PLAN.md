@@ -107,7 +107,7 @@ Phase 0: 1–2 days of mechanical Claude Code work. Phase 1: the substantive bui
 
 - CSS variables defined in `client/src/index.css` (`--rb-*` + shadcn tokens); Tailwind maps tokens in `tailwind.config.ts`.
 - Hardcoded hex hotspots (counts): dinner voting-strip (17), meal-list-dialog (16), calendar-header (15), day-cell (14), settings-menu (13), meal-picker (9), edit-people (9), chores page (8), on-screen-keyboard (8), plus ~10 more files.
-- Confetti: pure particle math + 5 hardcoded colors in `client/src/components/chores/confetti-burst.tsx`.
+- Confetti: pure particle math + 5 hardcoded colors in `client/src/components/chores/confetti-burst.tsx`. (Superseded: since the Phase 0 sweep the burst takes the theme's `--rb-confetti-1…5` tokens and the 5 colors are only the fallback; see [STATUS-2026-11.md](STATUS-2026-11.md), 2026-11-24.)
 - Screensaver: the overlay that actually mounts is `client/src/components/screensaver/power-saving-overlay.tsx` (static dimmed logo on `--rb-power-saving-bg`, mounted from `app-shell.tsx`). `screensaver-overlay.tsx` (rAF bounce loop) is **unmounted dead code** — kept on purpose, not a base for anything (corrected 2026-09-22). Float keyframes in `index.css`.
 - State persistence: `client/src/hooks/use-app-state.ts` → GET/PUT `/api/state/:key` (`server/routes.ts` ~L328).
 - GitHub download pattern: `server/services/updateService.ts`.
