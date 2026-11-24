@@ -108,12 +108,14 @@ function diskRow(b: DiagnosticsBundle): DiagnosticsRow {
   const { freeBytes, totalBytes } = b.disk;
   const usedBytes = Math.max(0, totalBytes - freeBytes);
   const usedPercent = totalBytes > 0 ? Math.round((usedBytes / totalBytes) * 100) : 0;
+  // The under-5 % clause is now also caught by the 80 % rule; kept as the
+  // shipped free-space rule it was (brief WP-04 (c)).
   const lowFree = freeBytes < LOW_DISK_BYTES || (totalBytes > 0 && freeBytes / totalBytes < 0.05);
   // Compared after rounding, so the warning agrees with the percentage shown.
   const mostlyFull = usedPercent > DISK_USED_WARN_PERCENT;
   return {
     label: "Disk",
-    value: `${formatBytes(usedBytes)} of ${formatBytes(totalBytes)} used (${usedPercent}%)`,
+    value: `${formatBytes(usedBytes)} of ${formatBytes(totalBytes)} used (${usedPercent}%), ${formatBytes(freeBytes)} free`,
     warn: lowFree || mostlyFull,
   };
 }
