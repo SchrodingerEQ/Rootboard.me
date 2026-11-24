@@ -200,6 +200,13 @@ colours its own people should store a slot index per person, never the
 colour itself, so a theme switch repaints it correctly. Adding these
 tokens was additive — no `apiVersion` bump.
 
+Theme manifest v2 (decision 0026) adds three non-colour properties a
+widget may read with `getToken()` or use in CSS, and may equally ignore:
+`--rb-font-family` (the theme's body face; widgets inherit it already),
+`--rb-radius-scale` and `--rb-shadow-softness` (unitless multipliers,
+1 for Default: `calc(16px * var(--rb-radius-scale))` follows the theme's
+corners). Additive — no `apiVersion` bump.
+
 **Traceability — why exactly these services** (from the coupling audit):
 chores/dinner need `storage` (today: `app_state` blobs) and `setBadge`
 (today: hoisted hook feeding the rail badge); calendar and any
