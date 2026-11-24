@@ -1,18 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 import { CARD_GAP_PX, CARD_HEIGHT_PX, REORDER_EASING, REORDER_MS, type Chore } from "@/lib/chores-state";
-import { ConfettiBurst, CONFETTI_COLORS, CONFETTI_FADE_MS, generateConfettiParticles, type ConfettiParticle } from "./confetti-burst";
-
-/** Confetti colors come from the theme via CSS variables, falling back to
- *  the pinned defaults if any variable is missing (an undefined CSS var
- *  once made the OSK transparent — never trust vars blindly on the kiosk). */
-function runtimeConfettiColors(): readonly string[] {
-  const style = getComputedStyle(document.documentElement);
-  const colors = [1, 2, 3, 4, 5].map((i) =>
-    style.getPropertyValue(`--rb-confetti-${i}`).trim()
-  );
-  return colors.every(Boolean) ? colors : CONFETTI_COLORS;
-}
+import {
+  ConfettiBurst,
+  CONFETTI_FADE_MS,
+  generateConfettiParticles,
+  runtimeConfettiColors,
+  type ConfettiParticle,
+} from "./confetti-burst";
 
 interface Burst {
   id: string;
