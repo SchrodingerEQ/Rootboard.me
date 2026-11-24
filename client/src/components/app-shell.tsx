@@ -774,6 +774,12 @@ export default function AppShell() {
     },
     [closeWizard],
   );
+  // Once the key file works (Retry Connection, or a restart), the steps have
+  // done their job: close them rather than leave "Not Connected" on screen.
+  const googleAuthenticated = authStatus?.authenticated === true;
+  useEffect(() => {
+    if (googleAuthenticated) setServiceAccountStepsOpen(false);
+  }, [googleAuthenticated]);
 
   // Settings → System → Updates (beta-launch brief 08): sets the top-level
   // `update` key through the same read-merge-PUT, re-reads the server's
