@@ -40,8 +40,10 @@ import {
 } from "@/widgets/calendar/shell-bridge";
 import { defaultDashboardConfig, SETUP_WIZARD_VERSION, type DashboardConfig, type WeatherLocation } from "@shared/dashboard-config";
 import { SetupWizard } from "@/pages/setup-wizard";
+import { AuthDialog } from "@/components/calendar/auth-dialog";
+import { setServiceAccountStepsOpen, useServiceAccountStepsOpen } from "@/lib/service-account-steps";
 import { useSetupRunCondition } from "@/hooks/use-setup-run-condition";
-import { recordsCompletion, type SetupMode } from "@/lib/setup-wizard";
+import { manualSetupOutcome, recordsCompletion, type ManualSetupChoice, type SetupMode } from "@/lib/setup-wizard";
 import type { UpdateChannel } from "@shared/release-version";
 
 const SECTION_STORAGE_KEY = "rootboard-section";
@@ -561,7 +563,10 @@ export default function AppShell() {
   // `/?google=connected` or `/?google=failed&reason=`. Read once at mount,
   // then take the parameters off the URL so a later reload doesn't repeat
   // it. The picker waits for the dashboard if the boot wizard is showing.
-  const [googleCallback] = useState(() => readCallbackOutcome(window.location.search));
+  // The search string as the page loaded, before the parameters come off:
+  // the setup wizard reads it to resume a first run at its Google step.
+  const [initialSearch] = useState(() => window.location.search);
+  const [googleCallback] = useState(() => readCallbackOutcome(initialSearch));
   const [calendarPickerOpen, setCalendarPickerOpen] = useState(googleCallback?.kind === "connected");
   useEffect(() => {
     if (!googleCallback) return;
@@ -768,6 +773,27 @@ export default function AppShell() {
     },
     [wizardMode, writeDashboardConfig, clearBootMode],
   );
+
+  // The Google step's manual-setup warning (founder 2026-11-24). Continue
+  // leaves the wizard WITHOUT recording completion, so a first run opens
+  // again on the next boot (and finds Google connected once the key file is
+  // in place), and shows the service-account steps over the dashboard; Back
+  // changes nothing. The rule and its tests: manualSetupOutcome.
+  const serviceAccountStepsOpen = useServiceAccountStepsOpen();
+  const applyManualGoogleChoice = useCallback(
+    (choice: ManualSetupChoice) => {
+      const outcome = manualSetupOutcome(choice);
+      if (outcome.closeWizard) closeWizard(outcome.recordCompletion);
+      if (outcome.openServiceAccountSteps) setServiceAccountStepsOpen(true);
+    },
+    [closeWizard],
+  );
+  // Once the key file works (Retry Connection, or a restart), the steps have
+  // done their job: close them rather than leave "Not Connected" on screen.
+  const googleAuthenticated = authStatus?.authenticated === true;
+  useEffect(() => {
+    if (googleAuthenticated) setServiceAccountStepsOpen(false);
+  }, [googleAuthenticated]);
 
   // Settings → System → Updates (beta-launch brief 08): sets the top-level
   // `update` key through the same read-merge-PUT, re-reads the server's
@@ -1147,8 +1173,9 @@ export default function AppShell() {
       mode={wizardMode}
       weatherLocation={dashboardConfig.weather}
       onSaveWeatherLocation={configQuery.data ? saveWeatherLocation : undefined}
-      googleConnected={authStatus?.authenticated === true}
-      googleError={authStatus?.error ?? null}
+      googleStatus={authStatus}
+      initialSearch={initialSearch}
+      onManualGoogleSetup={applyManualGoogleChoice}
       onClose={closeWizard}
     />
   ) : null;
@@ -1279,6 +1306,16 @@ export default function AppShell() {
 
       {/* Settings → System → Run setup again / Network / Time zone */}
       {wizard}
+
+      {/* The setup wizard's "Continue with manual setup": the service-account steps */}
+      <AuthDialog
+        open={serviceAccountStepsOpen && !isPowerSavingActive}
+        onOpenChange={setServiceAccountStepsOpen}
+        error={authStatus?.error}
+        mode={authStatus?.mode}
+        oauthClient={authStatus?.oauthClient}
+        initialTab="service-account"
+      />
 
       {/* Right after Google sign-in: choose the calendars to show (brief 02) */}
       <CalendarPickerDialog

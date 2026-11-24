@@ -12,6 +12,7 @@ import { LoadingIndicator } from "@/components/calendar/loading-indicator";
 import { EventDetailsDialog } from "@/components/calendar/event-details-dialog";
 import { EventFormDialog } from "@/components/calendar/event-form-dialog";
 import { AuthDialog } from "@/components/calendar/auth-dialog";
+import { useServiceAccountStepsOpen } from "@/lib/service-account-steps";
 import { useCalendar } from "@/hooks/use-calendar";
 import { validateBuiltinManifest } from "@/widgets/validate-manifest";
 import type { RootboardWidget, WidgetHost, WidgetInstance } from "@/widgets/types";
@@ -104,6 +105,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const serviceAccountStepsOpen = useServiceAccountStepsOpen();
 
   const {
     events,
@@ -411,7 +413,9 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
 
       {/* Authentication Dialog */}
       <AuthDialog
-        open={authDialogOpen && !isPowerSavingActive}
+        // Held back while the setup wizard's service-account steps show
+        // (lib/service-account-steps.ts), so the two never stack.
+        open={authDialogOpen && !isPowerSavingActive && !serviceAccountStepsOpen}
         onOpenChange={setAuthDialogOpen}
         error={authStatus?.error}
         mode={authStatus?.mode}

@@ -1,6 +1,6 @@
 # 03 — First-run setup wizard (Wi-Fi, time zone, Google, weather)
 
-**Status:** Session 1 (wizard shell, Network, Time zone, Weather, Settings entries, polkit rule) merged 2026-11-16 as #35 (soft flag, founder-approved; adds "Continue without network" on the boot-time Network screen); not yet in a release. Session 2 (the Google step) not started; this line and the `TASKS.md` item stay open until it merges.
+**Status:** Session 1 (wizard shell, Network, Time zone, Weather, Settings entries, polkit rule) merged 2026-11-16 as #35 (soft flag, founder-approved; adds "Continue without network" on the boot-time Network screen); not yet in a release. Session 2 (the Google step: brief 02's connect panel, the resume after Google's page, and the manual-setup warning) in PR #51 (WP-02, 2026-11-24, safe zone); this line becomes "Session 2 merged <date> as #51" and the `TASKS.md` item closes when it merges.
 **Type:** Client wizard + server network control + Pi image policy. Two sessions.
 **Depends on:** session 1: 01 (merged 2026-11-11), so it can run now.
 Session 2: 02 (Google sign-in).

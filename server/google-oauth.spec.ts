@@ -42,6 +42,18 @@ import { GoogleAccessLostError, GoogleCalendarService, SIGNED_IN_LIST_MESSAGE } 
 import { registerGoogleRoutes, callbackRedirectUrl } from "./google-routes";
 import { MAX_CLIENT_FILE_BYTES, parseClientJson, projectNumberOf, readClientFile, writeClientFile } from "./services/googleOAuthClient";
 
+/**
+ * The token and client files are written at 0600 (owner read/write only).
+ * Windows has no POSIX permission bits (Node reports only 0666 or 0444),
+ * so the mode is checked everywhere but there; CI runs on Linux and keeps it.
+ * A helper rather than test.skipIf: each call sits inside a larger test whose
+ * other assertions must still run on Windows.
+ */
+function expectOwnerOnlyMode(file: string): void {
+  if (process.platform === "win32") return;
+  expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+}
+
 // --- Mock Google -------------------------------------------------------------
 
 interface TokenRequest {
@@ -195,7 +207,7 @@ describe("client file", () => {
     expect(service.clientStatus().status).toBe("invalid");
 
     expect(writeClientFile(clientJson(), clientFile)).toBe(true);
-    expect(fs.statSync(clientFile).mode & 0o777).toBe(0o600);
+    expectOwnerOnlyMode(clientFile);
     expect(service.clientStatus()).toEqual({ status: "configured", projectNumber: "123456789" });
     const url = new URL(service.startSignIn());
     expect(url.searchParams.get("client_id")).toBe("123456789-abc.apps.googleusercontent.com");
@@ -269,7 +281,7 @@ describe("callback", () => {
     expect(exchange.redirect_uri).toBe(OAUTH_REDIRECT_URI);
     expect(crypto.createHash("sha256").update(exchange.code_verifier).digest("base64url")).toBe(challenge);
 
-    expect(fs.statSync(tokenFile).mode & 0o777).toBe(0o600);
+    expectOwnerOnlyMode(tokenFile);
     expect(readStored()).toMatchObject({ version: 1, email: "owner@example.com", refreshToken: "refresh-1", accessToken: "access-1" });
     expect(service.status()).toEqual({ present: true, connected: true, email: "owner@example.com", lostReason: null });
   });
@@ -347,7 +359,7 @@ describe("using the saved sign-in", () => {
     const refresh = google.tokenRequests.at(-1)!;
     expect(refresh).toMatchObject({ grant_type: "refresh_token", refresh_token: "refresh-1" });
     expect(readStored()).toMatchObject({ accessToken: "access-2", refreshToken: "refresh-1" });
-    expect(fs.statSync(tokenFile).mode & 0o777).toBe(0o600);
+    expectOwnerOnlyMode(tokenFile);
   });
 
   test("isInvalidGrant recognises Google's refusal and nothing else", () => {
@@ -493,7 +505,7 @@ describe("provider precedence", () => {
     await expect(calendar.getCalendarList()).rejects.toBeInstanceOf(GoogleAccessLostError);
     expect(calendar.getAuthStatus()).toEqual({ mode: "oauth", authenticated: false, error: LOST_ACCESS_REASON, email: "owner@example.com", oauthClient: "configured" });
     expect(readStored().refreshToken).toBeUndefined();
-    expect(fs.statSync(tokenFile).mode & 0o777).toBe(0o600);
+    expectOwnerOnlyMode(tokenFile);
 
     const requestsSoFar = google.tokenRequests.length;
     await expect(calendar.syncCalendarEvents(new Date(), new Date())).rejects.toBeInstanceOf(GoogleAccessLostError);
@@ -634,7 +646,7 @@ describe("routes", () => {
     const text = await res.text();
     expect(JSON.parse(text)).toEqual({ configured: true });
     expect(text).not.toContain("test-only-secret");
-    expect(fs.statSync(clientFile).mode & 0o777).toBe(0o600);
+    expectOwnerOnlyMode(clientFile);
     expect(readClientFile(clientFile).status).toBe("configured");
   });
 
