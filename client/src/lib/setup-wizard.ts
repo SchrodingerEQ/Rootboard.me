@@ -5,6 +5,7 @@
  */
 
 import type { DashboardConfig } from "@shared/dashboard-config";
+import type { GoogleAuthStatus } from "./google-sign-in";
 
 export type SetupStepId = "welcome" | "network" | "timezone" | "google" | "weather" | "done";
 
@@ -63,6 +64,76 @@ export function canContinueWithoutNetwork(mode: SetupMode): boolean {
 /** The run condition's config half: no completion record → the full wizard. */
 export function needsFirstRun(config: DashboardConfig): boolean {
   return !config.setup?.completedAt;
+}
+
+// --- Google step (brief 03 session 2) --------------------------------------------
+
+/**
+ * Where the wizard opens. Google's callback reloads the app at
+ * `/?google=connected` (or `?google=failed&reason=`), and with no completion
+ * record every page load is `first-run`, so without this rule the owner would
+ * be sent back to Welcome to redo Wi-Fi and time zone. In `first-run` the
+ * return resumes at the Google step, which then shows the result (connected
+ * and Continue, or the panel again after the failure toast). Every other mode
+ * starts at its first step: a `rerun` from Settings is not open after the
+ * reload (it lands on the dashboard, where Settings → Google shows the result).
+ *
+ * @param search `window.location.search` as the page loaded, before the shell
+ *   takes the callback's parameters off the URL
+ */
+export function startingStep(search: string, mode: SetupMode): SetupStepId {
+  const steps = stepsFor(mode);
+  const google = new URLSearchParams(search).get("google");
+  if (mode === "first-run" && (google === "connected" || google === "failed")) return "google";
+  return steps[0];
+}
+
+export type GoogleStepState = "connected" | "needs-client" | "connect";
+
+/** The slice of the auth status (`GET /api/calendar/auth-status`) the step reads. */
+export type GoogleStatusLike = Pick<GoogleAuthStatus, "authenticated" | "mode" | "oauthClient">;
+
+/**
+ * What the Google step shows. Connected in either mode (Google sign-in or a
+ * service-account key file, brief 02 decision 6); otherwise the connect
+ * panel, which says what to do when this unit has no usable sign-in client.
+ * An unknown status (still loading) shows the panel's button.
+ */
+export function googleStepState(status: GoogleStatusLike | undefined): GoogleStepState {
+  if (status?.authenticated) return "connected";
+  if (status?.oauthClient === "missing" || status?.oauthClient === "invalid") return "needs-client";
+  return "connect";
+}
+
+export type ManualSetupChoice = "back" | "continue";
+
+export interface ManualSetupOutcome {
+  /** The wizard closes (true) or stays on the Google step unchanged (false). */
+  closeWizard: boolean;
+  /** Whether `setup.completedAt` is written. Never for the manual path: the
+   *  wizard returns on the next boot and finds Google connected once the key
+   *  file is in place. */
+  recordCompletion: boolean;
+  /** The auth dialog opens on its Advanced (service-account) tab. */
+  openServiceAccountSteps: boolean;
+}
+
+/**
+ * The manual-setup warning's last sentence. Only a first run has no
+ * completion record, so only there does the wizard open again at the next
+ * start; from Settings (`rerun`) it simply closes.
+ */
+export function manualSetupLeaveSentence(mode: SetupMode): string {
+  return mode === "first-run"
+    ? "Choosing this leaves the setup wizard; it opens again the next time Rootboard starts, so you can finish it once the key file is in place."
+    : "Choosing this closes the setup wizard.";
+}
+
+/** The "Set up manually (self-hosting)" warning's two buttons (founder
+ *  2026-11-24). The shell applies every field (app-shell.tsx). */
+export function manualSetupOutcome(choice: ManualSetupChoice): ManualSetupOutcome {
+  if (choice === "continue") return { closeWizard: true, recordCompletion: false, openServiceAccountSteps: true };
+  return { closeWizard: false, recordCompletion: false, openServiceAccountSteps: false };
 }
 
 // --- Boot-time network condition ----------------------------------------------
