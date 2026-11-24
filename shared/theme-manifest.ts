@@ -284,11 +284,12 @@ export const THEME_IMAGE_BUDGET_BYTES: Record<ThemeImageSlot, number> = {
 };
 
 /** File types a slot accepts: the logo needs alpha, so PNG or WebP. */
+const RASTER_EXTENSIONS = ["jpg", "jpeg", "webp", "png"] as const;
 export const THEME_IMAGE_EXTENSIONS: Record<ThemeImageSlot, readonly string[]> = {
-  background: ["jpg", "jpeg", "webp", "png"],
-  header: ["jpg", "jpeg", "webp", "png"],
-  sidebar: ["jpg", "jpeg", "webp", "png"],
-  screensaver: ["jpg", "jpeg", "webp", "png"],
+  background: RASTER_EXTENSIONS,
+  header: RASTER_EXTENSIONS,
+  sidebar: RASTER_EXTENSIONS,
+  screensaver: RASTER_EXTENSIONS,
   logo: ["png", "webp"],
 };
 
@@ -379,15 +380,64 @@ export const CONFETTI_SHAPE_VIEWBOX = "0 0 24 24";
 export const CONFETTI_SHAPE_MAX_BYTES = 4_000;
 export const CONFETTI_SHAPE_MAX_COUNT = 5;
 
-/** SVG path data only: path commands, numbers, separators. Without `<`,
- *  `"`, `(` or any other letter, no element, attribute or URL can ride in. */
-const PATH_DATA_RE = /^\s*[Mm][MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]*$/;
+const PATH_COMMANDS = "MmLlHhVvCcSsQqTtAaZz";
+const isDigit = (c: string | undefined): boolean => c !== undefined && c >= "0" && c <= "9";
+
+/** Index just past the SVG path number starting at `i` (sign, digits,
+ *  optional fraction and exponent), or -1 when no number starts there. */
+function scanPathNumber(d: string, i: number): number {
+  if (d[i] === "+" || d[i] === "-") i++;
+  let digits = 0;
+  while (isDigit(d[i])) { i++; digits++; }
+  if (d[i] === ".") {
+    i++;
+    while (isDigit(d[i])) { i++; digits++; }
+  }
+  if (digits === 0) return -1;
+  if (d[i] === "e" || d[i] === "E") {
+    let j = i + 1;
+    if (d[j] === "+" || d[j] === "-") j++;
+    if (!isDigit(d[j])) return -1;
+    while (isDigit(d[j])) j++;
+    i = j;
+  }
+  return i;
+}
+
+/**
+ * True when `d` is SVG path data and nothing else: path commands and
+ * numbers, separated by spaces or commas, starting with a move. One
+ * linear pass, no regular expression to backtrack. Without `<`, `"`, `(` or any letter but
+ * a command, no element, attribute or URL can ride in.
+ */
+function isPathData(d: string): boolean {
+  let i = 0;
+  let first = true;
+  while (i < d.length) {
+    const c = d[i];
+    if (c === " " || c === "," || c === "\n" || c === "\t" || c === "\r") {
+      i++;
+      continue;
+    }
+    if (PATH_COMMANDS.includes(c)) {
+      if (first && c !== "M" && c !== "m") return false;
+      first = false;
+      i++;
+      continue;
+    }
+    if (first) return false;
+    const next = scanPathNumber(d, i);
+    if (next < 0) return false;
+    i = next;
+  }
+  return !first;
+}
 
 /** Why `d` is not an acceptable confetti shape, or null. */
 export function confettiShapeProblem(d: unknown): string | null {
   if (typeof d !== "string") return "confetti shape must be a path string";
   if (d.length > CONFETTI_SHAPE_MAX_BYTES) return `confetti shape is ${d.length} bytes; the cap is ${CONFETTI_SHAPE_MAX_BYTES}`;
-  if (!PATH_DATA_RE.test(d) || !/\d/.test(d)) {
+  if (!isPathData(d) || !/\d/.test(d)) {
     return "confetti shape must be SVG path data (commands and numbers only, starting with M)";
   }
   return null;

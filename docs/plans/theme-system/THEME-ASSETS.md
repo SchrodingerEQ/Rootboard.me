@@ -21,6 +21,10 @@ once its images land.
 | `logo` | the nav-rail logo and the screensaver's logo | 76 × 76 (rail) | 256 × 256 | contain | none (transparent PNG/WebP) |
 | `confettiShapes` | the chore check-off burst | 7–13 px particles | 1–5 path strings on a 24 × 24 viewBox | each a single `<path>` | filled with `--rb-confetti-1…5` in rotation |
 
+Images are not in the boot cache. After a restart the theme's colours
+show at once and its images, the logo included, appear when the theme
+loads a moment later (the app's own logo shows until then).
+
 Content always draws on top at full opacity. Cards, cells and panels keep
 their own colours, so a background shows in the margins and gaps around
 them (see "Surfaces over a background" below).

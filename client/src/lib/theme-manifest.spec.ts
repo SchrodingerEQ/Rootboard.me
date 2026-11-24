@@ -250,7 +250,7 @@ describe("manifest v2: confetti shapes (decision 0026)", () => {
 
   test("accepts 1–5 path strings", () => {
     expect(ok([star])).toBe(true);
-    expect(ok([star, "M0 0H24V24H0Z", "m12 0 12 12-12 12L0 12z", "M1e1 2E0 L 3,4 z", star])).toBe(true);
+    expect(ok([star, "M0 0H24V24H0Z", "m12 0 12 12-12 12L0 12z", "M1e1 2E0 L 3,4 z", "M1.5.5-.25,3e-2Z"])).toBe(true);
   });
 
   test("rejects an empty list or more than five", () => {
@@ -267,6 +267,9 @@ describe("manifest v2: confetti shapes (decision 0026)", () => {
       "javascript:alert(1)",
       "L0 0 10 10",
       "M",
+      "M e e",
+      "M0 0 1e",
+      "M0 0 E5",
     ]) {
       expect(confettiShapeProblem(d), d).not.toBeNull();
       expect(ok([d]), d).toBe(false);
@@ -277,5 +280,14 @@ describe("manifest v2: confetti shapes (decision 0026)", () => {
     const big = `M0 0${" L1 1".repeat(1000)}`;
     expect(big.length).toBeGreaterThan(CONFETTI_SHAPE_MAX_BYTES);
     expect(confettiShapeProblem(big)).toMatch(/cap is 4000/);
+  });
+});
+
+describe("confetti shape check stays fast on hostile input", () => {
+  test("a 4 KB run of digits with a bad tail is rejected quickly", () => {
+    const d = `M${"1".repeat(3990)}x`;
+    const t = performance.now();
+    expect(confettiShapeProblem(d)).not.toBeNull();
+    expect(performance.now() - t).toBeLessThan(50);
   });
 });
