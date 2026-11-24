@@ -1007,7 +1007,7 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   of the 100 `--rb-*` tokens. `--rb-ink-tertiary` carries the former
   `--muted-foreground` value. The `.dark` block is dead (never applied).
 - **Manifest** (`shared/theme-manifest.ts`): `{ engineVersion, id, name,
-  tokens, font?, shape? }`. `tokens`: every token required, unknown keys
+  tokens, font?, shape?, images?, confettiShapes? }`. `tokens`: every token required, unknown keys
   rejected, literal colors only. `engineVersion > THEME_ENGINE_VERSION`
   (now 2) → "built for a newer Rootboard".
 - **Manifest v2 (decision 0026):** fields added after version 1 are
@@ -1026,6 +1026,29 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   `calc(… * var(--rb-radius-scale))`; pills, circles, sizes and touch
   targets do not follow the theme. At 1 every computed value equals the
   old literal.
+- **Image slots (manifest v2 part 2):** `images` = any of `background`,
+  `header`, `sidebar`, `screensaver`, `logo`, each a bundled raster path
+  (or a small base64 PNG/JPEG/WebP data URI, which Vite makes of assets
+  under 4 KB); no URL, query, `..` or SVG. Per-slot byte caps
+  (`THEME_IMAGE_BUDGET_BYTES`). The four region slots land on `:root` as
+  `--rb-image-{background,header,sidebar,screensaver}` (`url("…")` or
+  `none`) and the classes `rb-image-*` in `index.css` layer them over the
+  region's own colour token (cover, centre): `rb-image-background` on each
+  view's root next to its canvas fill, `rb-image-header` on the calendar,
+  Chores and Dinner header bars, `rb-image-sidebar` on the nav rail,
+  `rb-image-screensaver` on `power-saving-overlay.tsx`. The logo is an
+  `<img src>` from `useThemeLogo()` (nav rail and screensaver), the app's
+  own logo when the theme has none. Images are not in the boot cache: the
+  cached colours show until the theme loads. Built-in images live in
+  `client/src/themes/<id>/<slot>.<ext>`; `theme-assets.spec.ts` checks
+  names, types, budget and stripped metadata. Slot table, supply sizes
+  and generator parameters: `docs/plans/theme-system/THEME-ASSETS.md`.
+- **Confetti shapes:** `confettiShapes` = 1–5 SVG path strings on a 24×24
+  viewBox, checked by a strict grammar (commands and numbers only) at
+  load and again at burst time (`runtimeConfettiShapes`; a failure falls
+  back to squares and circles with one console warning). Each particle is
+  an `<svg><path fill=…>` built once per burst, coloured from
+  `--rb-confetti-1…5` in rotation; the motion is unchanged.
 - **Built-ins** are bundled modules under `client/src/themes/` (`default`,
   `deep-space`), validated at load by `lib/theme-engine.ts`; a failing one
   is listed under Settings → "Theme Errors" instead of crashing.

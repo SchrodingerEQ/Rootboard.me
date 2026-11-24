@@ -11,8 +11,11 @@ The theme manifest grows past colours in two parts, both under
 - **Part 1 (fonts and shape):** an optional `font` block (`family`,
   `fallback`, `files`) and an optional `shape` block (`radiusScale`,
   `shadowSoftness`).
-- **Part 2 (imagery and confetti shapes):** optional image slots and
-  confetti shapes, added by the next pull request under the same version.
+- **Part 2 (imagery and confetti shapes):** an optional `images` block
+  (`background`, `header`, `sidebar`, `screensaver`, `logo`, each separate)
+  and an optional `confettiShapes` list (1–5 SVG path strings on a 24×24
+  viewBox), under the same version. Slot table and budget:
+  `docs/plans/theme-system/THEME-ASSETS.md`.
 
 Every field added after version 1 is **optional**, and the **backfill
 rule** is: an absent field takes Default's value (`resolveThemeStyle` in
@@ -46,6 +49,21 @@ Rules that come with it:
   script repaints the colours it has, leaves `:root`'s Default font and
   shape in place, and logs one console line saying so. The first
   successful config load rewrites the cache.
+- **Images are references to bundled raster files**, never URLs or SVG:
+  a same-origin path with path characters only, or a small base64
+  PNG/JPEG/WebP data URI. They render as `<img src>` (the logo) or CSS
+  `url()` through `--rb-image-*` properties, the nav rail's rule for
+  community icons. Each region layers its image over its existing colour
+  token, so an absent or slow image shows today's flat colour. The
+  background goes on each view's root next to its canvas fill rather than
+  on the shell column: moving the fill exposed a header shadow the views
+  had always covered, and keeping it where it was leaves image-free themes
+  pixel-identical. Images are not in the boot cache.
+- **Confetti shapes are path data, not files.** The plan said "SVGs are
+  sanitized"; a grammar of path commands and numbers is simpler and
+  stricter: a string with no `<`, quote, parenthesis or letters other than
+  path commands cannot carry an element, attribute or URL. It is checked
+  at load and again at burst time.
 - **Image budget** (enforced from part 2): main background and screensaver
   at most 3 MB each; header and sidebar at most 500 KB each; logo at most
   150 KB; a confetti shape at most 4 KB. Supply sizes are 1× for a
