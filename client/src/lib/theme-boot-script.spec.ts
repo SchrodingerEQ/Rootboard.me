@@ -58,13 +58,14 @@ describe("client/index.html theme boot script", () => {
   });
 
   test("ignores style values outside each property's grammar, and unknown style names", () => {
-    const setProperty = run(JSON.stringify({ engineVersion: 2, id: "x", tokens: {}, style: {
+    const { setProperty, info } = runWithConsole(JSON.stringify({ engineVersion: 2, id: "x", tokens: {}, style: {
       "--rb-font-family": "x; background: url(https://example.invalid)",
       "--rb-radius-scale": "calc(1)",
       "--rb-shadow-softness": 2,
       "--rb-other": "1",
     } }));
     expect(setProperty).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledTimes(3); // one line per rejected known property; unknown names are not read
   });
 
   test("a v1 cache (written before manifest v2) repaints its colours and logs one line", () => {

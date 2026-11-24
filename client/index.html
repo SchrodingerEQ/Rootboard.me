@@ -64,7 +64,11 @@
           }
           for (var prop in STYLE) {
             var v = extra[prop];
-            if (typeof v === "string" && STYLE[prop].test(v)) style.setProperty(prop, v);
+            if (typeof v === "string" && STYLE[prop].test(v)) {
+              style.setProperty(prop, v);
+            } else if (v !== undefined) {
+              console.info("[theme] boot cache value for " + prop + " ignored; using the default until the theme loads");
+            }
           }
         } catch (e) {
           /* best-effort; the config load will apply the real theme */
