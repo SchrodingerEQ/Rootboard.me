@@ -1,4 +1,5 @@
 import { useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Settings, Calendar, X, Info, RotateCcw, RefreshCw, Plus, Trash2, Copy, Check, AlertTriangle, Keyboard, LayoutGrid, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Puzzle, SlidersHorizontal, Palette, Activity, Link2, Wifi, Clock, PlayCircle, type LucideIcon } from "lucide-react";
 import { Link } from "wouter";
 import { WidgetSettingsFields } from "@/components/widget-settings-fields";
@@ -40,6 +41,8 @@ import { isOAuthMode, type GoogleAuthStatus } from "@/lib/google-sign-in";
 import type { WeatherLocation } from "@shared/dashboard-config";
 import type { UpdateChannel } from "@shared/release-version";
 import type { OskMode } from "@/lib/osk";
+import { FeedbackRow, SettingsFeedbackDialog } from "./feedback-settings";
+import type { FeedbackContext } from "@/lib/feedback-context";
 
 /** One row of the layout picker's "Widgets" section — an installed
  *  (builtin-backed) widget, in `data/config/dashboard.json` order. Sourced
@@ -245,6 +248,9 @@ interface SettingsMenuProps {
   updateChannel?: UpdateChannel;
   /** Saves the update channel. Absent hides the channel toggle. */
   onSaveUpdateChannel?: (channel: UpdateChannel) => void;
+  /** What a feedback report carries as `context` (lib/feedback-context.ts).
+   *  Absent hides the Send feedback row. */
+  feedbackContext?: FeedbackContext;
 }
 
 export function SettingsMenu({
@@ -276,6 +282,7 @@ export function SettingsMenu({
   onOpenSetup,
   updateChannel,
   onSaveUpdateChannel,
+  feedbackContext,
 }: SettingsMenuProps) {
   // IMPORTANT #1: only count widgets that actually RENDER a pane toward
   // the "at least one widget must stay enabled" guard — a builtin always
@@ -336,6 +343,9 @@ export function SettingsMenu({
   const [subscribeError, setSubscribeError] = useState<string | null>(null);
   const [calendarToRemove, setCalendarToRemove] = useState<CalendarInfo | null>(null);
   const [emailCopied, setEmailCopied] = useState(false);
+  // Send feedback (beta brief 04): the dialog opens over the dashboard, not
+  // inside the popover, so the popover closes first.
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -486,6 +496,11 @@ export function SettingsMenu({
         </AlertDialogContent>
       </AlertDialog>
 
+      {feedbackOpen && feedbackContext && createPortal(
+        <SettingsFeedbackDialog context={feedbackContext} onClose={() => setFeedbackOpen(false)} />,
+        document.body,
+      )}
+
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           {compactTrigger ? (
@@ -587,6 +602,13 @@ export function SettingsMenu({
                 );
               })}
             </div>
+
+            {feedbackContext && (
+              <FeedbackRow
+                open={isOpen}
+                onOpen={() => { handleOpenChange(false); setFeedbackOpen(true); }}
+              />
+            )}
 
             <Separator />
 

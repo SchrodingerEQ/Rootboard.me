@@ -829,6 +829,12 @@ found" warning linking `/setup`) — the last three for the service
 account only,
 Check-for-Updates and Roll Back buttons, and the current `APP_VERSION`.
 
+Main screen → **Send feedback** (below the categories, above the
+version line; every auth state): opens the feedback dialog (3.12) over
+the dashboard, closing the popover first. While an unsent draft is
+waiting, the row says "· draft not sent yet" (re-read each time Settings
+opens).
+
 System → **Setup** (brief 03): **Wi-Fi** and **Time zone** open that
 one wizard step over the dashboard; **Run setup again** replays every step
 (3.11). Each closes the popover first. Settings opens in every auth state
@@ -1204,6 +1210,56 @@ is a placeholder until brief 02 (session 2).
   `.network-control`, `.wifi.scan` and `timedate1.set-timezone`, nothing
   else (`server/polkit-rule.spec.ts`). Installed by hand per
   INSTALLATION.md step 11 until brief 06's provision script does it.
+
+### 3.12 Feedback (`client/src/feedback/`, decision 0019)
+
+Beta-launch brief 04. The shared Crucible feedback client, copied from
+crucible-feedback (`FEEDBACK-CLIENT-VERSION` names the commit):
+`feedback-client.js` (payload, review text, the two requests, error
+sentences, draft calls) and `feedback-dialog.jsx` (the steps). Neither
+is edited here; a change goes to crucible-feedback first and is copied
+back.
+
+- **Steps:** kind (Great · Broken · Idea, sent as `praise` / `bug` /
+  `idea`) → message (up to 4000 characters) and an optional "Your email,
+  if you'd like a reply" box, never pre-filled → review → **Send** →
+  ticket code (`CRC-RB-XXXXX`) with Done. Escape and × close; the
+  backdrop does not.
+- **Review:** the client's review text, verbatim, under Rootboard's
+  hint "Nothing is sent until you press Send. Feedback you choose to send
+  goes to the Crucible feedback service. It contains what this screen
+  shows and nothing else." It lists every field on the wire; only the
+  ticket is filled in after the tap (`rootboard-feedback.spec.ts`).
+- **Payload:** `product: "rootboard"`, `version: APP_VERSION`,
+  `platform: "kiosk"`, `os` from the browser (`userAgentData.platform`,
+  else `navigator.platform`, e.g. "Linux aarch64" on the kiosk),
+  `locale: navigator.language`, and `context` from
+  `lib/feedback-context.ts`: `widgets` (the enabled widgets as
+  `"<id>@<manifest version>"`, id alone when no manifest is known) and
+  `theme` (the active theme id). Widget ids are values, never keys, so
+  the service's identifier-key rule cannot refuse a widget's name. Past
+  the 2 KB cap the list is cut and ends with `"+N more"`.
+- **Transport:** the browser calls `shared/feedback-endpoint.ts`
+  (`https://feedback.cruciblecreations.net`) directly: `POST /v1/ticket`,
+  then `POST /v1/feedback`, only from the Send tap. The service allows
+  the origin `http://localhost:5000` for `rootboard`, so the kiosk must
+  stay on that origin (3.8). No key or token.
+- **Drafts:** localStorage `rootboard-feedback-draft`. The client saves
+  the draft right before the first request and clears it after a
+  stored report. With no connection Send says "Feedback needs a
+  connection…", the draft survives reloads and restarts, and it is
+  prefilled on the next open. It is never sent in the background.
+  Closing the dialog before tapping Send keeps nothing.
+- **On-screen keyboard:** the default fields (a textarea, an email
+  input) are OSK-eligible (3.3). The dialog is positioned like the app's
+  centered dialogs (`rootboard-feedback.css`), so the `data-osk-open`
+  lift moves it above the keyboard; the backdrop sits under the
+  keyboard's z-index.
+- **Styling:** `client/src/feedback/rootboard-feedback.css` styles the
+  client's `crc-feedback-*` classes with `--rb-*` tokens (the client's
+  own stylesheet is not used); controls are 48 px, 56 px on ≥1920 px
+  screens. The backdrop is the same `rgb(0 0 0 / 0.8)` scrim as the
+  shared Dialog overlay.
 
 ## 4. Update system
 
