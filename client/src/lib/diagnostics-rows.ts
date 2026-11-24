@@ -100,6 +100,9 @@ function internetRow(b: DiagnosticsBundle): DiagnosticsRow {
 
 // Warn on either rule: a big card can be mostly full with gigabytes left,
 // and a small one can be under 1 GB free while still under 80 % used.
+// "Used" is total minus the space the app can still write (statfs bavail),
+// so blocks the filesystem reserves for root count as used: on ext4 this
+// reads a few points above `df`'s Use%.
 function diskRow(b: DiagnosticsBundle): DiagnosticsRow {
   if (!b.disk) return { label: "Disk", value: "Unknown", warn: false };
   const { freeBytes, totalBytes } = b.disk;
