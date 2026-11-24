@@ -10,10 +10,13 @@ import {
   defaultTimezone,
   filterTimezones,
   formatTimeIn,
+  googleStepState,
+  manualSetupOutcome,
   isOpenedFromSettings,
   needsFirstRun,
   recordsCompletion,
   signalBars,
+  startingStep,
   stepsFor,
 } from "./setup-wizard";
 import { isPlausibleWifiPassword } from "@shared/system-network";
@@ -132,5 +135,50 @@ describe("time zone", () => {
 
   test("signal bars", () => {
     expect([0, 10, 30, 60, 90].map(signalBars)).toEqual([0, 1, 2, 3, 4]);
+  });
+});
+
+describe("Google step (brief 03 session 2)", () => {
+  test("the return from Google resumes a first run at the Google step", () => {
+    expect(startingStep("?google=connected", "first-run")).toBe("google");
+    expect(startingStep("?google=failed&reason=denied", "first-run")).toBe("google");
+  });
+
+  test("without the parameter, or outside a first run, the wizard starts at its first step", () => {
+    expect(startingStep("", "first-run")).toBe("welcome");
+    expect(startingStep("?google=other", "first-run")).toBe("welcome");
+    expect(startingStep("?google=connected", "rerun")).toBe("welcome");
+    expect(startingStep("?google=connected", "network-only")).toBe("network");
+    expect(startingStep("?google=connected", "timezone")).toBe("timezone");
+  });
+
+  test("connected in either mode", () => {
+    expect(googleStepState({ authenticated: true, oauthClient: "configured" })).toBe("connected");
+    // A service-account kiosk usually has no sign-in client: still connected.
+    expect(googleStepState({ authenticated: true, oauthClient: "missing" })).toBe("connected");
+  });
+
+  test("not connected: the client file decides between the button and what to do", () => {
+    expect(googleStepState({ authenticated: false, oauthClient: "missing" })).toBe("needs-client");
+    expect(googleStepState({ authenticated: false, oauthClient: "invalid" })).toBe("needs-client");
+    expect(googleStepState({ authenticated: false, oauthClient: "configured" })).toBe("connect");
+    expect(googleStepState({ authenticated: false })).toBe("connect");
+    expect(googleStepState(undefined)).toBe("connect");
+  });
+
+  test("manual setup: Back changes nothing; Continue leaves without recording completion", () => {
+    expect(manualSetupOutcome("back")).toEqual({ closeWizard: false, recordCompletion: false, openServiceAccountSteps: false });
+    expect(manualSetupOutcome("continue")).toEqual({ closeWizard: true, recordCompletion: false, openServiceAccountSteps: true });
+  });
+});
+
+describe("service-account steps store", () => {
+  test("holds whether the steps are open, for both React roots", async () => {
+    const { isServiceAccountStepsOpen, setServiceAccountStepsOpen } = await import("./service-account-steps");
+    expect(isServiceAccountStepsOpen()).toBe(false);
+    setServiceAccountStepsOpen(true);
+    expect(isServiceAccountStepsOpen()).toBe(true);
+    setServiceAccountStepsOpen(false);
+    expect(isServiceAccountStepsOpen()).toBe(false);
   });
 });
