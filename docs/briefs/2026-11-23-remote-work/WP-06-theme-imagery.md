@@ -34,7 +34,7 @@ is complete enough to launch and Winter Holiday can ship with imagery.
 | **Image slots are separate and each optional:** main background (behind the content area of every view), header banner, sidebar, screensaver image, logo. A theme may supply any subset; an absent slot falls back to today's flat colour tokens | yes | founder 2026-11-24 ("make it so they are separate images if people want to load background images onto those as part of the contract") |
 | **Every planned theme element is required for the theme feature to launch:** image slots, confetti shapes, fonts, shape and depth tokens. "Required" means the contract supports them and at least one built-in theme uses each; Default keeps its current look and declares no images | yes | founder 2026-11-24 ("all of the elements that are planned really need to be in place in order for us to ship the theme feature") |
 | The founder generates the Winter Holiday images with an image generator from the slot table below; the agent does not author imagery | yes | founder 2026-11-24 |
-| Image budget is enforced by the contract, sized for the Pi: main background and screensaver at most 1.5 MB each; header and sidebar at most 300 KB each; logo at most 100 KB; confetti shape at most 4 KB | proposed | this brief; the founder ratifies the numbers by merging it, and may change them in PR B's review |
+| Image budget is enforced by the contract: main background and screensaver at most 3 MB each; header and sidebar at most 500 KB each; logo at most 150 KB; confetti shape at most 4 KB. Backgrounds, strips and the screensaver ship as JPEG or WebP; PNG is for the logo (alpha) and for flat illustrations that fit the cap. The cap bounds the release tarball, not the Pi's memory: a browser decodes every image to 4 bytes per pixel whatever the file size, so a 1920×1080 image costs about 8 MB decoded and all five slots about 18 MB, which is why the supply resolution, not the byte cap, is the figure held at 1× | yes | founder 2026-11-24, after a check of decoded-memory cost and typical JPEG, WebP and PNG sizes at 1080p (raised from the 1.5 MB / 300 KB / 100 KB first proposed) |
 | Confetti shapes are inline SVG path data validated by a strict grammar, not SVG files run through a sanitiser (the plan's "SVGs are sanitized" line); a path string cannot carry an element, attribute or URL | yes | this brief, for the same reason as the nav rail's `<img src>`-only rule |
 | Adding manifest fields bumps `THEME_ENGINE_VERSION` to 2 and gets a decision record | yes | `THEME-ENGINE-SPEC.md` §2 |
 
@@ -49,7 +49,10 @@ is complete enough to launch and Winter Holiday can ship with imagery.
 | `logo` | the nav-rail logo (76 × 76 on screen) and the screensaver's floating logo, both the whitelisted `attached_assets/image_1753142842256.png` today (imported as `@assets/…`) | 76 × 76 | 256 × 256 PNG with alpha | contain |
 | `confettiShapes` | the burst in `client/src/components/chores/confetti-burst.tsx` | 8–16 px particles | 3–5 path strings on a 24 × 24 viewBox | each a single `<path>`, filled with the theme's `--rb-confetti-1…5` in rotation; the particle physics does not change |
 
-Supply sizes are 1× because the Pi renders at device pixel ratio 1; a
+Supply sizes are 1× because the kiosk's Firefox is expected to report a
+device pixel ratio of 1 on the 21.5-inch 1920×1080 panel (the founder
+checklist confirms this on hardware; a value above 1 means the supply
+sizes scale with it); a
 2× asset doubles decode cost for no visible gain on the kiosk.
 
 The generator parameters the founder uses to produce these (aspect to

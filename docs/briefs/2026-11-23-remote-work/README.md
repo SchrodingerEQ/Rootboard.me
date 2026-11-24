@@ -226,7 +226,8 @@ Things only the founder does. Nothing here is an agent's.
   Google step on hardware), WP-04 (c) (the disk row), WP-05 and WP-06
   (Winter Holiday with imagery on the 21.5-inch screen; shaped confetti
   in the theme's colours stays smooth; CPU and memory in Diagnostics
-  before and after a theme switch).
+  before and after a theme switch; `window.devicePixelRatio` in the
+  kiosk Firefox is 1, which WP-06's image supply sizes assume).
 - [ ] Brief 00 §3.1 device-flow test (optional, 15 minutes) and the §3.2
   verification recording, which needs the sign-in on screen.
 
