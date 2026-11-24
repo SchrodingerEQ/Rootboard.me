@@ -367,7 +367,7 @@ One small release, per the project's release workflow:
   pinned literal list, not a theme token — the server hashes
   calendar/event ids to the same list, so it can't move without breaking
   that agreement.
-- Spooky and Winter Holiday.
+- Spooky. (Winter Holiday: added 2026-11-24 as a colour-only built-in theme, `client/src/themes/winter-holiday.ts`.)
 - Shape/depth tokens (`--radius`, shadow softness).
 - Community / folder-drop themes (plan Phases 2–3).
 
