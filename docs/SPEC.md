@@ -1246,7 +1246,8 @@ install or build fails, the updater sets an error status, auto-runs
 `POST /api/update/apply` and `/api/update/rollback` start only for a
 same-origin JSON request from the kiosk itself (2.2), so a web page open
 in the kiosk's browser cannot form-POST either; the app's update prompt sends
-an empty JSON body.
+an empty JSON body. A call by hand on the kiosk needs one too:
+`curl -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:5000/api/update/apply`.
 
 - `PRESERVE_PATHS` (never touched by apply/backup/rollback): `.env`,
   `data`, `node_modules`, `.update-backups`, `.update-temp`,
