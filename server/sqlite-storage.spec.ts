@@ -23,7 +23,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  store.close();
+  // Undefined when the native module failed to load in beforeEach.
+  store?.close();
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
