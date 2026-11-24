@@ -1,6 +1,7 @@
 import {
   THEME_ENGINE_VERSION,
   THEME_TOKEN_NAMES,
+  resolveThemeStyle,
   validateThemeManifest,
   type ThemeManifest,
 } from "@shared/theme-manifest";
@@ -43,7 +44,12 @@ export interface ThemeStorage {
 export interface ThemeCache {
   engineVersion: number;
   id: string;
+  /** The colour tokens. */
   tokens: Record<string, string>;
+  /** Manifest v2's font and shape properties (resolveThemeStyle). Absent in a
+   *  cache written before v2; the boot script then leaves :root's Default
+   *  values in place and says so in the console. */
+  style?: Record<string, string>;
 }
 
 function bestEffortId(raw: unknown): string {
@@ -128,7 +134,9 @@ export function readThemeCache(storage: ThemeStorage | null = defaultStorage()):
     ) {
       return null;
     }
-    return { engineVersion: parsed.engineVersion, id: parsed.id, tokens: parsed.tokens as Record<string, string> };
+    const cache: ThemeCache = { engineVersion: parsed.engineVersion, id: parsed.id, tokens: parsed.tokens as Record<string, string> };
+    if (parsed.style && typeof parsed.style === "object") cache.style = parsed.style as Record<string, string>;
+    return cache;
   } catch {
     return null;
   }
@@ -136,7 +144,12 @@ export function readThemeCache(storage: ThemeStorage | null = defaultStorage()):
 
 export function writeThemeCache(manifest: ThemeManifest, storage: ThemeStorage | null = defaultStorage()): void {
   if (!storage) return;
-  const cache: ThemeCache = { engineVersion: THEME_ENGINE_VERSION, id: manifest.id, tokens: { ...manifest.tokens } };
+  const cache: ThemeCache = {
+    engineVersion: THEME_ENGINE_VERSION,
+    id: manifest.id,
+    tokens: { ...manifest.tokens },
+    style: resolveThemeStyle(manifest),
+  };
   try {
     storage.setItem(THEME_CACHE_KEY, JSON.stringify(cache));
   } catch (err) {
@@ -172,9 +185,11 @@ function defaultRoot(): ThemeRoot {
 }
 
 /**
- * Writes every token onto the root element, then notifies subscribers,
- * then mirrors the manifest into the boot cache. Default goes through this
- * same path (no special-casing) so the path is exercised on every boot.
+ * Writes every colour token and the v2 font/shape properties (Default's
+ * where the manifest has none) onto the root element, then notifies
+ * subscribers, then mirrors the manifest into the boot cache. Default goes
+ * through this same path (no special-casing) so the path is exercised on
+ * every boot.
  */
 export function applyTheme(
   manifest: ThemeManifest,
@@ -183,6 +198,9 @@ export function applyTheme(
 ): void {
   for (const name of THEME_TOKEN_NAMES) {
     root.style.setProperty(name, manifest.tokens[name]);
+  }
+  for (const [name, value] of Object.entries(resolveThemeStyle(manifest))) {
+    root.style.setProperty(name, value);
   }
   activeTokens = { ...manifest.tokens };
   notify();

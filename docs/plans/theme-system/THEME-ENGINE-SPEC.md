@@ -117,6 +117,8 @@ export const themeManifestSchema = z.object({
   yet). **Phase 2 note:** community themes will need a backfill rule —
   tokens newer than a manifest's `engineVersion` filled from Default —
   or every future token addition breaks every existing community theme.
+  *(2026-11-24: written with the first addition. Manifest v2's fields are
+  optional and an absent one takes Default's value; see decision 0026.)*
 
 ### 3. Built-in themes (`client/src/themes/`)
 
@@ -357,9 +359,9 @@ One small release, per the project's release workflow:
 
 ## Out of scope (later slices)
 
-- Theme fonts. (The app's own fonts are already local: the remote
-  Google Fonts loads were replaced by bundled woff2 files in
-  `client/src/fonts.css` — decision 0016.)
+- ~~Theme fonts.~~ Built 2026-11-24 (manifest v2 part 1, decision
+  0026): an optional `font` block naming a bundled family. (The app's
+  own fonts were already local: decision 0016.)
 - Logo, screensaver and background imagery; confetti shapes.
 - ~~Confetti colors (`CONFETTI_COLORS` const still shadows the
   `--rb-confetti-*` tokens).~~ Stale (noted 2026-11-24): the burst has
@@ -371,7 +373,9 @@ One small release, per the project's release workflow:
   calendar/event ids to the same list, so it can't move without breaking
   that agreement.
 - Spooky and Winter Holiday.
-- Shape/depth tokens (`--radius`, shadow softness).
+- ~~Shape/depth tokens (`--radius`, shadow softness).~~ Built
+  2026-11-24 (manifest v2 part 1, decision 0026): an optional `shape`
+  block, `radiusScale` and `shadowSoftness`.
 - Community / folder-drop themes (plan Phases 2–3).
 
 ## Files touched

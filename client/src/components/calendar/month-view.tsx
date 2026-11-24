@@ -4,6 +4,7 @@ import { DayEventsDialog } from "./day-events-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMonthCalendar, isToday } from "@/lib/date-utils";
 import type { CalendarEvent } from "@shared/schema";
+import { themeShadow } from "@/lib/theme-shape";
 
 interface MonthViewProps {
   currentDate: Date;
@@ -180,7 +181,7 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
                 style={{
                   background: cellBg,
                   border: isTodayDate ? '3px solid var(--rb-accent)' : '3px solid transparent',
-                  boxShadow: isCurrentMonth ? '0 1px 2px var(--rb-shadow-soft)' : 'none',
+                  boxShadow: isCurrentMonth ? themeShadow(1, 2, "--rb-shadow-soft") : 'none',
                 }}
                 data-testid={isTodayDate ? 'today-cell' : undefined}
               >

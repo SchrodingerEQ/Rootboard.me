@@ -8,6 +8,7 @@ import {
   runtimeConfettiColors,
   type ConfettiParticle,
 } from "./confetti-burst";
+import { themeRadius } from "@/lib/theme-shape";
 
 interface Burst {
   id: string;
@@ -83,7 +84,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
             style={{
               top,
               height: CARD_HEIGHT_PX,
-              borderRadius: 16,
+              borderRadius: themeRadius(16),
               padding: "0 18px",
               opacity: chore.done ? 0.62 : 1,
               transition: `top ${REORDER_MS}ms ${REORDER_EASING}, opacity .3s ease`,

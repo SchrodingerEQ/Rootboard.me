@@ -998,7 +998,7 @@ deliberate, accepted deviations —
 
 Anything not on these two lists renders exactly as before the sweep.
 
-### Themes (engine slice 1)
+### Themes (engine slice 1, manifest v2)
 
 Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
 
@@ -1007,9 +1007,25 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   of the 100 `--rb-*` tokens. `--rb-ink-tertiary` carries the former
   `--muted-foreground` value. The `.dark` block is dead (never applied).
 - **Manifest** (`shared/theme-manifest.ts`): `{ engineVersion, id, name,
-  tokens }`, every token required, unknown keys rejected, literal colors
-  only. `engineVersion > THEME_ENGINE_VERSION` → "built for a newer
-  Rootboard".
+  tokens, font?, shape? }`. `tokens`: every token required, unknown keys
+  rejected, literal colors only. `engineVersion > THEME_ENGINE_VERSION`
+  (now 2) → "built for a newer Rootboard".
+- **Manifest v2 (decision 0026):** fields added after version 1 are
+  optional and an absent one takes Default's value (the backfill rule,
+  `resolveThemeStyle`), so a v1 manifest still validates and looks as it
+  did (Deep Space stays at `engineVersion: 1`). `font` = `{ family,
+  fallback, files }`: a family declared in `client/src/fonts.css` from
+  bundled woff2 files (`theme-fonts.spec.ts` checks both), names limited
+  to letters, digits, spaces and hyphens; sizes and weights stay the
+  app's. `shape` = `{ radiusScale 0–2, shadowSoftness 0–3 }`, multipliers
+  on the app's own corner radii and card/cell shadow blur. They land on
+  `:root` as `--rb-font-family`, `--rb-radius-scale` and
+  `--rb-shadow-softness` (`THEME_STYLE_PROPERTY_NAMES`, declared in
+  `index.css` with Default's values). Components take radii and shadows
+  through `lib/theme-shape.ts` (`themeRadius(px)`, `themeShadow(…)`) or
+  `calc(… * var(--rb-radius-scale))`; pills, circles, sizes and touch
+  targets do not follow the theme. At 1 every computed value equals the
+  old literal.
 - **Built-ins** are bundled modules under `client/src/themes/` (`default`,
   `deep-space`), validated at load by `lib/theme-engine.ts`; a failing one
   is listed under Settings → "Theme Errors" instead of crashing.
@@ -1017,10 +1033,14 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
 - **Persistence:** `data/config/dashboard.json` `theme` (optional,
   lenient — a malformed value becomes undefined, never invalidating the
   file). Unknown id → Default. Hand-edits land within the 60 s poll.
-- **Boot cache:** `applyTheme` mirrors the resolved tokens to
+- **Boot cache:** `applyTheme` mirrors the resolved tokens, plus a
+  `style` object with the three v2 properties, to
   `localStorage["rootboard.theme-cache"]`; an inline script in
-  `client/index.html` (`#rb-theme-boot`) repaints `--rb-*` from it before
-  React mounts, so a dark theme does not flash light. The config remains
+  `client/index.html` (`#rb-theme-boot`) repaints `--rb-*` colours and
+  the three named properties (each against its own grammar) from it
+  before React mounts, so a dark theme does not flash light. A cache
+  with no `style` predates v2: the colours repaint, `:root`'s Default
+  font and shape stay, and one console line says so. The config remains
   the source of truth and corrects the cache on the first successful
   config load.
 - **Contrast guard** (`themes/contrast.spec.ts`): new themes ≥ 4.5:1 on

@@ -7,6 +7,8 @@ import type { ThemeManifest } from "@shared/theme-manifest";
  * only the colors you want. Every token is required (the schema rejects a
  * missing one), so starting from a complete copy is the intended workflow.
  * Plain literals only — no var(), no helpers — so the file stays copyable.
+ * `font` and `shape` (manifest v2) are optional: leave either out and the
+ * theme gets Default's values below.
  *
  * Contrast: new themes must meet WCAG AA (4.5:1) on the pairs listed in
  * client/src/themes/contrast.spec.ts; Default is grandfathered at its
@@ -17,9 +19,32 @@ import type { ThemeManifest } from "@shared/theme-manifest";
  * identity.
  */
 export const defaultTheme: ThemeManifest = {
-  engineVersion: 1,
+  engineVersion: 2,
   id: "default",
   name: "Default",
+  // ===== Font (optional, manifest v2) =====
+  // The body face. `family` must be declared by an @font-face in
+  // client/src/fonts.css; `files` are that declaration's woff2 files under
+  // client/src/assets/fonts/. Sizes and weights stay the app's.
+  font: {
+    family: "Nunito",
+    fallback: ["system-ui", "Segoe UI", "sans-serif"],
+    files: [
+      "nunito/nunito-latin.woff2",
+      "nunito/nunito-latin-ext.woff2",
+      "nunito/nunito-cyrillic.woff2",
+      "nunito/nunito-cyrillic-ext.woff2",
+      "nunito/nunito-vietnamese.woff2",
+    ],
+  },
+  // ===== Shape (optional, manifest v2) =====
+  // Multipliers on the app's own corner radii and card-shadow blur:
+  // radiusScale 0 = square corners, 1 = this look, 2 = twice as round;
+  // shadowSoftness 0 = crisp shadow edges, 1 = this look.
+  shape: {
+    radiusScale: 1,
+    shadowSoftness: 1,
+  },
   tokens: {
     // ===== Core palette =====
     "--rb-canvas": "#f7f6f3",          // page background

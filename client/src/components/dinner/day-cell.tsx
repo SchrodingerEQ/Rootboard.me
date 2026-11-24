@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Plus, Utensils } from "lucide-react";
+import { themeRadius, themeShadow } from "@/lib/theme-shape";
 
 interface DayCellProps {
   weekday: string;
@@ -30,8 +31,8 @@ export function DayCell({ weekday, dateLabel, isToday, isPast, dinner, onClick, 
       style={{
         background: bg,
         border: `3px solid ${border}`,
-        borderRadius: 16,
-        boxShadow: "0 1px 2px var(--rb-shadow-soft)",
+        borderRadius: themeRadius(16),
+        boxShadow: themeShadow(1, 2, "--rb-shadow-soft"),
         padding: "12px 14px",
         gap: 8,
       }}
@@ -61,7 +62,7 @@ export function DayCell({ weekday, dateLabel, isToday, isPast, dinner, onClick, 
       </div>
 
       {dinner ? (
-        <div className="flex items-center min-w-0" style={{ gap: 9, background: "var(--rb-success-wash)", borderRadius: 10, padding: "8px 12px" }}>
+        <div className="flex items-center min-w-0" style={{ gap: 9, background: "var(--rb-success-wash)", borderRadius: themeRadius(10), padding: "8px 12px" }}>
           <Utensils size={17} color="var(--rb-success)" strokeWidth={2.2} style={{ flexShrink: 0 }} />
           <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" style={{ fontSize: 17, fontWeight: 800, color: "var(--rb-success-ink)" }}>
             {dinner}

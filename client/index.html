@@ -29,7 +29,8 @@
          The cache is written by client/src/lib/theme-engine.ts applyTheme;
          data/config/dashboard.json remains the only source of truth and
          corrects this within one load. Only --rb-* keys with literal color
-         values are ever applied. Tested by theme-boot-script.spec.ts. -->
+         values, plus the three named v2 font/shape properties with their
+         own grammars, are ever applied. Tested by theme-boot-script.spec.ts. -->
     <script id="rb-theme-boot">
       (function () {
         try {
@@ -46,6 +47,27 @@
             var value = tokens[key];
             if (NAME.test(key) && typeof value === "string" && COLOR.test(value)) {
               style.setProperty(key, value);
+            }
+          }
+          /* Manifest v2 font + shape (docs/decisions/0026). Each name has
+             its own grammar; anything else is ignored. A cache without
+             them predates v2: :root's Default values stay. */
+          var STYLE = {
+            "--rb-font-family": /^[A-Za-z0-9 ,'-]{1,400}$/,
+            "--rb-radius-scale": /^\d+(\.\d+)?$/,
+            "--rb-shadow-softness": /^\d+(\.\d+)?$/
+          };
+          var extra = cache.style;
+          if (!extra || typeof extra !== "object") {
+            console.info("[theme] boot cache predates theme manifest v2; using the default font and shape until the theme loads");
+            return;
+          }
+          for (var prop in STYLE) {
+            var v = extra[prop];
+            if (typeof v === "string" && STYLE[prop].test(v)) {
+              style.setProperty(prop, v);
+            } else if (v !== undefined) {
+              console.info("[theme] boot cache value for " + prop + " ignored; using the default until the theme loads");
             }
           }
         } catch (e) {

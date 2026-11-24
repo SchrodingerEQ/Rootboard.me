@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
-import { THEME_TOKEN_NAMES, type ThemeManifest } from "@shared/theme-manifest";
+import { THEME_STYLE_PROPERTY_NAMES, THEME_TOKEN_NAMES, type ThemeManifest } from "@shared/theme-manifest";
 import {
   DEFAULT_THEME_ID,
   THEME_CACHE_KEY,
@@ -56,8 +56,11 @@ describe("applyTheme", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeTheme(listener);
     applyTheme(manifest("deep-space", "#0b1220"), { style: { setProperty } }, storage);
-    expect(setProperty).toHaveBeenCalledTimes(THEME_TOKEN_NAMES.length);
+    expect(setProperty).toHaveBeenCalledTimes(THEME_TOKEN_NAMES.length + THEME_STYLE_PROPERTY_NAMES.length);
     expect(setProperty).toHaveBeenCalledWith("--rb-canvas", "#0b1220");
+    // A v1 manifest (no font, no shape) is backfilled from Default.
+    expect(setProperty).toHaveBeenCalledWith("--rb-radius-scale", "1");
+    expect(setProperty).toHaveBeenCalledWith("--rb-font-family", "'Nunito', system-ui, 'Segoe UI', sans-serif");
     expect(listener).toHaveBeenCalledTimes(1);
     const cached = JSON.parse(storage.data[THEME_CACHE_KEY]);
     expect(cached.id).toBe("deep-space");
@@ -111,8 +114,36 @@ describe("theme cache", () => {
     writeThemeCache(manifest("deep-space", "#0b1220"), storage);
     const cache = readThemeCache(storage);
     expect(cache?.id).toBe("deep-space");
-    expect(cache?.engineVersion).toBe(1);
+    expect(cache?.engineVersion).toBe(2);
     expect(cache?.tokens["--rb-ink"]).toBe("#0b1220");
+    expect(cache?.style?.["--rb-shadow-softness"]).toBe("1");
+  });
+
+  test("a theme's own shape and font reach the root and the cache", () => {
+    const setProperty = vi.fn();
+    const storage = memoryStorage();
+    const squared: ThemeManifest = {
+      ...manifest("square"),
+      engineVersion: 2,
+      shape: { radiusScale: 0.3, shadowSoftness: 0 },
+      font: { family: "Nunito", fallback: ["serif"], files: ["nunito/nunito-latin.woff2"] },
+    };
+    applyTheme(squared, { style: { setProperty } }, storage);
+    expect(setProperty).toHaveBeenCalledWith("--rb-radius-scale", "0.3");
+    expect(setProperty).toHaveBeenCalledWith("--rb-shadow-softness", "0");
+    expect(setProperty).toHaveBeenCalledWith("--rb-font-family", "'Nunito', serif");
+    expect(readThemeCache(storage)?.style).toEqual({
+      "--rb-font-family": "'Nunito', serif",
+      "--rb-radius-scale": "0.3",
+      "--rb-shadow-softness": "0",
+    });
+  });
+
+  test("a v1 cache (no style) still reads", () => {
+    const v1 = JSON.stringify({ engineVersion: 1, id: "deep-space", tokens: { "--rb-ink": "#e6edf7" } });
+    const cache = readThemeCache(memoryStorage({ [THEME_CACHE_KEY]: v1 }));
+    expect(cache?.tokens["--rb-ink"]).toBe("#e6edf7");
+    expect(cache?.style).toBeUndefined();
   });
   test("malformed or missing cache reads as null", () => {
     expect(readThemeCache(memoryStorage())).toBeNull();

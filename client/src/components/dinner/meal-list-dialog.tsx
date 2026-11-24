@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MEAL_CAP } from "@/lib/dinner-state";
+import { themeRadius } from "@/lib/theme-shape";
 
 interface MealListDialogProps {
   open: boolean;
@@ -33,7 +34,7 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-none"
-        style={{ width: 640, maxWidth: "90vw", maxHeight: 820, borderRadius: 22, padding: "34px 38px" }}
+        style={{ width: 640, maxWidth: "90vw", maxHeight: 820, borderRadius: themeRadius(22), padding: "34px 38px" }}
         data-testid="dialog-meal-list"
       >
         <DialogHeader>
@@ -68,7 +69,7 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
             <div
               key={m}
               className="flex items-center"
-              style={{ gap: 12, background: "var(--rb-surface-sunken)", borderRadius: 12, padding: "10px 14px" }}
+              style={{ gap: 12, background: "var(--rb-surface-sunken)", borderRadius: themeRadius(12), padding: "10px 14px" }}
               data-testid={`row-saved-meal-${m}`}
             >
               <span className="flex-1" style={{ fontSize: 18, fontWeight: 700, color: "var(--rb-ink)" }}>
@@ -106,14 +107,14 @@ export function MealListDialog({ open, onOpenChange, savedMeals, onAdd, onRemove
             }}
             placeholder="Add a meal to the list…"
             className="flex-1 min-w-0 outline-none"
-            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: 14, padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
+            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: themeRadius(14), padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
             data-testid="input-add-saved-meal"
           />
           <button
             type="button"
             onClick={confirmAdd}
             className="touch-button flex-shrink-0 text-rb-on-color-ink"
-            style={{ height: 56, padding: "0 24px", border: "none", background: "var(--rb-btn-dark-bg)", fontSize: 18, fontWeight: 700, borderRadius: 14 }}
+            style={{ height: 56, padding: "0 24px", border: "none", background: "var(--rb-btn-dark-bg)", fontSize: 18, fontWeight: 700, borderRadius: themeRadius(14) }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-btn-dark-hover-bg)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-btn-dark-bg)")}
             data-testid="button-add-saved-meal"

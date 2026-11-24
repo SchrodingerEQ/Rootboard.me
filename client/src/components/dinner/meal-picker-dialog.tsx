@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { themeRadius } from "@/lib/theme-shape";
 
 interface MealPickerDialogProps {
   open: boolean;
@@ -49,7 +50,7 @@ export function MealPickerDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-w-none overflow-y-auto"
-        style={{ width: 640, maxWidth: "90vw", maxHeight: 820, borderRadius: 22, padding: "34px 38px" }}
+        style={{ width: 640, maxWidth: "90vw", maxHeight: 820, borderRadius: themeRadius(22), padding: "34px 38px" }}
         data-testid="dialog-meal-picker"
       >
         <DialogHeader>
@@ -90,14 +91,14 @@ export function MealPickerDialog({
             autoFocus
             placeholder="Type a meal…"
             className="flex-1 min-w-0 outline-none"
-            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: 14, padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
+            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: themeRadius(14), padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
             data-testid="input-meal-draft"
           />
           <button
             type="button"
             onClick={() => confirm(draft)}
             className="touch-button flex-shrink-0 text-rb-on-color-ink"
-            style={{ height: 56, padding: "0 26px", border: "none", background: "var(--rb-accent)", fontSize: 18, fontWeight: 800, borderRadius: 14, boxShadow: "0 2px 6px var(--rb-shadow-accent)" }}
+            style={{ height: 56, padding: "0 26px", border: "none", background: "var(--rb-accent)", fontSize: 18, fontWeight: 800, borderRadius: themeRadius(14), boxShadow: "0 2px 6px var(--rb-shadow-accent)" }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-accent-hover)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-accent)")}
             data-testid="button-confirm-meal-draft"
