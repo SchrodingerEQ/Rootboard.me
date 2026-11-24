@@ -44,8 +44,10 @@ import { MAX_CLIENT_FILE_BYTES, parseClientJson, projectNumberOf, readClientFile
 
 /**
  * The token and client files are written at 0600 (owner read/write only).
- * Windows has no POSIX permission bits (a file always reads back as 0666),
+ * Windows has no POSIX permission bits (Node reports only 0666 or 0444),
  * so the mode is checked everywhere but there; CI runs on Linux and keeps it.
+ * A helper rather than test.skipIf: each call sits inside a larger test whose
+ * other assertions must still run on Windows.
  */
 function expectOwnerOnlyMode(file: string): void {
   if (process.platform === "win32") return;
