@@ -122,10 +122,11 @@ even with a token.
   `apply`/`rollback`, to issuing/cancelling a pairing code, and to the four
   `/api/system/*` Wi-Fi/time-zone mutations (`server/system-routes.ts`)
   and the three Google sign-in mutations (`server/google-routes.ts`) —
-  a paired LAN device cannot change them either. The system mutations also
-  require a JSON body and refuse `Sec-Fetch-Site: cross-site`/`same-site`,
+  a paired LAN device cannot change them either. Update/rollback and the
+  system mutations also require a JSON body and refuse `Sec-Fetch-Site: cross-site`/`same-site`,
   so a web page open in the kiosk's own browser cannot form-POST to
-  localhost (update/rollback do not have this yet); so do Google start and
+  localhost (one shared check, `isSameOriginJsonRequest` in
+  `server/middleware/lanAuth.ts`); so do Google start and
   sign out. The Google callback cannot (it *is* Google's cross-site
   redirect) and relies on the single-use `state` instead. The same check is what
   lets the kiosk skip the LAN token (2.7). No `trust proxy` is configured,
@@ -1241,6 +1242,11 @@ complete(100). The release **source tarball** is downloaded over HTTPS to
 `.update-temp/`, extracted with `tar`, and applied to the app root. If
 install or build fails, the updater sets an error status, auto-runs
 `rollback()`, and rethrows.
+
+`POST /api/update/apply` and `/api/update/rollback` start only for a
+same-origin JSON request from the kiosk itself (2.2), so a web page open
+in the kiosk's browser cannot form-POST either; the app's update prompt sends
+an empty JSON body.
 
 - `PRESERVE_PATHS` (never touched by apply/backup/rollback): `.env`,
   `data`, `node_modules`, `.update-backups`, `.update-temp`,
