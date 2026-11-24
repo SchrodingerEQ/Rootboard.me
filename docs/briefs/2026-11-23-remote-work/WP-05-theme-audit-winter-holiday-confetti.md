@@ -9,6 +9,7 @@
 | **Network / secrets** | none. No fonts or images are downloaded: this slice is colours only. |
 | **Deliverable** | PR 1 (audit, docs only) safe zone; PR 2 (Winter Holiday) safe zone **but waits for the founder's look in the dev server before it merges**; PR 3 (confetti: warning, test, stale docs) safe zone; the end-of-run report |
 | **Model** | per the README |
+| **Done when** | PR 1 merged, PR 2 open with screenshots and waiting for the founder, PR 3 open (it does not depend on PR 2 merging; if it collides, it rebases later) |
 | **Unattended run** | 3–5 hours |
 
 ## Goal

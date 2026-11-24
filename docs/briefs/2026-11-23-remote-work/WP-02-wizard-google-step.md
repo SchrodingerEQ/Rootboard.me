@@ -6,9 +6,10 @@
 | **Base** | latest `main`, fresh clone, `npm ci` (npm 11) |
 | **Waits on** | nothing (brief 02 flow B merged as #38; brief 03 session 1 as #35). Merge `main` in and re-run checks if WP-01 merged first: both touch `docs/SPEC.md`. |
 | **Unblocks** | beta brief 09 (the wizard is what the tester sees); v1.9.0 |
-| **Network / secrets** | none new. In dev, Google sign-in needs `data/google-oauth-client.json`, which the founder keeps in the password manager; this brief does **not** need it (see Verification). |
+| **Network / secrets** | none new. In dev, Google sign-in needs `data/google-oauth-client.json`, which is never in the repo; this brief does **not** need it (see Verification). |
 | **Deliverable** | one PR, tier **safe zone expected** (no new network call, no new permission; the panel it embeds already shipped under the brief-02 soft flag); never a lower tier than `/crucible-code-standards-review` reports |
 | **Model** | per the README |
+| **Done when** | the PR is open (auto-merge armed if safe zone) with the dev-server screenshots of the Google step, the manual-setup dialog and both of its exits; SPEC and brief 03 updated |
 | **Unattended run** | 1–2 hours |
 
 ## Goal
@@ -73,7 +74,10 @@ tapped") is unchanged.
    the dialog, nothing changes) and **Continue with manual setup**
    (closes the wizard without writing `setup.completedAt`, so it returns
    on the next boot, and opens today's `AuthDialog` on its Advanced tab
-   with the service-account steps). `GoogleConnectPanel` has no Advanced
+   with the service-account steps). That return is intended, not a bug:
+   a self-hoster who has since put the key file in place boots into the
+   wizard, finds the Google step already connected, and taps through to
+   Done, which writes the record. Say so in SPEC §3.11. `GoogleConnectPanel` has no Advanced
    tab of its own; `AuthDialog` is where the steps live, so reuse it.
    Touch targets 48 px or more, theme tokens only, OSK not needed. The
    warning copy is one paragraph in the product's voice; quote it in the

@@ -9,6 +9,7 @@
 | **Network / secrets** | a shallow clone of `github.com/SchrodingerEQ/crucible-feedback`, its `npm install`, and its local Worker (`npm run dev`, wrangler, local D1) for the skill's proof. **No live send** to production from this brief (decision below). Nothing in the client is secret; the repo is public. |
 | **Model** | per the README |
 | **Deliverable** | one Rootboard PR, tier **`principle-flag`**, never merged by the agent; one CrucibleWebsite draft PR, tier **`needs-founder`**; the end-of-run report |
+| **Done when** | the Rootboard PR is open with the Review-step screenshot, the six steps proven against the local Worker, and the CrucibleWebsite draft linked; both wait for the founder |
 | **Unattended run** | 2–3 hours |
 
 ## Goal
@@ -106,7 +107,8 @@ leaves to the product and what is specific to this week.
    history. Add one row in substance: "<date>: Added in-product feedback
    to Rootboard. What's sent is shown before sending; the message and
    the optional contact you type are the only personal data; raw
-   feedback is deleted after six months." If Pitcher Notes' row from its
+   feedback is deleted after six months" (the six months is the HQ
+   feedback contract §8; cite it in the PR body). If Pitcher Notes' row from its
    WP-17 is already there, match its wording and add Rootboard to it or
    beside it, whichever the file's format suggests. Leave the date as a
    placeholder for the founder. Tier **`needs-founder`**. Don't merge.

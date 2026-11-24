@@ -1,10 +1,10 @@
 # Rootboard remote work — briefs for the week of 2026-11-23
 
-The founder is away from the reference kiosk this week: a laptop, a
-phone and a tablet, **no Raspberry Pi and no touchscreen**. These briefs
-are the Rootboard work that can run anyway, each as one unattended agent
-session on the laptop. Everything that needs the kiosk is collected in the
-founder checklist at the end, for the first day back.
+Written away from the hardware: a laptop, a phone and a tablet, **no
+Raspberry Pi and no touchscreen**. These briefs are the Rootboard work
+that can run anyway, each as one unattended agent session on the laptop.
+Everything that needs the kiosk is collected in the founder checklist at
+the end, for the next session at the kiosk.
 
 Each `WP-*.md` file is a **brief**: a self-contained prompt one agent
 session executes from a fresh clone with no other context. Hand a brief
@@ -73,9 +73,8 @@ Settled. A brief cites them; an executing agent does not reopen them.
 4. **Theme run this week = audit, then Winter Holiday as a colour-only
    manifest, then the confetti follow-through: the burst already reads
    the theme tokens, so it gains a warning on fallback, a test, and the
-   stale docs are corrected.** Fonts,
-   imagery, shape tokens, Spooky, the authoring guide and community
-   install stay later slices.
+   stale docs are corrected.** Fonts, imagery, shape tokens, Spooky, the
+   authoring guide and community install stay later slices.
 5. **Beta hardware: one unit built like the reference kiosk (Pi 5),
    one microSD.** The reference kiosk is what the install docs were
    written from. Brief 09's two-card rule (one ships, one stays as a
@@ -84,8 +83,9 @@ Settled. A brief cites them; an executing agent does not reopen them.
    live in private planning records.
 6. **The small fixes all go in**, one PR each (WP-04), including the
    companion-repo list entry that needs push access to awesome-rootboard.
-7. **Model: every brief runs on Opus 5.5**, as the Pitcher Notes set
-   does, unless the founder says otherwise when he hands a brief out.
+7. **Model: every brief runs on Opus 5.5** (the agent's default, taken
+   from the Pitcher Notes set and shown to the founder with the drafts),
+   unless the founder says otherwise when he hands a brief out.
 8. **The wizard keeps a self-hoster path (2026-11-24).** The Google
    step gets a **Set up manually (self-hosting)** button that opens a
    warning dialog (significant manual setup, where the instructions are,
@@ -150,6 +150,11 @@ calls a paid service.
   list says "on the kiosk", the brief here says what is checked in
   `npm run dev` instead and adds the kiosk line to the founder checklist
   below, not to the PR as done.
+- **A brief that reaches a founder wait ends there.** When a later PR
+  in a brief cannot open until the founder labels or looks at an
+  earlier one, the session stops at the open PR, says in its report
+  which step the rest resumes from, and a fresh session picks the
+  same brief up at that step once the founder has acted.
 - **Reporting:** every brief ends with *Done (PR numbers) / Not done and
   why / Findings worth a task / Founder actions*, and ticks or adds the
   matching `TASKS.md` lines.
@@ -158,7 +163,7 @@ calls a paid service.
 
 Things only the founder does. Nothing here is an agent's.
 
-**This week, remote**
+**Remote, before the kiosk session**
 
 - [ ] Order the beta unit's hardware: one unit built like the reference
   kiosk, one microSD, nothing spare (decision 5). The parts list, vendor,
@@ -171,8 +176,10 @@ Things only the founder does. Nothing here is an agent's.
   live before v1.9.0 ships.
 - [ ] Look at Winter Holiday in `npm run dev` on the laptop (Settings →
   Theme) before WP-05's second PR merges; say yes, or what to change.
+- [ ] Read WP-04 (e)'s `bufferutil` removal PR, the proposal the TASKS.md
+  line asked for, and merge it or decline.
 
-**First day back at the kiosk (in this order)**
+**Next session at the kiosk (in this order)**
 
 - [ ] Read the kiosk's Node version from Settings → System →
   Diagnostics and write it into `docs/plans/node-runtime-upgrade/BRIEF.md`

@@ -9,6 +9,7 @@
 | **Network / secrets** | npm registry only. No install on the kiosk. |
 | **Deliverable** | PR A (decision record + docs + CI + `engines`), tier **`principle-flag`**, founder-ratified 2026-11-23, waits for the label; PR B (lock bump), tier **safe zone**; the end-of-run report |
 | **Model** | per the README |
+| **Done when** | PR A is open and waits for the label; PR B is open after PR A merges (if PR A is still waiting when the session ends, the report says PR B resumes in a fresh session from step 9) |
 | **Unattended run** | 2–3 hours |
 
 ## Goal

@@ -9,6 +9,7 @@
 | **Network / secrets** | none |
 | **Deliverable** | six safe-zone PRs, each auto-merged per `/pr` rule 3 on all-green checks; the end-of-run report |
 | **Model** | per the README |
+| **Done when** | each lettered fix has its own PR open with auto-merge armed, or a dated TASKS.md note saying why not |
 | **Unattended run** | 2–4 hours in all |
 
 ## Read first
@@ -82,8 +83,7 @@ preference exists in current Firefox, the one that disables
 remote-settings attachment downloads; plus `sudo apt-get clean` as a
 housekeeping line in step 11 ("Make the app survive crashes and
 updates"), under a short "Disk housekeeping" heading; step 12 is Wi-Fi
-and does not fit. Say what
-each line does in one sentence. Cite Firefox's own documentation for
+and does not fit. Say what each line does in one sentence. Cite Firefox's own documentation for
 each preference name in the PR body, not in the guide. Then add one line
 to `docs/plans/beta-launch/06-agent-facing-setup.md` §2 decision 2 so
 the provision script applies the same settings. Nothing in this PR runs
@@ -99,8 +99,10 @@ Write the finding into the `TASKS.md` line with the date. Removal itself
 is a dependency change the task asks to be proposed, so: if nothing loads
 it, open the PR that removes it from `package.json` and the lock, tier
 safe zone with the one-line reason (kernel rule 7), and say in the body
-that it is the proposal the task asked for. If something does load it,
-the `TASKS.md` note is the whole PR.
+that it is the proposal the task asked for. **Do not arm auto-merge on
+this one**: the founder reads the proposal and merges it himself (one
+more item on the README checklist, reported at the end). If something
+does load it, the `TASKS.md` note is the whole PR.
 
 ### (f) awesome-rootboard: What to Wear and the theme section (`TASKS.md`, added 2026-10-04 and 2026-09-22)
 
