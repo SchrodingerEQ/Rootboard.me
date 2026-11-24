@@ -19,6 +19,7 @@ import { defaultDashboardConfig } from "@shared/dashboard-config";
 // vi.mock calls below are hoisted above these imports by Vitest.
 import { registerRoutes } from "./routes";
 import { PairingService, PAIRING_CODE_TTL_MS } from "./services/pairingService";
+import { applyUpdate, rollback } from "./services/updateService";
 
 vi.mock("./storage", () => ({
   storage: {
@@ -476,4 +477,38 @@ describe("pairing flow (brief 05 §5 acceptance)", () => {
     const listed = await call("GET", "/api/system/paired-devices", { peer: LOOPBACK });
     expect(listed.json.devices?.map((d) => d.name)).toEqual(["after-damage"]);
   });
+});
+
+describe("update and rollback refuse a cross-site page in the kiosk's own browser", () => {
+  const routes = [
+    ["/api/update/apply", applyUpdate],
+    ["/api/update/rollback", rollback],
+  ] as const;
+
+  for (const [routePath, action] of routes) {
+    test(`${routePath}: a form POST → 403 and nothing starts`, async () => {
+      vi.mocked(action).mockClear();
+      const res = await fetch(base + routePath, {
+        method: "POST",
+        headers: { "x-test-peer": LOOPBACK, "Content-Type": "application/x-www-form-urlencoded" },
+        body: "go=1",
+      });
+      expect(res.status).toBe(403);
+      expect(action).not.toHaveBeenCalled();
+    });
+
+    test(`${routePath}: JSON with Sec-Fetch-Site: cross-site → 403 and nothing starts`, async () => {
+      vi.mocked(action).mockClear();
+      const res = await call("POST", routePath, { peer: LOOPBACK, body: {}, headers: { "Sec-Fetch-Site": "cross-site" } });
+      expect(res.status).toBe(403);
+      expect(action).not.toHaveBeenCalled();
+    });
+
+    test(`${routePath}: same-origin JSON from the kiosk reaches the handler`, async () => {
+      vi.mocked(action).mockClear();
+      const res = await call("POST", routePath, { peer: LOOPBACK, body: {}, headers: { "Sec-Fetch-Site": "same-origin" } });
+      expect(res.status).toBe(200);
+      expect(action).toHaveBeenCalledTimes(1);
+    });
+  }
 });
