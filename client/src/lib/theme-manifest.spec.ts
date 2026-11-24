@@ -1,16 +1,21 @@
 import { describe, expect, test } from "vitest";
 import {
+  CONFETTI_SHAPE_MAX_BYTES,
   DEFAULT_THEME_FONT,
   DEFAULT_THEME_SHAPE,
   NEWER_ENGINE_MESSAGE,
   PERSON_ROLES,
   PERSON_SLOT_COUNT,
   THEME_ENGINE_VERSION,
+  THEME_IMAGE_BUDGET_BYTES,
   THEME_STYLE_PROPERTY_NAMES,
   THEME_TOKEN_NAMES,
+  confettiShapeProblem,
   fontFamilyValue,
   personTokenName,
+  resolveThemeImageProperties,
   resolveThemeStyle,
+  themeImageBudgetProblem,
   themeManifestSchema,
   validateThemeManifest,
 } from "@shared/theme-manifest";
@@ -166,5 +171,111 @@ describe("resolveThemeStyle (the backfill rule)", () => {
 
   test("names THEME_STYLE_PROPERTY_NAMES exactly", () => {
     expect(Object.keys(resolveThemeStyle(themeManifestSchema.parse(manifest()))).sort()).toEqual([...THEME_STYLE_PROPERTY_NAMES].sort());
+  });
+});
+
+describe("manifest v2: image slots (decision 0026)", () => {
+  const ok = (images: unknown) => validateThemeManifest(manifest({ engineVersion: 2, images })).ok;
+  const tinyPng = "data:image/png;base64,iVBORw0KGgo=";
+
+  test("every slot is optional and separate", () => {
+    expect(ok({})).toBe(true);
+    expect(ok({ header: "/assets/header-a1B2_c3.jpg" })).toBe(true);
+    expect(ok({
+      background: "/src/themes/winter-holiday/background.jpg",
+      header: "/assets/header.webp",
+      sidebar: "/assets/sidebar.png",
+      screensaver: "/assets/screensaver.jpeg",
+      logo: "/assets/logo.png",
+    })).toBe(true);
+  });
+
+  test("accepts a small inlined raster data URI (Vite inlines assets under 4 KB)", () => {
+    expect(ok({ logo: tinyPng })).toBe(true);
+  });
+
+  test("rejects anything that is not a bundled raster image", () => {
+    for (const ref of [
+      "https://example.invalid/bg.jpg",
+      "//example.invalid/bg.jpg",
+      "/assets/../secret.jpg",
+      "/assets/bg.jpg?x=1",
+      "/assets/bg.svg",
+      "data:image/svg+xml;base64,PHN2Zz4=",
+      'url("/assets/bg.jpg")',
+      "/assets/bg\".jpg",
+      "assets/bg.jpg",
+    ]) {
+      expect(ok({ background: ref }), ref).toBe(false);
+    }
+  });
+
+  test("the logo must keep its alpha: PNG or WebP only", () => {
+    expect(ok({ logo: "/assets/logo.jpg" })).toBe(false);
+    expect(ok({ logo: "/assets/logo.webp" })).toBe(true);
+  });
+
+  test("rejects an unknown slot", () => {
+    expect(ok({ footer: "/assets/footer.jpg" })).toBe(false);
+  });
+
+  test("an inlined image over its slot's budget is rejected", () => {
+    const over = "A".repeat(Math.ceil((THEME_IMAGE_BUDGET_BYTES.logo + 4) / 3) * 4);
+    expect(ok({ logo: `data:image/png;base64,${over}` })).toBe(false);
+  });
+
+  test("budget per slot, in bytes", () => {
+    expect(THEME_IMAGE_BUDGET_BYTES).toEqual({
+      background: 3_000_000, screensaver: 3_000_000, header: 500_000, sidebar: 500_000, logo: 150_000,
+    });
+    expect(themeImageBudgetProblem("header", 500_000)).toBeNull();
+    expect(themeImageBudgetProblem("header", 500_001)).toMatch(/cap is 500000/);
+  });
+
+  test("resolveThemeImageProperties: url() for a declared slot, none for an absent one", () => {
+    const parsed = themeManifestSchema.parse(manifest({ images: { header: "/assets/h.jpg", logo: "/assets/l.png" } }));
+    expect(resolveThemeImageProperties(parsed)).toEqual({
+      "--rb-image-background": "none",
+      "--rb-image-header": 'url("/assets/h.jpg")',
+      "--rb-image-sidebar": "none",
+      "--rb-image-screensaver": "none",
+    });
+    expect(Object.values(resolveThemeImageProperties(themeManifestSchema.parse(manifest())))).toEqual(["none", "none", "none", "none"]);
+  });
+});
+
+describe("manifest v2: confetti shapes (decision 0026)", () => {
+  const star = "M12 2l3 7h7l-5.5 4.5 2 7.5-6.5-4.5-6.5 4.5 2-7.5L2 9h7z";
+  const ok = (confettiShapes: unknown) => validateThemeManifest(manifest({ engineVersion: 2, confettiShapes })).ok;
+
+  test("accepts 1–5 path strings", () => {
+    expect(ok([star])).toBe(true);
+    expect(ok([star, "M0 0H24V24H0Z", "m12 0 12 12-12 12L0 12z", "M1e1 2E0 L 3,4 z", star])).toBe(true);
+  });
+
+  test("rejects an empty list or more than five", () => {
+    expect(ok([])).toBe(false);
+    expect(ok(Array(6).fill(star))).toBe(false);
+  });
+
+  test("rejects a path carrying an element, an attribute or a URL", () => {
+    for (const d of [
+      `${star}"/><script>alert(1)</script>`,
+      '<path d="M0 0"/>',
+      "M0 0 url(https://example.invalid)",
+      "M0 0\" onload=\"x",
+      "javascript:alert(1)",
+      "L0 0 10 10",
+      "M",
+    ]) {
+      expect(confettiShapeProblem(d), d).not.toBeNull();
+      expect(ok([d]), d).toBe(false);
+    }
+  });
+
+  test("rejects a shape over 4 KB", () => {
+    const big = `M0 0${" L1 1".repeat(1000)}`;
+    expect(big.length).toBeGreaterThan(CONFETTI_SHAPE_MAX_BYTES);
+    expect(confettiShapeProblem(big)).toMatch(/cap is 4000/);
   });
 });

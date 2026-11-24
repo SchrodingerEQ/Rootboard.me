@@ -130,7 +130,7 @@ export function WhatToWear({ loaded, status, advice, location, units, footer, st
   return (
     <div
       data-testid="wtw-root"
-      style={{ height: "100%", display: "flex", flexDirection: "column", gap: 16, padding: 24, overflow: "hidden", background: "var(--rb-canvas)", color: "var(--rb-ink)" }}
+      style={{ height: "100%", display: "flex", flexDirection: "column", gap: 16, padding: 24, overflow: "hidden", color: "var(--rb-ink)" }}
     >
       {body}
       {/* 5. Footer line */}

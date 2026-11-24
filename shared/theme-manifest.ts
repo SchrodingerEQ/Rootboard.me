@@ -5,7 +5,8 @@ import { z } from "zod";
  * greater than this is rejected with NEWER_ENGINE_MESSAGE (same policy as
  * widgets' apiVersion). Bump whenever the manifest gains a field.
  *   1 — the 100 colour tokens (v1.6.0).
- *   2 — optional `font` and `shape` blocks (docs/decisions/0026).
+ *   2 — optional `font`, `shape`, `images` and `confettiShapes`
+ *       (docs/decisions/0026).
  * Fields added after version 1 are optional; an absent one is filled from
  * Default (the backfill rule, `resolveThemeStyle`), so a v1 manifest stays
  * valid and looks as it did.
@@ -262,6 +263,141 @@ export function fontFamilyValue(font: ThemeFont): string {
     .join(", ");
 }
 
+// --- Manifest v2: image slots and confetti shapes (docs/decisions/0026) -----
+
+/**
+ * The five image slots, each separate and optional. An absent slot leaves
+ * its region on today's flat colour token. Supply sizes and fit rules:
+ * docs/plans/theme-system/THEME-ASSETS.md.
+ */
+export const THEME_IMAGE_SLOTS = ["background", "header", "sidebar", "screensaver", "logo"] as const;
+export type ThemeImageSlot = (typeof THEME_IMAGE_SLOTS)[number];
+
+/** Byte cap per slot (decimal units: 1 MB = 1,000,000 bytes). Bounds the
+ *  release tarball; the supply resolution bounds decoded memory. */
+export const THEME_IMAGE_BUDGET_BYTES: Record<ThemeImageSlot, number> = {
+  background: 3_000_000,
+  screensaver: 3_000_000,
+  header: 500_000,
+  sidebar: 500_000,
+  logo: 150_000,
+};
+
+/** File types a slot accepts: the logo needs alpha, so PNG or WebP. */
+export const THEME_IMAGE_EXTENSIONS: Record<ThemeImageSlot, readonly string[]> = {
+  background: ["jpg", "jpeg", "webp", "png"],
+  header: ["jpg", "jpeg", "webp", "png"],
+  sidebar: ["jpg", "jpeg", "webp", "png"],
+  screensaver: ["jpg", "jpeg", "webp", "png"],
+  logo: ["png", "webp"],
+};
+
+const MIME_BY_EXTENSION: Record<string, string> = { jpg: "jpeg", jpeg: "jpeg", webp: "webp", png: "png" };
+
+/** A same-origin bundle path (what a Vite asset import returns): starts with
+ *  one `/`, then path characters only. No scheme, host, query, quote or
+ *  parenthesis can appear, so the value is safe inside `url("…")` and an
+ *  `<img src>` and can only name a file the app itself serves. */
+const BUNDLE_PATH_RE = /^\/(?!\/)[A-Za-z0-9._@/-]+$/;
+const DATA_URI_RE = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
+
+/** Bytes a base64 payload decodes to. */
+export function base64DecodedBytes(payload: string): number {
+  const padding = payload.endsWith("==") ? 2 : payload.endsWith("=") ? 1 : 0;
+  return Math.floor((payload.length * 3) / 4) - padding;
+}
+
+/** Why `bytes` breaks the slot's budget, or null when it fits. Used by the
+ *  validator for inlined images and by the built-in asset test for files. */
+export function themeImageBudgetProblem(slot: ThemeImageSlot, bytes: number): string | null {
+  const cap = THEME_IMAGE_BUDGET_BYTES[slot];
+  return bytes > cap ? `${slot} image is ${bytes} bytes; the cap is ${cap}` : null;
+}
+
+/** Why `ref` is not an acceptable image reference for `slot`, or null.
+ *  Accepts a bundle path ending in one of the slot's extensions, or a
+ *  base64 raster data URI (Vite inlines assets under 4 KB) within budget.
+ *  Never an SVG, a remote URL or anything carrying markup. */
+export function themeImageRefProblem(slot: ThemeImageSlot, ref: string): string | null {
+  const allowed = THEME_IMAGE_EXTENSIONS[slot];
+  const data = DATA_URI_RE.exec(ref);
+  if (data) {
+    if (!allowed.some((ext) => MIME_BY_EXTENSION[ext] === data[1])) return `${slot} must be ${allowed.join(", ")}`;
+    return themeImageBudgetProblem(slot, base64DecodedBytes(data[2]));
+  }
+  if (!BUNDLE_PATH_RE.test(ref) || ref.split("/").includes("..")) {
+    return `${slot} must be a bundled image path (no URL, query or "..")`;
+  }
+  const ext = ref.slice(ref.lastIndexOf(".") + 1).toLowerCase();
+  if (!allowed.includes(ext)) return `${slot} must be ${allowed.join(", ")}`;
+  return null;
+}
+
+function imageRefSchema(slot: ThemeImageSlot) {
+  return z.string().superRefine((ref, ctx) => {
+    const problem = themeImageRefProblem(slot, ref);
+    if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+  });
+}
+
+export const themeImagesSchema = z
+  .object({
+    background: imageRefSchema("background").optional(),
+    header: imageRefSchema("header").optional(),
+    sidebar: imageRefSchema("sidebar").optional(),
+    screensaver: imageRefSchema("screensaver").optional(),
+    logo: imageRefSchema("logo").optional(),
+  })
+  .strict();
+export type ThemeImages = z.infer<typeof themeImagesSchema>;
+
+/** The CSS custom properties the four region slots land on (the logo is an
+ *  `<img src>` instead). Each holds `url("…")` or `none`. */
+export const THEME_IMAGE_PROPERTY_BY_SLOT = {
+  background: "--rb-image-background",
+  header: "--rb-image-header",
+  sidebar: "--rb-image-sidebar",
+  screensaver: "--rb-image-screensaver",
+} as const satisfies Partial<Record<ThemeImageSlot, string>>;
+export const THEME_IMAGE_PROPERTY_NAMES = Object.values(THEME_IMAGE_PROPERTY_BY_SLOT);
+export type ThemeImagePropertyName = (typeof THEME_IMAGE_PROPERTY_NAMES)[number];
+
+/** Region image properties for `:root`: `url("…")` for a declared slot,
+ *  `none` for an absent one (the flat colour token shows). */
+export function resolveThemeImageProperties(manifest: ThemeManifest): Record<ThemeImagePropertyName, string> {
+  const images = manifest.images ?? {};
+  const out = {} as Record<ThemeImagePropertyName, string>;
+  for (const [slot, name] of Object.entries(THEME_IMAGE_PROPERTY_BY_SLOT) as [ThemeImageSlot, ThemeImagePropertyName][]) {
+    const ref = images[slot];
+    out[name] = ref ? `url("${ref}")` : "none";
+  }
+  return out;
+}
+
+/** Confetti shapes are drawn on this fixed viewBox. */
+export const CONFETTI_SHAPE_VIEWBOX = "0 0 24 24";
+export const CONFETTI_SHAPE_MAX_BYTES = 4_000;
+export const CONFETTI_SHAPE_MAX_COUNT = 5;
+
+/** SVG path data only: path commands, numbers, separators. Without `<`,
+ *  `"`, `(` or any other letter, no element, attribute or URL can ride in. */
+const PATH_DATA_RE = /^\s*[Mm][MmLlHhVvCcSsQqTtAaZz0-9eE.,+\-\s]*$/;
+
+/** Why `d` is not an acceptable confetti shape, or null. */
+export function confettiShapeProblem(d: unknown): string | null {
+  if (typeof d !== "string") return "confetti shape must be a path string";
+  if (d.length > CONFETTI_SHAPE_MAX_BYTES) return `confetti shape is ${d.length} bytes; the cap is ${CONFETTI_SHAPE_MAX_BYTES}`;
+  if (!PATH_DATA_RE.test(d) || !/\d/.test(d)) {
+    return "confetti shape must be SVG path data (commands and numbers only, starting with M)";
+  }
+  return null;
+}
+
+export const confettiShapeSchema = z.string().superRefine((d, ctx) => {
+  const problem = confettiShapeProblem(d);
+  if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+});
+
 export const themeManifestSchema = z.object({
   engineVersion: z.number().int().positive(),
   id: themeIdSchema,
@@ -271,6 +407,11 @@ export const themeManifestSchema = z.object({
   font: themeFontSchema.optional(),
   /** v2, optional: absent = Default's shape. */
   shape: themeShapeSchema.optional(),
+  /** v2, optional: each slot separate; absent = the flat colour token. */
+  images: themeImagesSchema.optional(),
+  /** v2, optional: 1–5 path strings on a 24×24 viewBox, filled with
+   *  `--rb-confetti-1…5` in rotation; absent = squares and circles. */
+  confettiShapes: z.array(confettiShapeSchema).min(1).max(CONFETTI_SHAPE_MAX_COUNT).optional(),
 });
 export type ThemeManifest = z.infer<typeof themeManifestSchema>;
 
