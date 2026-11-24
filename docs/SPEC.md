@@ -958,8 +958,9 @@ sites:
 - `lib/color-utils.ts` — the `rgb()`/`rgba()` string builders and the
   `hexToRgb` parse-failure fallback.
 - `components/chores/confetti-burst.tsx` `CONFETTI_COLORS` — the pinned
-  default; at runtime, callers read `--rb-confetti-1` through `-5` and
-  fall back to this constant only if a variable is missing.
+  default; at burst time `runtimeConfettiColors()` reads `--rb-confetti-1`
+  through `-5` and falls back to this constant only if a variable is
+  missing, logging the first missing token once (console warning).
 - `components/calendar/settings-menu.tsx`'s duplicate calendar-color
   fallback block — a known bug (tracked in TASKS.md), not a styling
   exception; it duplicates `lib/calendar-meta.ts` and should eventually
@@ -1028,6 +1029,10 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   white on surfaces with relative luminance < 0.2 (via `useSurfaceHex`),
   byte-identical on light surfaces; Deep Space event-chip contrast went
   from ~1.2–2.0:1 to ≥ 6.1:1.
+- **Confetti:** the chore check-off burst takes the active theme's
+  `--rb-confetti-1…5` at burst time (`runtimeConfettiColors` in
+  `components/chores/confetti-burst.tsx`), so a theme switch shows on
+  the next burst; tested in `confetti-colors.spec.ts`.
 - **Widgets:** `host.theme.subscribe` now fires on every switch.
 
 ### 3.10 What to Wear (`client/src/widgets/what-to-wear/`)
