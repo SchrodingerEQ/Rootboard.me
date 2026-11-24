@@ -2,7 +2,7 @@
 
 ## Open
 
-- [ ] Theme system — plan at `docs/plans/theme-system/THEME-SYSTEM-PLAN.md` (Phase 0 = color sweep, prompt included; community themes deferred)
+- [ ] Theme system — plan at `docs/plans/theme-system/THEME-SYSTEM-PLAN.md` (Phase 0 = color sweep, prompt included; community themes deferred) (2026-11-24, WP-05: status and remaining slices in `docs/plans/theme-system/STATUS-2026-11.md` (#50); Winter Holiday colour-only theme in #55, waiting for the founder's look; confetti fallback warning, test and stale-doc fixes in the WP-05 confetti PR. Not done: later slices remain.)
 - [x] Resolve dead code vs. theme plan: `client/src/components/screensaver/screensaver-overlay.tsx` is defined but never mounted (the live overlay is `power-saving-overlay.tsx`) — however the theme plan's repo-facts section lists its rAF bounce loop as the screensaver base. Decide whether the theme work revives it or the plan should point at `power-saving-overlay.tsx`; don't delete before that's settled. (done 2026-09-22)
 - [x] Fix misleading storage selection: when `DATABASE_URL` is set, `server/storage.ts` logs "PostgreSQL" but actually uses non-persistent in-memory `MemStorage`. Either wire real Postgres app-data storage or correct the log and docs. (2026-11-11: #20 corrected the log line and SPEC §2.4/§6 — the log now says in-memory MemStorage, data not persisted; the storage choice itself stays open, see the founder item on removing the `DATABASE_URL` path) (done 2026-11-11 — #24 removed the `DATABASE_URL` path; storage is always SQLite, and a leftover `DATABASE_URL` logs a warning)
 - [x] Design widget contract spec: manifest schema (Zod), lifecycle, host services, apiVersion — see decision 0006 (added 2026-08-15) (done 2026-08-19)
