@@ -22,7 +22,18 @@ import {
 } from "@shared/system-network";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AuthDialog } from "@/components/calendar/auth-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { GoogleConnectPanel } from "@/components/calendar/google-connect-panel";
+import type { GoogleAuthStatus } from "@/lib/google-sign-in";
 import { WeatherLocationSettings } from "@/components/calendar/weather-location-settings";
 import {
   canContinueWithoutNetwork,
@@ -32,9 +43,13 @@ import {
   FAILURE_COPY,
   filterTimezones,
   formatTimeIn,
+  googleStepState,
   isOpenedFromSettings,
+  manualSetupLeaveSentence,
   signalBars,
+  startingStep,
   stepsFor,
+  type ManualSetupChoice,
   type SetupMode,
   type SetupStepId,
 } from "@/lib/setup-wizard";
@@ -45,9 +60,8 @@ import {
  * the global on-screen keyboard. At boot the shell renders this in place of
  * the widget host; from Settings it opens over the dashboard.
  *
- * Session 1 of the brief: the Google step shows today's service-account
- * instructions (AuthDialog) as a placeholder until brief 02's connect dialog
- * replaces it.
+ * The Google step embeds brief 02's connect panel (brief 03 decision 7), with
+ * a "Set up manually (self-hosting)" exit to the service-account steps.
  */
 
 export interface SetupWizardProps {
@@ -55,8 +69,15 @@ export interface SetupWizardProps {
   weatherLocation?: WeatherLocation;
   /** Absent when the dashboard config has not loaded (nothing to save onto). */
   onSaveWeatherLocation?: (location: WeatherLocation) => void;
-  googleConnected: boolean;
-  googleError?: string | null;
+  /** The shell's auth-status query (`/api/calendar/auth-status`); undefined
+   *  while it loads. The Google step reads connected / needs-client from it. */
+  googleStatus?: GoogleAuthStatus;
+  /** `window.location.search` as the page loaded: the return from Google's
+   *  page (`?google=connected`) resumes a first run at the Google step. */
+  initialSearch?: string;
+  /** A button in the Google step's manual-setup warning; the shell applies
+   *  `manualSetupOutcome` (Back changes nothing). */
+  onManualGoogleSetup: (choice: ManualSetupChoice) => void;
   /** `finished` is true when the user reached the end (Done / the last
    *  step), false when they closed it from Settings part-way. */
   onClose: (finished: boolean) => void;
@@ -79,9 +100,17 @@ const AUTO_PASS_MS = 2_500;
 
 // --- Shell -----------------------------------------------------------------
 
-export function SetupWizard({ mode, weatherLocation, onSaveWeatherLocation, googleConnected, googleError, onClose }: SetupWizardProps) {
+export function SetupWizard({
+  mode,
+  weatherLocation,
+  onSaveWeatherLocation,
+  googleStatus,
+  initialSearch = "",
+  onManualGoogleSetup,
+  onClose,
+}: SetupWizardProps) {
   const steps = stepsFor(mode);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() => Math.max(0, steps.indexOf(startingStep(initialSearch, mode))));
   const step = steps[index];
   const fromSettings = isOpenedFromSettings(mode);
 
@@ -126,7 +155,7 @@ export function SetupWizard({ mode, weatherLocation, onSaveWeatherLocation, goog
           />
         )}
         {step === "timezone" && <TimezoneStep onNext={next} lastStep={index === steps.length - 1} />}
-        {step === "google" && <GoogleStep connected={googleConnected} error={googleError} onNext={next} />}
+        {step === "google" && <GoogleStep mode={mode} status={googleStatus} onNext={next} onManualSetup={onManualGoogleSetup} />}
         {step === "weather" && <WeatherStep location={weatherLocation} onSave={onSaveWeatherLocation} onNext={next} />}
         {step === "done" && <DoneStep onFinish={next} />}
 
@@ -715,24 +744,85 @@ function TimezoneStep({ onNext, lastStep }: { onNext: () => void; lastStep: bool
   );
 }
 
-// --- Google (session 1 placeholder) ------------------------------------------------
+// --- Google (brief 03 session 2) ----------------------------------------------------
 
-function GoogleStep({ connected, error, onNext }: { connected: boolean; error?: string | null; onNext: () => void }) {
-  const [showHelp, setShowHelp] = useState(false);
+/** One paragraph, the product's voice (founder 2026-11-24): what the manual
+ *  path costs, where its steps are, and (manualSetupLeaveSentence) that it
+ *  leaves the wizard. */
+const MANUAL_SETUP_WARNING =
+  "Setting up Google by hand takes a significant amount of work on a computer: you create a Google Cloud " +
+  "project, make a service-account key file, and copy that file onto this Rootboard. The steps are in the " +
+  "install guide's service-account appendix and in this Rootboard's own setup guide, which the next screen " +
+  "links to.";
+
+function GoogleStep({
+  mode,
+  status,
+  onNext,
+  onManualSetup,
+}: {
+  mode: SetupMode;
+  status?: GoogleAuthStatus;
+  onNext: () => void;
+  onManualSetup: (choice: ManualSetupChoice) => void;
+}) {
+  const [warning, setWarning] = useState(false);
+  const state = googleStepState(status);
+  const choose = (choice: ManualSetupChoice) => {
+    setWarning(false);
+    onManualSetup(choice);
+  };
+
+  if (state === "connected") {
+    return (
+      <>
+        <StepHeader icon={CalendarDays} title="Google Calendar" />
+        <div className="flex items-center gap-3 p-4 rounded-md border border-rb-grid-line bg-rb-surface" data-testid="setup-google-connected">
+          <CheckCircle2 className="h-6 w-6 text-rb-success shrink-0" />
+          <p className="flex-1 text-lg">
+            {status?.mode === "oauth" && status.email ? `Connected to Google as ${status.email}.` : "Google Calendar is connected."}
+          </p>
+          <PrimaryButton onClick={onNext} data-testid="setup-google-continue">Continue</PrimaryButton>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <StepHeader icon={CalendarDays} title="Google Calendar">
-        {connected ? "Google Calendar is connected." : "Rootboard isn't connected to Google Calendar yet."}
+        Connect the Google account whose calendars this screen should show.
       </StepHeader>
-      <div className="flex gap-3">
-        {!connected && (
-          <PrimaryButton variant="outline" onClick={() => setShowHelp(true)} data-testid="setup-google-help">
-            How to connect
-          </PrimaryButton>
-        )}
-        {connected && <PrimaryButton onClick={onNext} data-testid="setup-google-continue">Continue</PrimaryButton>}
+      <div className="p-4 rounded-md border border-rb-grid-line bg-rb-surface">
+        <GoogleConnectPanel
+          size="large"
+          clientStatus={status?.oauthClient}
+          reason={status?.mode === "oauth" ? status.error : null}
+          serviceAccountHint="Or use Set up manually below, if you host Rootboard yourself."
+        />
       </div>
-      <AuthDialog open={showHelp} onOpenChange={setShowHelp} error={error} />
+      <div>
+        <Button variant="outline" className="h-12 px-5 text-base" onClick={() => setWarning(true)} data-testid="setup-google-manual">
+          Set up manually (self-hosting)
+        </Button>
+      </div>
+
+      <AlertDialog open={warning} onOpenChange={(open) => { if (!open) setWarning(false); }}>
+        <AlertDialogContent data-testid="setup-google-manual-warning">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set up Google manually?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base leading-relaxed">{MANUAL_SETUP_WARNING} {manualSetupLeaveSentence(mode)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-12 px-5 text-base" onClick={() => choose("back")} data-testid="setup-google-manual-back">
+              Back to setup
+            </AlertDialogCancel>
+            <AlertDialogAction className="h-12 px-5 text-base" onClick={() => choose("continue")} data-testid="setup-google-manual-continue">
+              Continue with manual setup
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

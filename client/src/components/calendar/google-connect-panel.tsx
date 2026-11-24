@@ -12,6 +12,9 @@ interface GoogleConnectPanelProps {
   /** The auth status's `oauthClient`. Missing or invalid: say so instead of
    *  offering a button that can't work (decision 0017: the client is on the unit). */
   clientStatus?: OAuthClientStatus;
+  /** Where the service-account path is in this host, ending the missing-client
+   *  note. Default: the auth dialog's Advanced tab. */
+  serviceAccountHint?: string;
 }
 
 /**
@@ -24,7 +27,12 @@ interface GoogleConnectPanelProps {
  * so the auth dialog, Settings and the setup wizard (brief 03 session 2)
  * can each drop it in as-is.
  */
-export function GoogleConnectPanel({ reason, size = "default", clientStatus }: GoogleConnectPanelProps) {
+export function GoogleConnectPanel({
+  reason,
+  size = "default",
+  clientStatus,
+  serviceAccountHint = "Or connect with a Google service account instead (Advanced).",
+}: GoogleConnectPanelProps) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const large = size === "large";
@@ -37,7 +45,7 @@ export function GoogleConnectPanel({ reason, size = "default", clientStatus }: G
         <p className={`${large ? "text-base" : "text-sm"} text-rb-muted leading-snug`}>
           The{" "}
           <Link href="/setup" className="underline">setup guide</Link>{" "}
-          explains how to add one. Or connect with a Google service account instead (Advanced).
+          explains how to add one. {serviceAccountHint}
         </p>
       </div>
     );
