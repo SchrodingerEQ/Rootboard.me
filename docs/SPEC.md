@@ -1001,8 +1001,10 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   only. `engineVersion > THEME_ENGINE_VERSION` → "built for a newer
   Rootboard".
 - **Built-ins** are bundled modules under `client/src/themes/` (`default`,
-  `deep-space`), validated at load by `lib/theme-engine.ts`; a failing one
-  is listed under Settings → "Theme Errors" instead of crashing.
+  `deep-space`, `winter-holiday`), validated at load by
+  `lib/theme-engine.ts`; a failing one is listed under Settings →
+  "Theme Errors" instead of crashing. Winter Holiday (2026-11) is a
+  colour-only dark theme: evergreen canvas, cranberry accent, gold badge.
   `default.ts` is the copyable authoring reference.
 - **Persistence:** `data/config/dashboard.json` `theme` (optional,
   lenient — a malformed value becomes undefined, never invalidating the

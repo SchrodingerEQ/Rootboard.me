@@ -1,5 +1,6 @@
 import { defaultTheme } from "./default";
 import { deepSpaceTheme } from "./deep-space";
+import { winterHolidayTheme } from "./winter-holiday";
 
 /**
  * Built-in theme manifests, RAW. Typed as unknown on purpose: validation
@@ -7,4 +8,4 @@ import { deepSpaceTheme } from "./deep-space";
  * malformed module is reported in the settings menu ("Theme Errors")
  * instead of throwing at import time and taking the kiosk down.
  */
-export const BUILTIN_THEMES: readonly unknown[] = [defaultTheme, deepSpaceTheme];
+export const BUILTIN_THEMES: readonly unknown[] = [defaultTheme, deepSpaceTheme, winterHolidayTheme];
