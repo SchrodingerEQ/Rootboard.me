@@ -6,8 +6,10 @@ import {
   CONFETTI_FADE_MS,
   generateConfettiParticles,
   runtimeConfettiColors,
+  runtimeConfettiShapes,
   type ConfettiParticle,
 } from "./confetti-burst";
+import { themeRadius } from "@/lib/theme-shape";
 
 interface Burst {
   id: string;
@@ -56,7 +58,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
   const handleToggle = (chore: Chore) => {
     if (!chore.done) {
       const burstId = `${chore.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-      setBursts((prev) => [...prev, { id: burstId, choreId: chore.id, particles: generateConfettiParticles(runtimeConfettiColors()), fired: false }]);
+      setBursts((prev) => [...prev, { id: burstId, choreId: chore.id, particles: generateConfettiParticles(runtimeConfettiColors(), runtimeConfettiShapes()), fired: false }]);
       const fireTimer: ReturnType<typeof setTimeout> = setTimeout(() => {
         setBursts((prev) => prev.map((b) => (b.id === burstId ? { ...b, fired: true } : b)));
         untrackTimer(fireTimer);
@@ -83,7 +85,7 @@ export function ChoreCardStack({ chores, color, onToggle }: ChoreCardStackProps)
             style={{
               top,
               height: CARD_HEIGHT_PX,
-              borderRadius: 16,
+              borderRadius: themeRadius(16),
               padding: "0 18px",
               opacity: chore.done ? 0.62 : 1,
               transition: `top ${REORDER_MS}ms ${REORDER_EASING}, opacity .3s ease`,

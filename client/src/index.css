@@ -28,7 +28,22 @@
   --destructive: var(--rb-danger);
   --destructive-foreground: var(--rb-on-color-ink);
   --ring: var(--rb-ink);
-  --radius: 0.9rem;
+  --radius: calc(0.9rem * var(--rb-radius-scale));
+
+  /* Theme font + shape (manifest v2, docs/decisions/0026). Default's values;
+     the theme engine overwrites them. Not colours, so they live outside
+     THEME_TOKEN_NAMES: see THEME_STYLE_PROPERTY_NAMES. */
+  --rb-font-family: 'Nunito', system-ui, 'Segoe UI', sans-serif;
+  --rb-radius-scale: 1;
+  --rb-shadow-softness: 1;
+
+  /* Theme image slots (manifest v2, decision 0026): url("…") of a bundled
+     image, or none. Each region keeps its colour token underneath, so an
+     absent or slow image shows today's flat colour. */
+  --rb-image-background: none;
+  --rb-image-header: none;
+  --rb-image-sidebar: none;
+  --rb-image-screensaver: none;
 
   /* Rootboard palette */
   --rb-canvas: #f7f6f3;
@@ -193,7 +208,7 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    font-family: 'Nunito', system-ui, 'Segoe UI', sans-serif;
+    font-family: var(--rb-font-family);
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
@@ -211,12 +226,31 @@
   }
 
   .calendar-cell {
-    border-radius: 16px;
+    border-radius: calc(16px * var(--rb-radius-scale));
     overflow: hidden;
     position: relative;
     background: var(--rb-surface);
-    box-shadow: 0 1px 2px var(--rb-shadow-soft);
+    box-shadow: 0 1px calc(2px * var(--rb-shadow-softness)) var(--rb-shadow-soft);
   }
+
+  /* ===== Theme image slots (decision 0026) =====
+     Each class layers its slot's image over the element's own background
+     colour: cover, centre anchor, never repeated. Images are CSS url() of a
+     bundle path only (THEME-ASSETS.md). rb-image-background goes on each
+     view's root, next to its canvas fill, so a theme without images
+     renders exactly as before. */
+  .rb-image-background,
+  .rb-image-header,
+  .rb-image-sidebar,
+  .rb-image-screensaver {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .rb-image-background { background-image: var(--rb-image-background); }
+  .rb-image-header { background-image: var(--rb-image-header); }
+  .rb-image-sidebar { background-image: var(--rb-image-sidebar); }
+  .rb-image-screensaver { background-image: var(--rb-image-screensaver); }
 
   /* ===== Screensaver / energy-saving =====
      Brightness and the idle dim are a black overlay (#rb-dim-overlay,

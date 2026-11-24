@@ -6,6 +6,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { themeRadius } from "@/lib/theme-shape";
 
 interface ResetVotesDialogProps {
   open: boolean;
@@ -20,7 +21,7 @@ export function ResetVotesDialog({ open, onOpenChange, onConfirm }: ResetVotesDi
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent
         className="max-w-none"
-        style={{ width: 640, maxWidth: "90vw", borderRadius: 22, padding: "34px 38px" }}
+        style={{ width: 640, maxWidth: "90vw", borderRadius: themeRadius(22), padding: "34px 38px" }}
         data-testid="dialog-reset-votes"
       >
         <AlertDialogHeader>

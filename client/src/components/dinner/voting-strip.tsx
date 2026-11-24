@@ -1,5 +1,6 @@
 import { Crown, RotateCcw, ThumbsUp } from "lucide-react";
 import { maxVoteCount, VOTE_SLOTS, type DinnerCandidate } from "@/lib/dinner-state";
+import { themeRadius, themeShadow } from "@/lib/theme-shape";
 
 interface VotingStripProps {
   candidates: DinnerCandidate[];
@@ -41,9 +42,9 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
               className="flex-1 min-w-0 flex flex-col"
               style={{
                 background: "var(--rb-surface)",
-                borderRadius: 16,
+                borderRadius: themeRadius(16),
                 border: `3px solid ${isLeading ? "var(--rb-accent)" : "transparent"}`,
-                boxShadow: "0 1px 2px var(--rb-shadow-soft)",
+                boxShadow: themeShadow(1, 2, "--rb-shadow-soft"),
                 padding: "14px 14px 12px",
                 gap: 10,
               }}
@@ -96,7 +97,7 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
             style={{
               background: "transparent",
               border: "3px dashed var(--rb-border-strong)",
-              borderRadius: 16,
+              borderRadius: themeRadius(16),
               color: "var(--rb-muted)",
               gap: 8,
               padding: 14,
@@ -123,7 +124,7 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
           type="button"
           onClick={onResetAsk}
           className="flex-shrink-0 flex flex-col items-center justify-center touch-button"
-          style={{ width: 120, background: "var(--rb-surface)", border: "3px solid var(--rb-danger-wash)", borderRadius: 16, color: "var(--rb-danger)", gap: 8 }}
+          style={{ width: 120, background: "var(--rb-surface)", border: "3px solid var(--rb-danger-wash)", borderRadius: themeRadius(16), color: "var(--rb-danger)", gap: 8 }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-danger-wash)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-surface)")}
           data-testid="button-reset-votes"

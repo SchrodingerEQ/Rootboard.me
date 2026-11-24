@@ -56,7 +56,7 @@ Add visual themes to Rootboard (e.g., Spooky, Winter Holiday, Deep Space) that r
 - Layout: spacing, widths, grid structure, element positions, z-index.
 - Touch target minimums (48/56px) and the 28px touch scrollbars — both were hard-won tuning for the 21.5" touchscreen (see the war-story comments in `index.css`).
 - Font sizes/weights (beyond app-controlled overflow auto-shrink).
-- Any executable content. SVGs are sanitized before render (SVG files can embed scripts).
+- Any executable content. SVGs are sanitized before render (SVG files can embed scripts). *(2026-11-24, decision 0026: built differently and stricter. Image slots take raster files only, and confetti shapes are SVG path data under a grammar of commands and numbers, so no SVG file is ever rendered and nothing needs sanitising.)*
 
 ## Theme format
 

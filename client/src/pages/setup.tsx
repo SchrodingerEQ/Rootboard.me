@@ -142,7 +142,7 @@ export default function SetupPage() {
             <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
               <li>Raspberry Pi 4 or newer (recommended)</li>
               <li>Raspberry Pi OS (64-bit recommended)</li>
-              <li>Node.js 18 or newer</li>
+              <li>Node.js 24</li>
               <li>21.5" touchscreen display (optimized for)</li>
             </ul>
             
@@ -151,7 +151,7 @@ export default function SetupPage() {
             <h4 className="font-medium text-gray-900">Install Node.js:</h4>
             <div className="bg-gray-900 rounded-md p-3 font-mono text-sm text-green-400 overflow-x-auto">
               <div># Install Node.js using NodeSource</div>
-              <div>curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -</div>
+              <div>curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -</div>
               <div>sudo apt-get install -y nodejs</div>
             </div>
 

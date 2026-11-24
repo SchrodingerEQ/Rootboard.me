@@ -75,6 +75,9 @@ Settled. A brief cites them; an executing agent does not reopen them.
    the theme tokens, so it gains a warning on fallback, a test, and the
    stale docs are corrected.** Fonts, imagery, shape tokens, Spooky, the
    authoring guide and community install stay later slices.
+   *(2026-11-24: the colour-only scope and the deferral of fonts, imagery
+   and shape tokens are superseded by decision 9. Spooky, the authoring
+   guide and community install still wait.)*
 5. **Beta hardware: one unit built like the reference kiosk (Pi 5),
    one microSD.** The reference kiosk is what the install docs were
    written from. Brief 09's two-card rule (one ships, one stays as a
@@ -92,6 +95,15 @@ Settled. A brief cites them; an executing agent does not reopen them.
    leaving the wizard) with Back to setup / Continue with manual setup.
    Continue leaves the wizard and opens the service-account steps.
    WP-02 builds it.
+9. **Themes need imagery before they ship (2026-11-24, supersedes the
+   "colour-only" part of decision 4).** The founder looked at Winter
+   Holiday (#55) in the dev server: it reads as a palette change, not a
+   theme. #55 is held until it carries imagery. The theme work this week
+   grows to the full launch set from `THEME-SYSTEM-PLAN.md`: image slots
+   (main background, header banner, sidebar, screensaver, logo, each a
+   separate optional asset), confetti shapes, fonts, and shape tokens.
+   The founder generates the Winter Holiday images; the agent builds the
+   contract and render paths. WP-06 is that brief.
 
 ## Order
 
@@ -102,8 +114,10 @@ Settled. A brief cites them; an executing agent does not reopen them.
 | **WP-03** | [Node 24: decision record, docs, CI, floor, lock](WP-03-node-24.md) | nothing | PR A `principle-flag` (principle 4, founder-ratified today); PR B safe zone | 2–3 h |
 | **WP-04** | [Small fixes from TASKS.md, one PR each](WP-04-small-fixes.md) | nothing; merge after WP-03 PR A if both touch `INSTALLATION.md` | safe zone, each | 2–4 h |
 | **WP-05** | [Theme system: audit, Winter Holiday, confetti colours](WP-05-theme-audit-winter-holiday-confetti.md) | nothing | safe zone; the Winter Holiday PR waits for the founder's look in the dev server | 3–5 h |
+| **WP-06** | [Theme system: imagery, confetti shapes, fonts, shape tokens](WP-06-theme-imagery.md) (added 2026-11-24, decision 9) | WP-05 merged (#50, #57); its PR C waits for the founder's image files | safe zone for PR A and PR B; PR C lands on the held #55 and waits for the founder's look | 7–11 h |
 
-All five are independent and may run in parallel sessions. Several edit
+WP-01 to WP-05 are independent and may run in parallel sessions; WP-06
+follows WP-05 (its PRs #50 and #57 are in `main`). Several edit
 `docs/SPEC.md` and `TASKS.md`: merge PRs one at a time, and the next
 branch merges `main` in (never a rebase of a pushed branch) and re-runs
 its checks before review, as `docs/plans/beta-launch/README.md` says.
@@ -174,8 +188,14 @@ Things only the founder does. Nothing here is an agent's.
 - [ ] Approve the wording of the feedback change-history row in the
   CrucibleWebsite draft PR from WP-01 (published legal text). It must be
   live before v1.9.0 ships.
-- [ ] Look at Winter Holiday in `npm run dev` on the laptop (Settings →
+- [x] Look at Winter Holiday in `npm run dev` on the laptop (Settings →
   Theme) before WP-05's second PR merges; say yes, or what to change.
+  (2026-11-24: looked; held until it carries imagery, decision 9.)
+- [ ] Generate the Winter Holiday images with an image generator using
+  the slot table in WP-06 (main background, header banner, sidebar,
+  screensaver, logo) and hand them to the WP-06 session for PR C.
+- [ ] Pick opaque or translucent surfaces from WP-06's two screenshot
+  sets, then look at #55 again with the imagery in `npm run dev`.
 - [ ] Read WP-04 (e)'s `bufferutil` removal PR, the proposal the TASKS.md
   line asked for, and merge it or decline.
 
@@ -203,8 +223,11 @@ Things only the founder does. Nothing here is an agent's.
   router-off boot), #38 (sign-in, restart, refresh, revoke), brief 01's
   weather location, and now WP-01 (send one `TEST`-prefixed feedback
   item from the kiosk and confirm the ticket code), WP-02 (the wizard's
-  Google step on hardware), WP-04 (c) (the disk row), WP-05 (Winter
-  Holiday on the 21.5-inch screen; confetti in the theme's colours).
+  Google step on hardware), WP-04 (c) (the disk row), WP-05 and WP-06
+  (Winter Holiday with imagery on the 21.5-inch screen; shaped confetti
+  in the theme's colours stays smooth; CPU and memory in Diagnostics
+  before and after a theme switch; `window.devicePixelRatio` in the
+  kiosk Firefox is 1, which WP-06's image supply sizes assume).
 - [ ] Brief 00 §3.1 device-flow test (optional, 15 minutes) and the §3.2
   verification recording, which needs the sign-in on screen.
 
@@ -231,3 +254,4 @@ fresh clone of `main`.
 - **WP-03:** "Execute `docs/briefs/2026-11-23-remote-work/WP-03-node-24.md` against `main`. Read its README first."
 - **WP-04:** "Execute `docs/briefs/2026-11-23-remote-work/WP-04-small-fixes.md` against `main`. Read its README first."
 - **WP-05:** "Execute `docs/briefs/2026-11-23-remote-work/WP-05-theme-audit-winter-holiday-confetti.md` against `main`. Read its README first."
+- **WP-06:** "Execute `docs/briefs/2026-11-23-remote-work/WP-06-theme-imagery.md` against `main`. Read its README first."

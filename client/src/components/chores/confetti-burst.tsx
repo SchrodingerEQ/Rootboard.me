@@ -5,6 +5,9 @@
  * `left: 50%; top: 50%`.
  */
 
+import { CONFETTI_SHAPE_VIEWBOX, confettiShapeProblem } from "@shared/theme-manifest";
+import { getActiveConfettiShapes } from "@/lib/theme-engine";
+
 export interface ConfettiParticle {
   dx: number;
   dy: number;
@@ -12,6 +15,9 @@ export interface ConfettiParticle {
   color: string;
   size: number;
   radius: string;
+  /** SVG path data on a 24×24 viewBox when the theme declares confetti
+   *  shapes; absent = a plain square or circle (`radius`). */
+  shape?: string;
 }
 
 export const CONFETTI_COLORS = ["#f2655a", "#f5a623", "#16a34a", "#2563eb", "#9333ea"];
@@ -23,6 +29,7 @@ export const CONFETTI_FADE_MS = 1800;
 const CONFETTI_TOKEN_NAMES = [1, 2, 3, 4, 5].map((i) => `--rb-confetti-${i}`);
 
 let warnedConfettiFallback = false;
+let warnedShapeFallback = false;
 
 function computedStyleLookup(name: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name);
@@ -48,23 +55,46 @@ export function runtimeConfettiColors(
   return CONFETTI_COLORS;
 }
 
+/** The active theme's confetti shapes, read at burst time. The manifest was
+ *  validated at load; each shape is checked again here because it ends up
+ *  in a `d` attribute. If any fails, the burst uses squares and circles and
+ *  the first failure is logged once, so it is never silent.
+ *  `source` defaults to the theme engine; tests pass their own. */
+export function runtimeConfettiShapes(
+  source: () => readonly string[] = getActiveConfettiShapes
+): readonly string[] {
+  const shapes = source();
+  const problem = shapes.map(confettiShapeProblem).find((p) => p !== null);
+  if (!problem) return shapes;
+  if (!warnedShapeFallback) {
+    warnedShapeFallback = true;
+    console.warn(`[confetti] theme confetti shape rejected (${problem}); using squares and circles`);
+  }
+  return [];
+}
+
 /** ~14 particles (7–13px, circles + squares) fanning upward/outward
- *  45–120px with 270° of rotational spread either direction. */
+ *  45–120px with 270° of rotational spread either direction. With
+ *  `shapes`, each particle takes the next shape in rotation instead of a
+ *  square or circle; the motion is identical. */
 export function generateConfettiParticles(
-  colors: readonly string[] = CONFETTI_COLORS
+  colors: readonly string[] = CONFETTI_COLORS,
+  shapes: readonly string[] = []
 ): ConfettiParticle[] {
   const particles: ConfettiParticle[] = [];
   for (let i = 0; i < CONFETTI_PARTICLE_COUNT; i++) {
     const angle = Math.PI * (0.9 + Math.random() * 1.2) + Math.PI; // mostly upward fan
     const dist = 45 + Math.random() * 75; // 45–120px
-    particles.push({
+    const particle: ConfettiParticle = {
       dx: Math.round(Math.cos(angle) * dist),
       dy: Math.round(Math.sin(angle) * dist * -1) - 20,
       rot: Math.round(Math.random() * 540 - 270),
       color: colors[i % colors.length],
       size: 7 + Math.round(Math.random() * 6),
       radius: Math.random() > 0.5 ? "50%" : "3px",
-    });
+    };
+    if (shapes.length > 0) particle.shape = shapes[i % shapes.length];
+    particles.push(particle);
   }
   return particles;
 }
@@ -92,15 +122,23 @@ export function ConfettiBurst({ particles, fired }: ConfettiBurstProps) {
             top: 0,
             width: p.size,
             height: p.size,
-            borderRadius: p.radius,
-            background: p.color,
+            borderRadius: p.shape ? undefined : p.radius,
+            background: p.shape ? undefined : p.color,
             transform: fired
               ? `translate(${p.dx}px, ${p.dy}px) rotate(${p.rot}deg)`
               : "translate(0px, 0px) rotate(0deg) scale(.4)",
             opacity: fired ? 0 : 1,
             transition: `transform ${CONFETTI_FADE_MS}ms cubic-bezier(.16,.84,.44,1), opacity ${CONFETTI_FADE_MS}ms ease`,
           }}
-        />
+        >
+          {/* Built once per burst; only the span's transform and opacity
+              change while it flies, so no SVG is re-created per frame. */}
+          {p.shape && (
+            <svg viewBox={CONFETTI_SHAPE_VIEWBOX} width={p.size} height={p.size} style={{ display: "block" }}>
+              <path d={p.shape} fill={p.color} />
+            </svg>
+          )}
+        </span>
       ))}
     </div>
   );

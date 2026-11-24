@@ -3,6 +3,7 @@ import { Check, Pencil, Plus, X } from "lucide-react";
 import { type Person } from "@/lib/chores-state";
 import { personPaletteVars } from "@/lib/person-colors";
 import { PERSON_SLOT_COUNT } from "@shared/theme-manifest";
+import { themeRadius, themeShadow } from "@/lib/theme-shape";
 
 interface EditPeopleProps {
   people: Person[];
@@ -46,7 +47,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
 
   return (
     <div className="flex-1 flex items-start justify-center overflow-y-auto" style={{ paddingTop: 90, paddingBottom: 40 }}>
-      <div className="bg-rb-surface" style={{ width: 720, maxWidth: "90vw", borderRadius: 22, boxShadow: "0 1px 3px var(--rb-shadow-card)", padding: "40px 44px" }} data-testid="edit-people-card">
+      <div className="bg-rb-surface" style={{ width: 720, maxWidth: "90vw", borderRadius: themeRadius(22), boxShadow: themeShadow(1, 3, "--rb-shadow-card"), padding: "40px 44px" }} data-testid="edit-people-card">
         <h2 style={{ margin: "0 0 6px", fontSize: 34, fontWeight: 800, letterSpacing: "-.5px", color: "var(--rb-ink)" }}>
           Set up your chore crew
         </h2>
@@ -60,7 +61,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
             const initials = p.name.slice(0, 2).toUpperCase();
             const isEditing = editingId === p.id;
             return (
-              <div key={p.id} className="flex flex-col gap-3" style={{ background: pal.tint, borderRadius: 14, padding: "14px 16px" }} data-testid={`setup-person-${p.id}`}>
+              <div key={p.id} className="flex flex-col gap-3" style={{ background: pal.tint, borderRadius: themeRadius(14), padding: "14px 16px" }} data-testid={`setup-person-${p.id}`}>
                 <div className="flex items-center gap-3.5">
                   <span
                     className="flex items-center justify-center rounded-full text-rb-on-color-ink flex-shrink-0"
@@ -81,7 +82,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
                         }}
                         autoFocus
                         className="flex-1 min-w-0 outline-none bg-rb-surface"
-                        style={{ height: 46, border: `2px solid ${pal.color}`, borderRadius: 12, padding: "0 14px", fontSize: 19, fontWeight: 700, color: "var(--rb-ink)" }}
+                        style={{ height: 46, border: `2px solid ${pal.color}`, borderRadius: themeRadius(12), padding: "0 14px", fontSize: 19, fontWeight: 700, color: "var(--rb-ink)" }}
                         data-testid={`input-person-name-${p.id}`}
                       />
                       <button
@@ -89,7 +90,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
                         onClick={saveEdit}
                         title="Save name"
                         className="touch-button flex-shrink-0 flex items-center justify-center text-rb-on-color-ink"
-                        style={{ width: 46, height: 46, border: "none", background: pal.color, borderRadius: 12 }}
+                        style={{ width: 46, height: 46, border: "none", background: pal.color, borderRadius: themeRadius(12) }}
                         data-testid={`button-save-name-${p.id}`}
                       >
                         <Check size={20} strokeWidth={2.8} />
@@ -100,7 +101,7 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
                       type="button"
                       onClick={() => startEdit(p)}
                       title="Edit name"
-                      className="flex-1 min-w-0 flex items-center gap-2 text-left rounded-[10px] hover:bg-[var(--rb-on-tint-hover-strong)]"
+                      className="flex-1 min-w-0 flex items-center gap-2 text-left rounded-[calc(10px*var(--rb-radius-scale))] hover:bg-[var(--rb-on-tint-hover-strong)]"
                       style={{ border: "none", background: "transparent", padding: "6px 8px", fontSize: 20, fontWeight: 800, color: pal.text }}
                       data-testid={`button-edit-name-${p.id}`}
                     >
@@ -165,14 +166,14 @@ export function EditPeople({ people, onAddPerson, onRemovePerson, onRenamePerson
             }}
             placeholder="Add a person…"
             className="flex-1 min-w-0 outline-none"
-            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: 14, padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
+            style={{ height: 56, border: "2px solid var(--rb-field-border)", borderRadius: themeRadius(14), padding: "0 18px", fontSize: 19, fontWeight: 600, color: "var(--rb-ink)", background: "var(--rb-surface-sunken)" }}
             data-testid="input-add-person"
           />
           <button
             type="button"
             onClick={addPerson}
             className="touch-button flex-shrink-0 flex items-center justify-center gap-2 text-rb-on-color-ink"
-            style={{ height: 56, padding: "0 24px", border: "none", background: "var(--rb-btn-dark-bg)", borderRadius: 14, fontSize: 18, fontWeight: 700 }}
+            style={{ height: 56, padding: "0 24px", border: "none", background: "var(--rb-btn-dark-bg)", borderRadius: themeRadius(14), fontSize: 18, fontWeight: 700 }}
             onMouseEnter={(e) => (e.currentTarget.style.background = "var(--rb-btn-dark-hover-bg)")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "var(--rb-btn-dark-bg)")}
             data-testid="button-add-person"

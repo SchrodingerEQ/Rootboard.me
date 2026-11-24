@@ -1,0 +1,242 @@
+/* Rootboard's look for the shared feedback dialog (feedback-dialog.jsx),
+   written against its crc-feedback-* class names instead of the client's
+   default stylesheet: theme tokens only, so every theme applies (decision
+   0009). Touch targets are 48 px or more (SPEC 3.8).
+
+   The dialog is positioned like the app's own centered dialogs
+   (fixed, top/left 50%, translate -50%) so the on-screen keyboard's lift in
+   index.css (html[data-osk-open] [role="dialog"]) moves it above the
+   keyboard the same way. The backdrop sits under the keyboard (z-[60]). */
+
+.crc-feedback-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  /* Same scrim as the shared Dialog overlay (ui/dialog.tsx, bg-black/80). */
+  background: rgb(0 0 0 / 0.8);
+}
+
+.crc-feedback-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: min(calc(100vw - 24px), 560px);
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  background: var(--rb-surface);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-field-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px var(--rb-shadow-panel);
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.crc-feedback-dialog * {
+  box-sizing: border-box;
+}
+
+.crc-feedback-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--rb-field-border);
+}
+
+.crc-feedback-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.crc-feedback-close {
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--rb-chip);
+  color: var(--rb-ink-secondary);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.crc-feedback-close:hover {
+  background: var(--rb-chip-hover);
+}
+
+.crc-feedback-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow: auto;
+}
+
+.crc-feedback-prompt,
+.crc-feedback-label,
+.crc-feedback-hint,
+.crc-feedback-error {
+  margin: 0;
+}
+
+.crc-feedback-label {
+  font-weight: 600;
+}
+
+/* ink-secondary, not muted: the review screen's hint carries the privacy
+   sentence, so it must read clearly. */
+.crc-feedback-hint {
+  font-size: 14px;
+  color: var(--rb-ink-secondary);
+}
+
+.crc-feedback-error {
+  color: var(--rb-danger-ink);
+}
+
+.crc-feedback-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.crc-feedback-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 60px;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--rb-field-border);
+  border-radius: 10px;
+  background: var(--rb-surface-sunken);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.crc-feedback-option:hover {
+  background: var(--rb-chip);
+}
+
+.crc-feedback-option--selected {
+  border-color: var(--rb-accent);
+  background: var(--rb-accent-wash);
+}
+
+.crc-feedback-option-label {
+  font-weight: 600;
+}
+
+.crc-feedback-option-hint {
+  font-size: 14px;
+  color: var(--rb-muted);
+}
+
+/* The page sets user-select: none (SPEC 3.8); typing needs it back. */
+.crc-feedback-textarea,
+.crc-feedback-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--rb-field-border);
+  border-radius: 10px;
+  background: var(--rb-surface-sunken);
+  color: inherit;
+  font: inherit;
+  user-select: text;
+}
+
+.crc-feedback-textarea {
+  resize: none;
+}
+
+.crc-feedback-review {
+  margin: 0;
+  padding: 12px;
+  /* No inner scroll: the dialog body is the one scroll area, which is
+     easier on a touchscreen than a scroll box inside a scroll box. */
+  white-space: pre-wrap;
+  word-break: break-word;
+  border: 1px solid var(--rb-field-border);
+  border-radius: 10px;
+  background: var(--rb-surface-sunken);
+  font: 14px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.crc-feedback-code {
+  display: block;
+  padding: 12px 0;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  user-select: all;
+}
+
+.crc-feedback-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.crc-feedback-button {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--rb-field-border);
+  border-radius: 10px;
+  background: var(--rb-chip);
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.crc-feedback-button:hover {
+  background: var(--rb-chip-hover);
+}
+
+.crc-feedback-button--primary {
+  border-color: var(--rb-accent);
+  background: var(--rb-accent);
+  color: var(--rb-on-color-ink);
+}
+
+.crc-feedback-button--primary:hover {
+  background: var(--rb-accent-hover);
+}
+
+.crc-feedback-button:disabled,
+.crc-feedback-close:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.crc-feedback-button:focus-visible,
+.crc-feedback-close:focus-visible,
+.crc-feedback-option:focus-visible,
+.crc-feedback-textarea:focus-visible,
+.crc-feedback-input:focus-visible {
+  outline: 3px solid var(--rb-accent);
+  outline-offset: 2px;
+}
+
+@media (min-width: 1920px) {
+  .crc-feedback-close,
+  .crc-feedback-button,
+  .crc-feedback-textarea,
+  .crc-feedback-input {
+    min-height: 56px;
+  }
+  .crc-feedback-close {
+    min-width: 56px;
+  }
+}

@@ -160,6 +160,18 @@ user_pref("browser.gesture.pinch.out.shift", "");
 
 `user.js` is read at every Firefox start, so restart Firefox (or reboot) for it to apply. Check: a two-finger pinch on the dashboard does nothing; scrolling the week view still works.
 
+### Cap the browser cache (Firefox)
+
+Left alone, Firefox picks its own disk cache size, which is more than a kiosk needs on an SD card. Rootboard is one page that the app serves locally, so a small cache costs nothing. Add these lines to the same `user.js`:
+
+```js
+// Rootboard kiosk: keep the disk cache small
+user_pref("browser.cache.disk.smart_size.enabled", false); // stop Firefox choosing the cache size itself
+user_pref("browser.cache.disk.capacity", 102400);          // cache limit in KB: 102400 KB = 100 MB
+```
+
+The first line turns off automatic sizing; Firefox ignores the second line while automatic sizing is on. The second line caps the disk cache at 100 MB. Restart Firefox (or reboot) for it to apply. This caps Firefox's page cache only; it does not limit the `remote-settings` data Firefox keeps beside it, so check Settings → System → Diagnostics now and then.
+
 ### Set the monitor's own brightness now
 
 Rootboard's Brightness slider can only **dim** the picture (30–100 %); it cannot make the screen brighter than the monitor itself. Rootboard also never uses a page-wide CSS brightness filter — on a Pi that costs roughly 115 ms per frame and makes the whole kiosk sluggish — so there is deliberately no "above 100 %" setting.
@@ -176,15 +188,15 @@ We'll do this automatically in Step 10 via `unclutter`.
 
 ## 5. Install Node.js and system dependencies
 
-The app requires **Node.js 18+** (Node 20 LTS recommended).
+The app requires **Node.js 24**. Older Node versions are not supported by the ready-made Raspberry Pi builds of the database module (`better-sqlite3`), and the kiosk does not compile it.
 
 ```bash
-# Install Node 20 from NodeSource (official binaries — much newer than apt's default)
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+# Install Node 24 from NodeSource (official binaries — much newer than apt's default)
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Verify
-node -v   # should print v20.x.x
+node -v   # should print v24.x.x
 npm -v
 ```
 
@@ -468,6 +480,16 @@ The supervisor advertises itself to the app via the `MANAGED_BY_SUPERVISOR=1` en
 
 > **Optional:** if you'd rather use systemd than the desktop autostart, see `scripts/start.sh` — it's drop-in compatible. Run it from a `systemd --user` service or a system unit, whichever suits your setup.
 
+### Disk housekeeping
+
+Updates need free space on the SD card. Clear the downloaded package files that `apt` keeps after every install or upgrade:
+
+```bash
+sudo apt-get clean
+```
+
+It deletes only the cached `.deb` files in `/var/cache/apt/archives/`, never installed software. Run it after any `apt` upgrade; Settings → System → Diagnostics shows how full the card is (see [Troubleshooting](#read-the-diagnostics-screen-first)).
+
 ### Let the app change Wi-Fi and the time zone (polkit)
 
 The setup wizard joins Wi-Fi and sets the time zone by running `nmcli` and `timedatectl` as the **same ordinary user the app runs as** — the user that starts `kiosk.sh` or `scripts/start.sh` (on a systemd install, the unit's `User=`). It never uses `sudo` or root. A polkit rule shipped in `scripts/polkit/` lets that user do exactly four things without a password prompt: change system connection profiles, activate connections, scan for Wi-Fi, and set the time zone.
@@ -687,7 +709,7 @@ Before opening a terminal, tap **Settings → System → Diagnostics** on the ki
 | Network / Internet | Whether the Pi has a network address, and whether its last weather or calendar request reached the internet |
 | Wi-Fi self-heal (24 h) | How many times the [`wifi-selfheal` timer](#123-add-a-wifi-selfheal-watchdog-timer) had to reconnect. "Not available" means the timer isn't installed, or the app's user can't read the system journal (fix: `sudo usermod -aG systemd-journal <service-user>`, then restart the service) |
 | Updates / Supervisor | The last update check, and whether the app can restart itself after an update |
-| Disk free, Widgets, Config | Low disk, widget folders that failed to load, a damaged `data/config/dashboard.json` |
+| Disk, Widgets, Config | How full the SD card is (warns above 80 % used or under 1 GB free), widget folders that failed to load, a damaged `data/config/dashboard.json` |
 
 **Show details** shows the app's last log lines. **Copy** copies the whole screen as text you can paste to whoever is helping you, or to your own AI assistant: it never contains your Wi-Fi name, the kiosk's name or IPv4 address, email addresses or tokens.
 

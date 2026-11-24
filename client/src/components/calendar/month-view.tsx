@@ -4,6 +4,7 @@ import { DayEventsDialog } from "./day-events-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getMonthCalendar, isToday } from "@/lib/date-utils";
 import type { CalendarEvent } from "@shared/schema";
+import { themeShadow } from "@/lib/theme-shape";
 
 interface MonthViewProps {
   currentDate: Date;
@@ -121,7 +122,7 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
 
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col bg-[var(--rb-canvas)]">
+      <div className="h-full flex flex-col bg-[var(--rb-canvas)] rb-image-background">
         <div className="grid grid-cols-7 px-6 pt-3 pb-1">
           {WEEKDAYS.map(day => (
             <div key={day} className="text-center text-sm font-bold uppercase tracking-wide text-[var(--rb-muted)]">
@@ -145,7 +146,7 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
   }
 
   return (
-    <div className="h-full flex flex-col bg-[var(--rb-canvas)]">
+    <div className="h-full flex flex-col bg-[var(--rb-canvas)] rb-image-background">
       {/* Weekday header */}
       <div className="grid grid-cols-7 px-6 pt-3 pb-1">
         {WEEKDAYS.map(day => (
@@ -180,7 +181,7 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
                 style={{
                   background: cellBg,
                   border: isTodayDate ? '3px solid var(--rb-accent)' : '3px solid transparent',
-                  boxShadow: isCurrentMonth ? '0 1px 2px var(--rb-shadow-soft)' : 'none',
+                  boxShadow: isCurrentMonth ? themeShadow(1, 2, "--rb-shadow-soft") : 'none',
                 }}
                 data-testid={isTodayDate ? 'today-cell' : undefined}
               >

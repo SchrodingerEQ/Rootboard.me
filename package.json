@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "npm run test:legacy && vitest run --passWithNoTests",
     "test:legacy": "tsx client/src/lib/date-range.test.ts && tsx client/src/lib/chores-state.test.ts && tsx client/src/lib/dinner-state.test.ts && tsx client/src/lib/osk.test.ts",
@@ -45,7 +48,7 @@
     "@radix-ui/react-tooltip": "^1.2.0",
     "@tanstack/react-query": "^5.60.5",
     "@types/better-sqlite3": "^7.6.13",
-    "better-sqlite3": "^12.4.6",
+    "better-sqlite3": "^12.11.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

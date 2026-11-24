@@ -8,6 +8,7 @@ import { eventTint, eventTextColor } from "@/lib/color-utils";
 import { getCalendarColor, getInitials, EVENT_FALLBACK_COLOR, type CalendarInfo } from "@/lib/calendar-meta";
 import { useSurfaceHex } from "@/hooks/use-surface-hex";
 import type { CalendarEvent } from "@shared/schema";
+import { themeRadius, themeShadow } from "@/lib/theme-shape";
 
 interface DayViewProps {
   currentDate: Date;
@@ -139,20 +140,20 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
 
   if (isLoading) {
     return (
-      <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)]" style={{ padding: '22px 28px' }}>
+      <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] rb-image-background" style={{ padding: '22px 28px' }}>
         <aside className="flex flex-col gap-[18px] flex-shrink-0" style={{ width: 380 }}>
-          <div className="bg-rb-surface rounded-[18px] p-4"><Skeleton className="h-6 w-32 mb-3 rounded-md" /><Skeleton className="h-48 w-full rounded-xl" /></div>
-          <div className="bg-rb-surface rounded-[18px] p-4">
+          <div className="bg-rb-surface rounded-[calc(18px*var(--rb-radius-scale))] p-4"><Skeleton className="h-6 w-32 mb-3 rounded-md" /><Skeleton className="h-48 w-full rounded-xl" /></div>
+          <div className="bg-rb-surface rounded-[calc(18px*var(--rb-radius-scale))] p-4">
             <Skeleton className="h-4 w-24 mb-3 rounded-md" />
             {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-3 mb-3"><Skeleton className="h-[54px] w-[54px] rounded-[14px]" /><Skeleton className="h-5 flex-1 rounded-md" /></div>
+              <div key={i} className="flex items-center gap-3 mb-3"><Skeleton className="h-[54px] w-[54px] rounded-[calc(14px*var(--rb-radius-scale))]" /><Skeleton className="h-5 flex-1 rounded-md" /></div>
             ))}
           </div>
         </aside>
-        <section className="flex-1 bg-rb-surface rounded-[18px] p-6">
+        <section className="flex-1 bg-rb-surface rounded-[calc(18px*var(--rb-radius-scale))] p-6">
           <Skeleton className="h-8 w-64 mb-6 rounded-md" />
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex gap-4 mb-4"><Skeleton className="h-6 w-[96px] rounded-md" /><Skeleton className="h-[72px] flex-1 rounded-[14px]" /></div>
+            <div key={i} className="flex gap-4 mb-4"><Skeleton className="h-6 w-[96px] rounded-md" /><Skeleton className="h-[72px] flex-1 rounded-[calc(14px*var(--rb-radius-scale))]" /></div>
           ))}
         </section>
       </div>
@@ -160,7 +161,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
   }
 
   return (
-    <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] overflow-hidden" style={{ padding: '22px 28px' }}>
+    <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] rb-image-background overflow-hidden" style={{ padding: '22px 28px' }}>
       {/* Left rail */}
       <aside className="flex flex-col gap-[18px] flex-shrink-0 overflow-y-auto" style={{ width: 380 }}>
         <MiniMonth
@@ -175,7 +176,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
       </aside>
 
       {/* Agenda panel */}
-      <section className="flex-1 bg-[var(--rb-surface)] rounded-[18px] flex flex-col min-w-0" style={{ boxShadow: '0 1px 3px var(--rb-shadow-card)' }}>
+      <section className="flex-1 bg-[var(--rb-surface)] rounded-[calc(18px*var(--rb-radius-scale))] flex flex-col min-w-0" style={{ boxShadow: themeShadow(1, 3, "--rb-shadow-card") }}>
         <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 flex-shrink-0">
           <div>
             <h2 className="text-[26px] leading-tight text-rb-ink" style={{ fontWeight: 900 }}>
@@ -248,7 +249,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
                       className="flex-1 flex items-center gap-4 text-left px-5 py-4 min-w-0 hover:brightness-95 transition-[filter]"
                       style={{
                         background: eventTint(color),
-                        borderRadius: 14,
+                        borderRadius: themeRadius(14),
                         borderLeft: `6px solid ${color}`,
                       }}
                     >

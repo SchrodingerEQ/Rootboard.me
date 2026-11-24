@@ -58,3 +58,52 @@ describe("generateConfettiParticles color injection", () => {
     expect(CONFETTI_COLORS).toEqual(["#f2655a", "#f5a623", "#16a34a", "#2563eb", "#9333ea"]);
   });
 });
+
+describe("confetti shapes (theme manifest v2)", () => {
+  afterEach(() => vi.restoreAllMocks());
+  const STAR = "M12 2l3 7h7l-5.5 4.5 2 7.5-6.5-4.5-6.5 4.5 2-7.5L2 9h7z";
+  const SQUARE = "M0 0H24V24H0Z";
+
+  test("a theme with shapes: every particle takes a shape in rotation, colours unchanged", () => {
+    const particles = generateConfettiParticles(CONFETTI_COLORS, [STAR, SQUARE]);
+    expect(particles.map((p) => p.shape)).toEqual(particles.map((_, i) => (i % 2 === 0 ? STAR : SQUARE)));
+    expect(particles.map((p) => p.color)).toEqual(particles.map((_, i) => CONFETTI_COLORS[i % CONFETTI_COLORS.length]));
+  });
+
+  test("a theme without shapes: squares and circles, no shape field", () => {
+    for (const p of generateConfettiParticles(CONFETTI_COLORS, [])) {
+      expect(p.shape).toBeUndefined();
+      expect(["50%", "3px"]).toContain(p.radius);
+    }
+  });
+
+  test("shapes do not change the motion: same random draws give the same flight", () => {
+    const seq = Array.from({ length: 200 }, (_, i) => ((i * 7919) % 1000) / 1000);
+    const run = (shapes: string[]) => {
+      let k = 0;
+      vi.spyOn(Math, "random").mockImplementation(() => seq[k++ % seq.length]);
+      const out = generateConfettiParticles(CONFETTI_COLORS, shapes).map(({ dx, dy, rot, size }) => ({ dx, dy, rot, size }));
+      vi.restoreAllMocks();
+      return out;
+    };
+    expect(run([STAR])).toEqual(run([]));
+  });
+
+  test("runtimeConfettiShapes passes valid shapes through without a warning", async () => {
+    const { runtimeConfettiShapes } = await freshModule();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(runtimeConfettiShapes(() => [STAR])).toEqual([STAR]);
+    expect(runtimeConfettiShapes(() => [])).toEqual([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  test("a malformed shape: plain confetti for the burst, warned once", async () => {
+    const { runtimeConfettiShapes } = await freshModule();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const bad = () => [STAR, '<path d="M0 0"/>'];
+    expect(runtimeConfettiShapes(bad)).toEqual([]);
+    expect(runtimeConfettiShapes(bad)).toEqual([]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/confetti shape rejected/);
+  });
+});

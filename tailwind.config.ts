@@ -12,6 +12,10 @@ export default {
         'kiosk-touch': { 'raw': '(min-width: 1920px) and (pointer: coarse)' },
       },
       borderRadius: {
+        // xl and 2xl follow the theme's shape block too (decision 0026);
+        // at --rb-radius-scale 1 they equal Tailwind's 0.75rem and 1rem.
+        "2xl": "calc(1rem * var(--rb-radius-scale))",
+        xl: "calc(0.75rem * var(--rb-radius-scale))",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",

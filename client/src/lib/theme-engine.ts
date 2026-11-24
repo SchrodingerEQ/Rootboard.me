@@ -1,6 +1,8 @@
 import {
   THEME_ENGINE_VERSION,
   THEME_TOKEN_NAMES,
+  resolveThemeImageProperties,
+  resolveThemeStyle,
   validateThemeManifest,
   type ThemeManifest,
 } from "@shared/theme-manifest";
@@ -43,7 +45,12 @@ export interface ThemeStorage {
 export interface ThemeCache {
   engineVersion: number;
   id: string;
+  /** The colour tokens. */
   tokens: Record<string, string>;
+  /** Manifest v2's font and shape properties (resolveThemeStyle). Absent in a
+   *  cache written before v2; the boot script then leaves :root's Default
+   *  values in place and says so in the console. */
+  style?: Record<string, string>;
 }
 
 function bestEffortId(raw: unknown): string {
@@ -128,7 +135,9 @@ export function readThemeCache(storage: ThemeStorage | null = defaultStorage()):
     ) {
       return null;
     }
-    return { engineVersion: parsed.engineVersion, id: parsed.id, tokens: parsed.tokens as Record<string, string> };
+    const cache: ThemeCache = { engineVersion: parsed.engineVersion, id: parsed.id, tokens: parsed.tokens as Record<string, string> };
+    if (parsed.style && typeof parsed.style === "object") cache.style = parsed.style as Record<string, string>;
+    return cache;
   } catch {
     return null;
   }
@@ -136,7 +145,12 @@ export function readThemeCache(storage: ThemeStorage | null = defaultStorage()):
 
 export function writeThemeCache(manifest: ThemeManifest, storage: ThemeStorage | null = defaultStorage()): void {
   if (!storage) return;
-  const cache: ThemeCache = { engineVersion: THEME_ENGINE_VERSION, id: manifest.id, tokens: { ...manifest.tokens } };
+  const cache: ThemeCache = {
+    engineVersion: THEME_ENGINE_VERSION,
+    id: manifest.id,
+    tokens: { ...manifest.tokens },
+    style: resolveThemeStyle(manifest),
+  };
   try {
     storage.setItem(THEME_CACHE_KEY, JSON.stringify(cache));
   } catch (err) {
@@ -165,6 +179,23 @@ export function getActiveThemeTokens(): Record<string, string> | null {
   return activeTokens;
 }
 
+// --- Active theme assets (logo, confetti shapes) -------------------------
+
+// Set by applyTheme. Not seeded from the boot cache: images and shapes are
+// not cached, so before the first apply the app shows its own logo and
+// plain confetti, with the cached colours underneath.
+let activeManifest: ThemeManifest | null = null;
+
+/** The applied theme's logo (a bundle path or data URI), or null for the app's own. */
+export function getActiveThemeLogo(): string | null {
+  return activeManifest?.images?.logo ?? null;
+}
+
+/** The applied theme's confetti shapes (SVG path data), or [] for squares and circles. */
+export function getActiveConfettiShapes(): readonly string[] {
+  return activeManifest?.confettiShapes ?? [];
+}
+
 // --- Apply ----------------------------------------------------------------
 
 function defaultRoot(): ThemeRoot {
@@ -172,9 +203,12 @@ function defaultRoot(): ThemeRoot {
 }
 
 /**
- * Writes every token onto the root element, then notifies subscribers,
- * then mirrors the manifest into the boot cache. Default goes through this
- * same path (no special-casing) so the path is exercised on every boot.
+ * Writes every colour token, the v2 font/shape properties (Default's where
+ * the manifest has none) and the region image properties (`none` where the
+ * manifest has none) onto the root element, then notifies
+ * subscribers, then mirrors the manifest into the boot cache. Default goes
+ * through this same path (no special-casing) so the path is exercised on
+ * every boot.
  */
 export function applyTheme(
   manifest: ThemeManifest,
@@ -184,7 +218,14 @@ export function applyTheme(
   for (const name of THEME_TOKEN_NAMES) {
     root.style.setProperty(name, manifest.tokens[name]);
   }
+  for (const [name, value] of Object.entries(resolveThemeStyle(manifest))) {
+    root.style.setProperty(name, value);
+  }
+  for (const [name, value] of Object.entries(resolveThemeImageProperties(manifest))) {
+    root.style.setProperty(name, value);
+  }
   activeTokens = { ...manifest.tokens };
+  activeManifest = manifest;
   notify();
   writeThemeCache(manifest, storage);
 }
