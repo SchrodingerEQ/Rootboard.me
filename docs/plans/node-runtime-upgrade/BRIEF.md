@@ -1,7 +1,12 @@
 # Node runtime upgrade — move kiosks off Node 20
 
-**Status:** Draft 2026-11-19. Nothing here is decided or built. Section 4
-lists the decisions the founder has to make before any work starts.
+**Status:** Draft 2026-11-19. Decided 2026-11-23 (founder): Node 24
+everywhere, no Node 20 path — see
+[decision 0025](../../decisions/0025-node-24-no-node-20-path.md) and the
+"Decided 2026-11-23" column in section 4. Steps 2 and 5 run as WP-03
+(`docs/briefs/2026-11-23-remote-work/WP-03-node-24.md`), PRs A and B;
+step 3 is dropped; steps 1, 4 and 6 are the founder's, on the
+first-day-back list in that folder's README.
 **Type:** Maintenance. No new feature; the goal is that kiosks keep
 updating and that the dependency upgrades waiting on the Pi's Node
 version can go ahead.
@@ -70,12 +75,12 @@ are.
 
 ## 4. Decisions for the founder
 
-| # | Decision | Options | Notes |
-|---|---|---|---|
-| 1 | Which Node version new kiosks get | **22** or **24** | 24 is supported a year longer (to 2028-04-30). Both have ready-made Pi builds in every 12.x release checked above. |
-| 2 | How kiosks already running Node 20 move | (a) A written manual step in the install guide. (b) A notice on the kiosk when its Node version is out of date, with the steps. (c) Nothing: they stay on Node 20 and on releases that still support it. (d) They stay on Node 20 and compile the module during the update. | The one-tap updater cannot change Node. Decision 0003's goal is that nobody has to open a terminal on the Pi. Option (c) means a later release must refuse to install on Node 20 instead of failing halfway (see step 3 below), and it ends updates for those kiosks. Option (d) is unverified (section 2, "Not checked") and keeps kiosks on an unsupported Node. |
-| 3 | Whether the first external beta unit ships on the new Node | Yes, change the image before it is cut; or no, ship on Node 20 and upgrade later | Cheapest before the first unit leaves; afterwards it becomes decision 2 for someone else's kiosk. |
-| 4 | Whether to raise the stated minimum | Keep "Node.js 18+" or state the real floor | The current lock's module supports Node 20 and later, not 18. The install guide and the in-app setup page both state the number. |
+| # | Decision | Options | Notes | Decided 2026-11-23 |
+|---|---|---|---|---|
+| 1 | Which Node version new kiosks get | **22** or **24** | 24 is supported a year longer (to 2028-04-30). Both have ready-made Pi builds in every 12.x release checked above. | **24.** |
+| 2 | How kiosks already running Node 20 move | (a) A written manual step in the install guide. (b) A notice on the kiosk when its Node version is out of date, with the steps. (c) Nothing: they stay on Node 20 and on releases that still support it. (d) They stay on Node 20 and compile the module during the update. | The one-tap updater cannot change Node. Decision 0003's goal is that nobody has to open a terminal on the Pi. Option (c) means a later release must refuse to install on Node 20 instead of failing halfway (see step 3 below), and it ends updates for those kiosks. Option (d) is unverified (section 2, "Not checked") and keeps kiosks on an unsupported Node. | **No path, and no guard.** The reference kiosk, the only Node 20 unit, is wiped and reinstalled on Node 24 by its owner. A kiosk left on Node 20 would fail the install and roll back. Principle-4 waiver recorded in decision 0025. |
+| 3 | Whether the first external beta unit ships on the new Node | Yes, change the image before it is cut; or no, ship on Node 20 and upgrade later | Cheapest before the first unit leaves; afterwards it becomes decision 2 for someone else's kiosk. | **Yes**, Node 24 from the start. |
+| 4 | Whether to raise the stated minimum | Keep "Node.js 18+" or state the real floor | The current lock's module supports Node 20 and later, not 18. The install guide and the in-app setup page both state the number. | **State the real floor:** `engines` `>=24`, and Node 24 in the guide and the setup page. |
 
 Decision 2 option (c) and decision 4 can leave a kiosk that works today
 unable to take later releases. Under the product principle that shipped
@@ -95,14 +100,16 @@ need the physical kiosk, so they are the founder's to do.
    `engines` field to `package.json` if decision 4 says to state the
    floor, or if step 3 goes ahead: the updater needs the floor written
    somewhere it can read.
-3. **Protect kiosks still on Node 20.** Before any release whose
+3. ~~**Protect kiosks still on Node 20.** Before any release whose
    dependencies no longer support Node 20, make the updater compare the
    kiosk's Node version with the release's stated floor and decline with
    a plain message, instead of starting an install that will roll back.
    The shape depends on decision 2. The check runs in the updater the
    kiosk already has, so it must ship at least one release before the
    release it guards against; a kiosk that skipped that release gets no
-   check and relies on the existing rollback.
+   check and relies on the existing rollback.~~ **Dropped 2026-11-23**
+   ([decision 0025](../../decisions/0025-node-24-no-node-20-path.md)):
+   no Node 20 kiosk will exist, so no guard is built.
 4. **Upgrade the reference kiosk by hand (founder).** In a terminal on
    the kiosk: run the Node install commands from `INSTALLATION.md`
    step 5 as rewritten in step 2, then in the app folder run
@@ -134,8 +141,9 @@ need the physical kiosk, so they are the founder's to do.
   version and a running kiosk.
 - The reference kiosk updates through the touchscreen to the release
   from step 6 with no terminal.
-- A kiosk left on Node 20 is told why it cannot take that release, and
-  keeps running its current version.
+- ~~A kiosk left on Node 20 is told why it cannot take that release, and
+  keeps running its current version.~~ Dropped with step 3 (decision
+  0025): such a kiosk rolls back with no message, and none will exist.
 - `npm ci` succeeds on Node 22, 24 and 26 on a development machine.
 
 ## 7. Not proposed here
