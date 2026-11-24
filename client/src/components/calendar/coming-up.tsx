@@ -1,5 +1,6 @@
 import { eventTint, eventTextColor } from "@/lib/color-utils";
 import { useSurfaceHex } from "@/hooks/use-surface-hex";
+import { themeRadius, themeShadow } from "@/lib/theme-shape";
 
 export interface CountdownItem {
   days: number;
@@ -14,7 +15,7 @@ export function ComingUp({ items }: { items: CountdownItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="bg-[var(--rb-surface)] rounded-[18px] p-4" style={{ boxShadow: '0 1px 3px var(--rb-shadow-card)' }}>
+    <div className="bg-[var(--rb-surface)] rounded-[calc(18px*var(--rb-radius-scale))] p-4" style={{ boxShadow: themeShadow(1, 3, "--rb-shadow-card") }}>
       <div className="text-xs font-bold uppercase tracking-wide text-[var(--rb-faint)] mb-3">Coming up</div>
       <div className="flex flex-col gap-3">
         {items.map((item, i) => (
@@ -22,7 +23,7 @@ export function ComingUp({ items }: { items: CountdownItem[] }) {
             <div
               className="flex flex-col items-center justify-center flex-shrink-0"
               style={{
-                width: 54, height: 54, borderRadius: 14,
+                width: 54, height: 54, borderRadius: themeRadius(14),
                 background: eventTint(item.color),
                 color: eventTextColor(item.color, { surface }),
               }}

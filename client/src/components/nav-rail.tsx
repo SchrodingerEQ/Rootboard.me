@@ -1,6 +1,7 @@
 import { LayoutGrid, Puzzle, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import logoImage from "@assets/image_1753142842256.png";
+import { themeRadius } from "@/lib/theme-shape";
 
 /** A nav-rail glyph is either a lucide component (built-ins) or a
  *  same-origin image URL (community widgets, Phase 4 — CONTRACT.md §2's
@@ -111,7 +112,7 @@ export function NavRail({ items, active, onNavigate, settingsButton }: NavRailPr
             style={{
               width: 84,
               padding: "10px 0",
-              borderRadius: 16,
+              borderRadius: themeRadius(16),
               gap: 4,
               background: isActive ? "var(--rb-nav-active-bg)" : "transparent",
               color: isActive ? "var(--rb-accent)" : "var(--rb-nav-inactive-ink)",

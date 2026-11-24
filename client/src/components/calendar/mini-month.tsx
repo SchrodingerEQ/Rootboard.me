@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getMonthCalendar, isSameDay, isToday } from "@/lib/date-utils";
+import { themeShadow } from "@/lib/theme-shape";
 
 interface MiniMonthProps {
   date: Date;
@@ -22,7 +23,7 @@ export function MiniMonth({ date, eventDays, onPrev, onNext, selectedDate, onSel
   const days = useMemo(() => getMonthCalendar(date), [date]);
 
   return (
-    <div className="bg-[var(--rb-surface)] rounded-[18px] p-4" style={{ boxShadow: '0 1px 3px var(--rb-shadow-card)' }}>
+    <div className="bg-[var(--rb-surface)] rounded-[calc(18px*var(--rb-radius-scale))] p-4" style={{ boxShadow: themeShadow(1, 3, "--rb-shadow-card") }}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-lg font-extrabold text-rb-ink">
           {date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}

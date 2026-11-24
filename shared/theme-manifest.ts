@@ -3,11 +3,15 @@ import { z } from "zod";
 /**
  * Theme engine version the app implements. A manifest with `engineVersion`
  * greater than this is rejected with NEWER_ENGINE_MESSAGE (same policy as
- * widgets' apiVersion). Bump when THEME_TOKEN_NAMES changes after first
- * release; slices 1 and 2 ship together at 1.
+ * widgets' apiVersion). Bump whenever the manifest gains a field.
+ *   1 — the 100 colour tokens (v1.6.0).
+ *   2 — optional `font` and `shape` blocks (docs/decisions/0026).
+ * Fields added after version 1 are optional; an absent one is filled from
+ * Default (the backfill rule, `resolveThemeStyle`), so a v1 manifest stays
+ * valid and looks as it did.
  * See docs/plans/theme-system/THEME-ENGINE-SPEC.md §2.
  */
-export const THEME_ENGINE_VERSION = 1;
+export const THEME_ENGINE_VERSION = 2;
 
 export const NEWER_ENGINE_MESSAGE = "built for a newer Rootboard";
 
@@ -175,13 +179,115 @@ const tokensShape = Object.fromEntries(THEME_TOKEN_NAMES.map((name) => [name, cs
 export const themeTokensSchema = z.object(tokensShape).strict();
 export type ThemeTokens = z.infer<typeof themeTokensSchema>;
 
+// --- Manifest v2: font and shape (docs/decisions/0026) ----------------------
+
+/** A font family name: letters, digits, spaces and hyphens only, so the
+ *  CSS value the engine builds from it can never carry anything but a name. */
+const FONT_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 -]{0,39}$/;
+/** A bundled woff2 under client/src/assets/fonts/, as `<folder>/<file>.woff2`. */
+const FONT_FILE_RE = /^[a-z0-9-]+\/[a-z0-9-]+\.woff2$/;
+
+/** CSS generic family keywords: written unquoted in the built stack. */
+const GENERIC_FONT_FAMILIES = new Set([
+  "serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui",
+  "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded", "math", "emoji",
+]);
+
+/**
+ * The app's body face. `family` must be declared by an `@font-face` in
+ * client/src/fonts.css and `files` names the woff2 files that declaration
+ * uses (a spec checks both for every built-in). Sizes and weights stay the
+ * app's: a theme picks the face, never the type scale. Nothing is fetched:
+ * a family the bundle does not declare simply falls through to `fallback`.
+ */
+export const themeFontSchema = z
+  .object({
+    family: z.string().regex(FONT_NAME_RE, { message: "font family must be letters, digits, spaces or hyphens" }),
+    fallback: z
+      .array(z.string().regex(FONT_NAME_RE, { message: "fallback font must be letters, digits, spaces or hyphens" }))
+      .max(8),
+    files: z
+      .array(z.string().regex(FONT_FILE_RE, { message: "font file must be <folder>/<name>.woff2" }))
+      .min(1)
+      .max(16),
+  })
+  .strict();
+export type ThemeFont = z.infer<typeof themeFontSchema>;
+
+/**
+ * Shape and depth. Both are multipliers on the app's own values, so a theme
+ * can go squarer or rounder, harder or softer, without touching layout or
+ * any touch-target size.
+ * - `radiusScale`: corner radii of cards, cells, panels, dialogs and fields
+ *   (0 = square corners, 1 = today, 2 = twice as round). Pills and circles
+ *   stay round.
+ * - `shadowSoftness`: blur of the card and cell shadows (0 = a crisp edge,
+ *   1 = today). The shadow colours themselves are the `--rb-shadow-*` tokens.
+ */
+export const themeShapeSchema = z
+  .object({
+    radiusScale: z.number().min(0).max(2),
+    shadowSoftness: z.number().min(0).max(3),
+  })
+  .strict();
+export type ThemeShape = z.infer<typeof themeShapeSchema>;
+
+/** Default's font: what client/src/index.css shipped before manifest v2. */
+export const DEFAULT_THEME_FONT: ThemeFont = {
+  family: "Nunito",
+  fallback: ["system-ui", "Segoe UI", "sans-serif"],
+  files: [
+    "nunito/nunito-latin.woff2",
+    "nunito/nunito-latin-ext.woff2",
+    "nunito/nunito-cyrillic.woff2",
+    "nunito/nunito-cyrillic-ext.woff2",
+    "nunito/nunito-vietnamese.woff2",
+  ],
+};
+
+/** Default's shape: today's radii and shadows exactly. */
+export const DEFAULT_THEME_SHAPE: ThemeShape = { radiusScale: 1, shadowSoftness: 1 };
+
+/**
+ * The non-colour custom properties a theme drives, declared in
+ * client/src/index.css `:root` with Default's values (a spec asserts it).
+ */
+export const THEME_STYLE_PROPERTY_NAMES = ["--rb-font-family", "--rb-radius-scale", "--rb-shadow-softness"] as const;
+export type ThemeStylePropertyName = (typeof THEME_STYLE_PROPERTY_NAMES)[number];
+
+/** The CSS `font-family` value for a font block: names quoted, generic keywords bare. */
+export function fontFamilyValue(font: ThemeFont): string {
+  return [font.family, ...font.fallback]
+    .map((name) => (GENERIC_FONT_FAMILIES.has(name) ? name : `'${name}'`))
+    .join(", ");
+}
+
 export const themeManifestSchema = z.object({
   engineVersion: z.number().int().positive(),
   id: themeIdSchema,
   name: z.string().min(1).max(40),
   tokens: themeTokensSchema,
+  /** v2, optional: absent = Default's font. */
+  font: themeFontSchema.optional(),
+  /** v2, optional: absent = Default's shape. */
+  shape: themeShapeSchema.optional(),
 });
 export type ThemeManifest = z.infer<typeof themeManifestSchema>;
+
+/**
+ * The backfill rule: every field newer than manifest v1 is optional, and an
+ * absent one takes Default's value. Returns the custom properties to set on
+ * `:root` alongside the colour tokens.
+ */
+export function resolveThemeStyle(manifest: ThemeManifest): Record<ThemeStylePropertyName, string> {
+  const font = manifest.font ?? DEFAULT_THEME_FONT;
+  const shape = manifest.shape ?? DEFAULT_THEME_SHAPE;
+  return {
+    "--rb-font-family": fontFamilyValue(font),
+    "--rb-radius-scale": String(shape.radiusScale),
+    "--rb-shadow-softness": String(shape.shadowSoftness),
+  };
+}
 
 export type ThemeValidation = { ok: true; manifest: ThemeManifest } | { ok: false; message: string };
 

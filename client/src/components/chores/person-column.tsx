@@ -3,6 +3,7 @@ import { Check, Plus } from "lucide-react";
 import { CHORE_CAP, type Person } from "@/lib/chores-state";
 import { personPaletteVars } from "@/lib/person-colors";
 import { ChoreCardStack } from "./chore-card-stack";
+import { themeRadius } from "@/lib/theme-shape";
 
 interface PersonColumnProps {
   person: Person;
@@ -31,7 +32,7 @@ export function PersonColumn({ person, onToggleChore, onAddChore }: PersonColumn
   return (
     <div
       className="flex-1 min-w-0 flex flex-col overflow-hidden"
-      style={{ background: pal.tint, borderRadius: 20, padding: "18px 16px 16px" }}
+      style={{ background: pal.tint, borderRadius: themeRadius(20), padding: "18px 16px 16px" }}
       data-testid={`chores-column-${person.id}`}
     >
       <div className="flex items-center gap-3" style={{ padding: "0 6px 16px" }}>
@@ -93,14 +94,14 @@ export function PersonColumn({ person, onToggleChore, onAddChore }: PersonColumn
               autoFocus
               placeholder="New chore…"
               className="flex-1 min-w-0 outline-none bg-rb-surface"
-              style={{ height: 54, border: "2px solid var(--rb-on-tint-border)", borderRadius: 14, padding: "0 16px", fontSize: 18, fontWeight: 600, color: "var(--rb-ink)" }}
+              style={{ height: 54, border: "2px solid var(--rb-on-tint-border)", borderRadius: themeRadius(14), padding: "0 16px", fontSize: 18, fontWeight: 600, color: "var(--rb-ink)" }}
               data-testid={`input-new-chore-${person.id}`}
             />
             <button
               type="button"
               onClick={confirmAdd}
               className="touch-button flex-shrink-0 flex items-center justify-center text-rb-on-color-ink"
-              style={{ width: 54, height: 54, border: "none", borderRadius: 14, background: pal.color }}
+              style={{ width: 54, height: 54, border: "none", borderRadius: themeRadius(14), background: pal.color }}
               data-testid={`button-confirm-chore-${person.id}`}
             >
               <Check size={22} strokeWidth={2.8} />
@@ -111,7 +112,7 @@ export function PersonColumn({ person, onToggleChore, onAddChore }: PersonColumn
             type="button"
             onClick={() => setIsAdding(true)}
             className="touch-button w-full flex items-center justify-center gap-2 opacity-65 hover:opacity-100 hover:bg-[var(--rb-on-tint-hover)]"
-            style={{ marginTop: 4, height: 50, border: "none", background: "transparent", borderRadius: 14, fontSize: 17, fontWeight: 800, color: pal.text }}
+            style={{ marginTop: 4, height: 50, border: "none", background: "transparent", borderRadius: themeRadius(14), fontSize: 17, fontWeight: 800, color: pal.text }}
             data-testid={`button-add-chore-${person.id}`}
           >
             <Plus size={18} strokeWidth={2.8} />

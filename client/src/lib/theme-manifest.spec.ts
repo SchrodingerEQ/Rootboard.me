@@ -1,11 +1,16 @@
 import { describe, expect, test } from "vitest";
 import {
+  DEFAULT_THEME_FONT,
+  DEFAULT_THEME_SHAPE,
   NEWER_ENGINE_MESSAGE,
   PERSON_ROLES,
   PERSON_SLOT_COUNT,
   THEME_ENGINE_VERSION,
+  THEME_STYLE_PROPERTY_NAMES,
   THEME_TOKEN_NAMES,
+  fontFamilyValue,
   personTokenName,
+  resolveThemeStyle,
   themeManifestSchema,
   validateThemeManifest,
 } from "@shared/theme-manifest";
@@ -97,5 +102,69 @@ describe("themeManifestSchema", () => {
     const result = validateThemeManifest(manifest());
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.manifest.id).toBe("test-theme");
+  });
+});
+
+describe("manifest v2: font and shape (docs/decisions/0026)", () => {
+  const font = { family: "Nunito", fallback: ["system-ui", "Segoe UI", "sans-serif"], files: ["nunito/nunito-latin.woff2"] };
+
+  test("the engine is at version 2", () => {
+    expect(THEME_ENGINE_VERSION).toBe(2);
+  });
+
+  test("a v1 manifest with neither block still validates", () => {
+    expect(validateThemeManifest(manifest()).ok).toBe(true);
+  });
+
+  test("accepts a font block and a shape block", () => {
+    const result = validateThemeManifest(manifest({ engineVersion: 2, font, shape: { radiusScale: 0.5, shadowSoftness: 2 } }));
+    expect(result.ok, result.ok ? "" : result.message).toBe(true);
+  });
+
+  test("rejects a font family or fallback that could carry CSS", () => {
+    for (const family of ["Nunito'; color: red", "Nunito, serif", "url(x)", ""]) {
+      expect(validateThemeManifest(manifest({ font: { ...font, family } })).ok, family).toBe(false);
+    }
+    expect(validateThemeManifest(manifest({ font: { ...font, fallback: ["serif;"] } })).ok).toBe(false);
+  });
+
+  test("rejects font files that are not bundled woff2 paths", () => {
+    for (const files of [[], ["../x.woff2"], ["nunito/x.ttf"], ["https://example.invalid/a.woff2"]]) {
+      expect(validateThemeManifest(manifest({ font: { ...font, files } })).ok, JSON.stringify(files)).toBe(false);
+    }
+  });
+
+  test("rejects a wrong type, out-of-range value or unknown key in shape", () => {
+    expect(validateThemeManifest(manifest({ shape: { radiusScale: "1", shadowSoftness: 1 } })).ok).toBe(false);
+    expect(validateThemeManifest(manifest({ shape: { radiusScale: -1, shadowSoftness: 1 } })).ok).toBe(false);
+    expect(validateThemeManifest(manifest({ shape: { radiusScale: 3, shadowSoftness: 1 } })).ok).toBe(false);
+    expect(validateThemeManifest(manifest({ shape: { radiusScale: 1 } })).ok).toBe(false);
+    expect(validateThemeManifest(manifest({ shape: { radiusScale: 1, shadowSoftness: 1, depth: 2 } })).ok).toBe(false);
+    expect(validateThemeManifest(manifest({ font: "Nunito" })).ok).toBe(false);
+  });
+});
+
+describe("resolveThemeStyle (the backfill rule)", () => {
+  test("an absent font or shape takes Default's values", () => {
+    expect(resolveThemeStyle(themeManifestSchema.parse(manifest()))).toEqual({
+      "--rb-font-family": fontFamilyValue(DEFAULT_THEME_FONT),
+      "--rb-radius-scale": String(DEFAULT_THEME_SHAPE.radiusScale),
+      "--rb-shadow-softness": String(DEFAULT_THEME_SHAPE.shadowSoftness),
+    });
+  });
+
+  test("a declared font and shape win", () => {
+    const parsed = themeManifestSchema.parse(
+      manifest({ font: { family: "Some Face", fallback: ["serif"], files: ["some/face.woff2"] }, shape: { radiusScale: 0.25, shadowSoftness: 0 } }),
+    );
+    expect(resolveThemeStyle(parsed)).toEqual({
+      "--rb-font-family": "'Some Face', serif",
+      "--rb-radius-scale": "0.25",
+      "--rb-shadow-softness": "0",
+    });
+  });
+
+  test("names THEME_STYLE_PROPERTY_NAMES exactly", () => {
+    expect(Object.keys(resolveThemeStyle(themeManifestSchema.parse(manifest()))).sort()).toEqual([...THEME_STYLE_PROPERTY_NAMES].sort());
   });
 });

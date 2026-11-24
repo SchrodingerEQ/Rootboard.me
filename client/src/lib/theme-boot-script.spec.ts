@@ -11,24 +11,35 @@ function bootScript(): string {
   return m[1];
 }
 
-function run(stored: string | null) {
+function runWithConsole(stored: string | null) {
   const setProperty = vi.fn();
   const localStorage = { getItem: vi.fn(() => stored) };
   const document = { documentElement: { style: { setProperty } } };
-  new Function("localStorage", "document", bootScript())(localStorage, document);
-  return setProperty;
+  const console = { info: vi.fn() };
+  new Function("localStorage", "document", "console", bootScript())(localStorage, document, console);
+  return { setProperty, info: console.info };
 }
+
+function run(stored: string | null) {
+  return runWithConsole(stored).setProperty;
+}
+
+const V2_STYLE = {
+  "--rb-font-family": "'Nunito', system-ui, 'Segoe UI', sans-serif",
+  "--rb-radius-scale": "0.5",
+  "--rb-shadow-softness": "2",
+};
 
 describe("client/index.html theme boot script", () => {
   test("applies cached --rb-* tokens with valid color values", () => {
-    const setProperty = run(JSON.stringify({ engineVersion: 1, id: "deep-space", tokens: { "--rb-canvas": "#0b1220", "--rb-shadow-card": "rgba(0, 0, 0, 0.4)" } }));
+    const setProperty = run(JSON.stringify({ engineVersion: 2, id: "deep-space", tokens: { "--rb-canvas": "#0b1220", "--rb-shadow-card": "rgba(0, 0, 0, 0.4)" }, style: {} }));
     expect(setProperty).toHaveBeenCalledWith("--rb-canvas", "#0b1220");
     expect(setProperty).toHaveBeenCalledWith("--rb-shadow-card", "rgba(0, 0, 0, 0.4)");
     expect(setProperty).toHaveBeenCalledTimes(2);
   });
 
   test("ignores non --rb- keys and non-color values", () => {
-    const setProperty = run(JSON.stringify({ engineVersion: 1, id: "x", tokens: {
+    const setProperty = run(JSON.stringify({ engineVersion: 2, id: "x", style: {}, tokens: {
       "--background": "#000000",
       "--rb-canvas": "url(javascript:alert(1))",
       "--rb-ink": "var(--rb-canvas)",
@@ -37,6 +48,31 @@ describe("client/index.html theme boot script", () => {
     } }));
     expect(setProperty).toHaveBeenCalledTimes(1);
     expect(setProperty).toHaveBeenCalledWith("--rb-ok", "#ffffff");
+  });
+
+  test("applies a v2 cache's font and shape properties", () => {
+    const { setProperty, info } = runWithConsole(JSON.stringify({ engineVersion: 2, id: "x", tokens: { "--rb-canvas": "#000000" }, style: V2_STYLE }));
+    for (const [name, value] of Object.entries(V2_STYLE)) expect(setProperty).toHaveBeenCalledWith(name, value);
+    expect(setProperty).toHaveBeenCalledTimes(4);
+    expect(info).not.toHaveBeenCalled();
+  });
+
+  test("ignores style values outside each property's grammar, and unknown style names", () => {
+    const setProperty = run(JSON.stringify({ engineVersion: 2, id: "x", tokens: {}, style: {
+      "--rb-font-family": "x; background: url(https://example.invalid)",
+      "--rb-radius-scale": "calc(1)",
+      "--rb-shadow-softness": 2,
+      "--rb-other": "1",
+    } }));
+    expect(setProperty).not.toHaveBeenCalled();
+  });
+
+  test("a v1 cache (written before manifest v2) repaints its colours and logs one line", () => {
+    const { setProperty, info } = runWithConsole(JSON.stringify({ engineVersion: 1, id: "deep-space", tokens: { "--rb-canvas": "#0b1220" } }));
+    expect(setProperty).toHaveBeenCalledTimes(1);
+    expect(setProperty).toHaveBeenCalledWith("--rb-canvas", "#0b1220");
+    expect(info).toHaveBeenCalledTimes(1);
+    expect(info.mock.calls[0][0]).toMatch(/predates theme manifest v2/);
   });
 
   test("does nothing and does not throw on missing or malformed cache", () => {

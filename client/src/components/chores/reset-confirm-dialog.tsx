@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { type Person } from "@/lib/chores-state";
 import { personPaletteVars } from "@/lib/person-colors";
+import { themeRadius } from "@/lib/theme-shape";
 
 interface ResetConfirmDialogProps {
   open: boolean;
@@ -36,7 +37,7 @@ export function ResetConfirmDialog({ open, onOpenChange, people, onConfirm }: Re
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent
-        style={{ width: 560, maxWidth: "90vw", borderRadius: 22, padding: "34px 38px" }}
+        style={{ width: 560, maxWidth: "90vw", borderRadius: themeRadius(22), padding: "34px 38px" }}
         data-testid="dialog-reset-chores"
       >
         <AlertDialogHeader>
@@ -67,7 +68,7 @@ export function ResetConfirmDialog({ open, onOpenChange, people, onConfirm }: Re
                   style={{
                     background: pal.tint,
                     border: "none",
-                    borderRadius: 14,
+                    borderRadius: themeRadius(14),
                     padding: "12px 16px",
                     minHeight: 64,
                     boxShadow: isSelected ? `inset 0 0 0 3px ${pal.color}` : "none",

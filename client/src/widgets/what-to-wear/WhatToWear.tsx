@@ -3,6 +3,7 @@ import type { ForecastStatus } from "./forecast";
 import type { Advice, Units, WindowSummary } from "./types";
 import { formatTemp } from "./units";
 import { ItemChip } from "./ItemChip";
+import { themeRadius } from "@/lib/theme-shape";
 
 export interface WhatToWearProps {
   loaded: boolean;
@@ -18,7 +19,7 @@ export interface WhatToWearProps {
 const card: CSSProperties = {
   background: "var(--rb-surface)",
   border: "1px solid var(--rb-grid-line)",
-  borderRadius: 24,
+  borderRadius: themeRadius(24),
   padding: 20,
   minHeight: 0,
   display: "flex",
