@@ -7,6 +7,8 @@ everywhere, no Node 20 path — see
 (`docs/briefs/2026-11-23-remote-work/WP-03-node-24.md`), PRs A and B;
 step 3 is dropped; steps 1, 4 and 6 are the founder's, on the
 first-day-back list in that folder's README.
+2026-11-24: step 2 merged (#49); step 5 moved the lock to 12.11.1 in
+WP-03 PR B.
 **Type:** Maintenance. No new feature; the goal is that kiosks keep
 updating and that the dependency upgrades waiting on the Pi's Node
 version can go ahead.
