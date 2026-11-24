@@ -4,7 +4,7 @@
 |---|---|
 | **Repo** | `SchrodingerEQ/Rootboard.me`, three PRs in sequence, plus the Winter Holiday assets onto the open #55 branch |
 | **Base** | latest `main` (with #57 merged), fresh clone, `npm ci` (npm 11) |
-| **Waits on** | nothing for PR A and PR B; PR C waits for the founder's image files |
+| **Waits on** | WP-05's #50 and #57, already in `main`; PR C also waits for the founder's image files |
 | **Unblocks** | #55 (Winter Holiday, held 2026-11-24 until it carries imagery); the theme feature counting as launchable |
 | **Network / secrets** | none. Every asset is a local file in the repo; no font or image is fetched at runtime (decision 0016 and the plan's local-fonts rule). |
 | **Deliverable** | PR A (fonts and shape tokens: manifest v2 part 1) safe zone; PR B (image slots and confetti shapes: manifest v2 part 2) safe zone; PR C (Winter Holiday assets on the #55 branch) **waits for the founder's look in the dev server before it merges**; the end-of-run report |
@@ -34,19 +34,23 @@ is complete enough to launch and Winter Holiday can ship with imagery.
 | **Image slots are separate and each optional:** main background (behind the content area of every view), header banner, sidebar, screensaver image, logo. A theme may supply any subset; an absent slot falls back to today's flat colour tokens | yes | founder 2026-11-24 ("make it so they are separate images if people want to load background images onto those as part of the contract") |
 | **Every planned theme element is required for the theme feature to launch:** image slots, confetti shapes, fonts, shape and depth tokens. "Required" means the contract supports them and at least one built-in theme uses each; Default keeps its current look and declares no images | yes | founder 2026-11-24 ("all of the elements that are planned really need to be in place in order for us to ship the theme feature") |
 | The founder generates the Winter Holiday images with an image generator from the slot table below; the agent does not author imagery | yes | founder 2026-11-24 |
-| Image budget is enforced by the contract, sized for the Pi: main background and screensaver at most 1.5 MB each; header and sidebar at most 300 KB each; logo at most 100 KB; confetti shape at most 4 KB | yes | this brief (founder-ratified by accepting it) |
+| Image budget is enforced by the contract, sized for the Pi: main background and screensaver at most 1.5 MB each; header and sidebar at most 300 KB each; logo at most 100 KB; confetti shape at most 4 KB | proposed | this brief; the founder ratifies the numbers by merging it, and may change them in PR B's review |
+| Confetti shapes are inline SVG path data validated by a strict grammar, not SVG files run through a sanitiser (the plan's "SVGs are sanitized" line); a path string cannot carry an element, attribute or URL | yes | this brief, for the same reason as the nav rail's `<img src>`-only rule |
 | Adding manifest fields bumps `THEME_ENGINE_VERSION` to 2 and gets a decision record | yes | `THEME-ENGINE-SPEC.md` §2 |
 
 ## The image slots (measured 2026-11-24 in the dev server at 1920×1080, device pixel ratio 1)
 
-| Slot | Region | Shown at (px) | Fit rule |
-|---|---|---|---|
-| `background` | the content column of every view, below the header (`client/src/components/app-shell.tsx`: the `flex-1 flex flex-col overflow-hidden min-w-0` column minus the header) | 1816 × 988 | cover, centre anchor; views keep drawing on top |
-| `header` | the view header bar (`<header>` in each view; 88 px in Calendar, 92 px in Chores and Dinner) | 1816 × 88–92 | cover, centre anchor |
-| `sidebar` | the nav rail (`client/src/components/nav-rail.tsx`, the `flex flex-col items-center flex-shrink-0` column) | 104 × 1080 | cover, centre anchor |
-| `screensaver` | the live overlay `client/src/components/screensaver/power-saving-overlay.tsx` (not `screensaver-overlay.tsx`, which is dead code; SPEC 3.6) | 1920 × 1080 | cover; replaces the two-colour gradient when present; the logo glow token still applies |
-| `logo` | the nav-rail logo (76 × 76 on screen) and the screensaver's floating logo, both `@assets/image_1753142842256.png` today | 76 × 76 displayed; supply 256 × 256 PNG with alpha | contain |
-| `confettiShapes` | the burst in `client/src/components/chores/confetti-burst.tsx` | 8–16 px particles | 3–5 SVG silhouettes, each a single `<path>`, filled with the theme's `--rb-confetti-1…5` in rotation; the particle physics does not change |
+| Slot | Region | Shown at (px) | Supply (px, device pixel ratio 1) | Fit rule |
+|---|---|---|---|---|
+| `background` | the content column of every view, below the header (`client/src/components/app-shell.tsx`: the `flex-1 flex flex-col overflow-hidden min-w-0` column minus the header) | 1816 × 988 | 1920 × 1080 (16:9; the app crops) | cover, centre anchor; views keep drawing on top |
+| `header` | the view header bar (`<header>` in `calendar-header.tsx` and `day-view.tsx`, 88 px; in `pages/chores.tsx` and `pages/dinner.tsx`, 92 px) | 1816 × 88–92 | 1920 × 128 band | cover, centre anchor |
+| `sidebar` | the nav rail (`client/src/components/nav-rail.tsx`, the `flex flex-col items-center flex-shrink-0` column) | 104 × 1080 | 128 × 1080 strip | cover, centre anchor |
+| `screensaver` | the live overlay `client/src/components/screensaver/power-saving-overlay.tsx` (not `screensaver-overlay.tsx`, which is dead code; SPEC 3.6) | 1920 × 1080 | 1920 × 1080 | cover; replaces the two-colour gradient when present; the logo glow token still applies. The plan's "selection from the app's existing motion presets" is moot: the live overlay has one motion (the floating logo), so no preset field is added |
+| `logo` | the nav-rail logo (76 × 76 on screen) and the screensaver's floating logo, both the whitelisted `attached_assets/image_1753142842256.png` today (imported as `@assets/…`) | 76 × 76 | 256 × 256 PNG with alpha | contain |
+| `confettiShapes` | the burst in `client/src/components/chores/confetti-burst.tsx` | 8–16 px particles | 3–5 path strings on a 24 × 24 viewBox | each a single `<path>`, filled with the theme's `--rb-confetti-1…5` in rotation; the particle physics does not change |
+
+Supply sizes are 1× because the Pi renders at device pixel ratio 1; a
+2× asset doubles decode cost for no visible gain on the kiosk.
 
 The generator parameters the founder uses to produce these (aspect to
 ask for, what is cropped, the tone rule) are reproduced in the theme
@@ -63,9 +67,10 @@ authoring notes PR B writes (step 11), so a future theme author has them.
 2. `docs/decisions/0009`, `0010`, `0016` (fonts are bundled woff2 in
    `client/src/assets/fonts/`, declared in `client/src/fonts.css`).
 3. `shared/theme-manifest.ts`; `client/src/themes/*` (Default is the
-   authoring reference); `client/src/lib/theme-engine.ts`;
-   `client/src/lib/theme-boot-script.ts` and `client/index.html`
-   (`#rb-theme-boot`); `client/src/components/nav-rail.tsx` (note its
+   authoring reference); `client/src/lib/theme-engine.ts`; the inline
+   boot script in `client/index.html` (`#rb-theme-boot`) and its test
+   `client/src/lib/theme-boot-script.spec.ts`;
+   `client/src/components/nav-rail.tsx` (note its
    `<img src>`-only rule for community icons: the same rule applies to
    every theme image); `client/src/components/chores/confetti-burst.tsx`
    (`runtimeConfettiColors`, the particle loop); `power-saving-overlay.tsx`.
@@ -92,10 +97,12 @@ authoring notes PR B writes (step 11), so a future theme author has them.
    working untouched. Write the backfill rule the spec's Phase 2 note asks
    for now, since this is the first field addition.
 2. **Engine and boot.** `applyTheme` sets the new tokens and the font
-   family on `:root`; the boot cache (`client/src/lib/theme-boot-script.ts`,
-   `client/index.html`) carries the new fields and ignores a v1 cache
-   shape cleanly (no light flash, no crash on the first boot after
-   update). Fonts: the theme names a family already declared by a bundled
+   family on `:root`; the inline boot script in `client/index.html`
+   (`#rb-theme-boot`) carries the new fields and, on a v1 cache shape,
+   applies the 100 colour tokens it has and logs one console line saying
+   the cache predates manifest v2 (kernel rule 6: no silent fallback); no
+   light flash, no crash on the first boot after update. Fonts: the
+   theme names a family already declared by a bundled
    `@font-face`; PR A ships the mechanism and lets Winter Holiday use a
    bundled family other than Nunito only if one is already in
    `client/src/assets/fonts/` (a new font file is a licence and size
@@ -139,10 +146,11 @@ authoring notes PR B writes (step 11), so a future theme author has them.
    stand-in background: one with opaque surfaces as today, one where the
    Winter Holiday manifest alone sets `--rb-surface` and the cell tokens
    to an `rgba()` with about 88 % alpha (the manifest colour schema
-   already accepts `rgba()`). If translucency is used, the contrast guard
-   must composite the surface over the canvas before measuring, and that
-   change lands in this PR so the guard stays honest. The founder picks
-   one in PR C; both must pass the guard.
+   already accepts `rgba()`). If the founder picks translucency, the
+   contrast guard must composite the surface over the canvas before
+   measuring; that is its own small PR between PR B and PR C (one PR,
+   one thing), so the guard stays honest before any translucent theme
+   lands. The founder picks one in PR C; both must pass the guard.
 8. **Confetti shapes.** Particles render the theme's shapes (one `<svg>`
    per particle with the shape's path, `fill` from the confetti colour
    tokens in rotation) when the theme declares them; Default and Deep
@@ -197,9 +205,12 @@ authoring notes PR B writes (step 11), so a future theme author has them.
 ## Verification without hardware
 
 - The three checks green for every PR.
-- PR A: `npm run dev`, switch themes; radius follows the theme; no light
-  flash on reload with a cache written by v1 (clear `localStorage` to
-  simulate the first boot after update, then reload twice).
+- PR A: `npm run dev`, switch themes; radius follows the theme; Default
+  and Deep Space look pixel-identical before and after the radius
+  replacement (screenshot both at 1920×1080 on `main` and on the branch
+  and compare); no light flash on reload with a cache written by v1
+  (clear `localStorage` to simulate the first boot after update, then
+  reload twice).
 - PR B: with a fixture image set on a throwaway local theme (not
   committed), walk Calendar day/week/month, Chores, Dinner, What to Wear,
   Settings, the on-screen keyboard and the screensaver; remove one slot

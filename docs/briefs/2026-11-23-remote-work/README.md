@@ -75,6 +75,9 @@ Settled. A brief cites them; an executing agent does not reopen them.
    the theme tokens, so it gains a warning on fallback, a test, and the
    stale docs are corrected.** Fonts, imagery, shape tokens, Spooky, the
    authoring guide and community install stay later slices.
+   *(2026-11-24: the colour-only scope and the deferral of fonts, imagery
+   and shape tokens are superseded by decision 9. Spooky, the authoring
+   guide and community install still wait.)*
 5. **Beta hardware: one unit built like the reference kiosk (Pi 5),
    one microSD.** The reference kiosk is what the install docs were
    written from. Brief 09's two-card rule (one ships, one stays as a
@@ -113,7 +116,8 @@ Settled. A brief cites them; an executing agent does not reopen them.
 | **WP-05** | [Theme system: audit, Winter Holiday, confetti colours](WP-05-theme-audit-winter-holiday-confetti.md) | nothing | safe zone; the Winter Holiday PR waits for the founder's look in the dev server | 3–5 h |
 | **WP-06** | [Theme system: imagery, confetti shapes, fonts, shape tokens](WP-06-theme-imagery.md) (added 2026-11-24, decision 9) | WP-05 merged (#50, #57); its PR C waits for the founder's image files | safe zone for PR A and PR B; PR C lands on the held #55 and waits for the founder's look | 7–11 h |
 
-All five are independent and may run in parallel sessions. Several edit
+WP-01 to WP-05 are independent and may run in parallel sessions; WP-06
+follows WP-05 (its PRs #50 and #57 are in `main`). Several edit
 `docs/SPEC.md` and `TASKS.md`: merge PRs one at a time, and the next
 branch merges `main` in (never a rebase of a pushed branch) and re-runs
 its checks before review, as `docs/plans/beta-launch/README.md` says.
