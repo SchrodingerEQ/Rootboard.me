@@ -1252,10 +1252,7 @@ export default function AppShell() {
         }
       />
 
-      {/* The content column paints the canvas colour and, under it, the
-          theme's main background image (decision 0026); views draw on top
-          with transparent roots so the image shows in margins and gaps. */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 bg-rb-canvas rb-image-background">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {renderableEntries.length === 0 ? (
           // IMPORTANT #1's belt: theoretically unreachable now (crashed and
           // uninstalled ids are excluded from renderableEntries, but the

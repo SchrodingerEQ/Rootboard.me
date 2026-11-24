@@ -236,7 +236,9 @@
   /* ===== Theme image slots (decision 0026) =====
      Each class layers its slot's image over the element's own background
      colour: cover, centre anchor, never repeated. Images are CSS url() of a
-     bundle path only (THEME-ASSETS.md). */
+     bundle path only (THEME-ASSETS.md). rb-image-background goes on each
+     view's root, next to its canvas fill, so a theme without images
+     renders exactly as before. */
   .rb-image-background,
   .rb-image-header,
   .rb-image-sidebar,

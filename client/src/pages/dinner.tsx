@@ -77,7 +77,7 @@ export default function DinnerPage({ onSleep, dinner }: DinnerPageProps) {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col rb-image-background" style={{ backgroundColor: "var(--rb-canvas)" }}>
       <header
         className="bg-rb-surface rb-image-header flex items-center justify-between"
         style={{ padding: "18px 28px", boxShadow: "0 1px 0 var(--rb-shadow-soft)" }}
