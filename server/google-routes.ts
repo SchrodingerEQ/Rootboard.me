@@ -64,7 +64,7 @@ export function registerGoogleRoutes(app: Express, deps: GoogleRoutesDeps): void
 
   // The socket peer must be this machine, and the body JSON with no
   // cross-site Sec-Fetch-Site, so a web page open in the kiosk's own browser
-  // cannot form-POST a sign-out (same checks as system-routes.ts).
+  // cannot form-POST a sign-out (isSameOriginJsonRequest, middleware/lanAuth.ts).
   const kioskPost = (req: Request, res: Response): boolean => {
     if (isLocalRequest(req) && isSameOriginJsonRequest(req)) return true;
     res.status(403).json({ message: KIOSK_ONLY_MESSAGE });
