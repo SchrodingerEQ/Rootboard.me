@@ -351,7 +351,7 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
   // own browser cannot form-POST an update or a rollback.
   app.post("/api/update/apply", async (req, res) => {
     if (!isLocalRequest(req) || !isSameOriginJsonRequest(req)) {
-      return res.status(403).json({ message: "Updates can only be applied from localhost" });
+      return res.status(403).json({ message: "Updates can only be started on the kiosk itself" });
     }
     try {
       res.json({ message: "Update started", status: "in-progress" });
@@ -366,7 +366,7 @@ export async function registerRoutes(app: Express, options: RegisterRoutesOption
 
   app.post("/api/update/rollback", async (req, res) => {
     if (!isLocalRequest(req) || !isSameOriginJsonRequest(req)) {
-      return res.status(403).json({ message: "Rollback can only be triggered from localhost" });
+      return res.status(403).json({ message: "Rollback can only be started on the kiosk itself" });
     }
     try {
       res.json({ message: "Rollback started", status: "in-progress" });
