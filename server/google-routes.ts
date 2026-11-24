@@ -24,6 +24,7 @@ import type { Express, Request, Response } from "express";
 import { KIOSK_APP_URL, OAuthClientNotConfiguredError, type CallbackResult, type GoogleOAuthService } from "./services/googleOAuth";
 import { MAX_CLIENT_FILE_BYTES } from "./services/googleOAuthClient";
 import type { GoogleAuthStatus } from "./services/googleCalendar";
+import { isSameOriginJsonRequest } from "./middleware/lanAuth";
 
 export interface GoogleRoutesDeps {
   oauth: Pick<GoogleOAuthService, "startSignIn" | "handleCallback" | "signOut">;
@@ -63,10 +64,9 @@ export function registerGoogleRoutes(app: Express, deps: GoogleRoutesDeps): void
 
   // The socket peer must be this machine, and the body JSON with no
   // cross-site Sec-Fetch-Site, so a web page open in the kiosk's own browser
-  // cannot form-POST a sign-out (same checks as system-routes.ts).
+  // cannot form-POST a sign-out (isSameOriginJsonRequest, middleware/lanAuth.ts).
   const kioskPost = (req: Request, res: Response): boolean => {
-    const site = req.get("Sec-Fetch-Site");
-    if (isLocalRequest(req) && req.is("application/json") && (!site || site === "same-origin" || site === "none")) return true;
+    if (isLocalRequest(req) && isSameOriginJsonRequest(req)) return true;
     res.status(403).json({ message: KIOSK_ONLY_MESSAGE });
     return false;
   };
@@ -90,8 +90,7 @@ export function registerGoogleRoutes(app: Express, deps: GoogleRoutesDeps): void
   // device. JSON only, and not from a cross-site page in the kiosk browser.
   app.put(GOOGLE_ROUTE_PATHS.client, (req, res) => {
     noStore(res);
-    const site = req.get("Sec-Fetch-Site");
-    if (!req.is("application/json") || (site && site !== "same-origin" && site !== "none")) {
+    if (!isSameOriginJsonRequest(req)) {
       return res.status(403).json({ message: "Send the client JSON as application/json" });
     }
     if (Number(req.get("content-length") ?? 0) > MAX_CLIENT_FILE_BYTES) {
