@@ -122,7 +122,7 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
 
   if (isLoading) {
     return (
-      <div className="h-full flex flex-col bg-[var(--rb-canvas)]">
+      <div className="h-full flex flex-col bg-[var(--rb-canvas)] rb-image-background">
         <div className="grid grid-cols-7 px-6 pt-3 pb-1">
           {WEEKDAYS.map(day => (
             <div key={day} className="text-center text-sm font-bold uppercase tracking-wide text-[var(--rb-muted)]">
@@ -146,7 +146,7 @@ export function MonthView({ currentDate, events, isLoading, onEventClick }: Mont
   }
 
   return (
-    <div className="h-full flex flex-col bg-[var(--rb-canvas)]">
+    <div className="h-full flex flex-col bg-[var(--rb-canvas)] rb-image-background">
       {/* Weekday header */}
       <div className="grid grid-cols-7 px-6 pt-3 pb-1">
         {WEEKDAYS.map(day => (

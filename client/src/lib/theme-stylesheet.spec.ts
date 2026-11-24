@@ -2,7 +2,7 @@
 import fs from "fs";
 import path from "path";
 import { describe, expect, test } from "vitest";
-import { THEME_STYLE_PROPERTY_NAMES, THEME_TOKEN_NAMES } from "@shared/theme-manifest";
+import { THEME_IMAGE_PROPERTY_NAMES, THEME_STYLE_PROPERTY_NAMES, THEME_TOKEN_NAMES } from "@shared/theme-manifest";
 import { parseRootDeclarations, resolveRootTokens } from "./theme-stylesheet";
 
 const css = fs.readFileSync(path.resolve(import.meta.dirname, "../index.css"), "utf-8");
@@ -18,9 +18,13 @@ const SHADCN_TOKENS = [
 describe("index.css :root vs THEME_TOKEN_NAMES", () => {
   const decls = parseRootDeclarations(css);
 
-  test("the --rb-* names declared in :root equal THEME_TOKEN_NAMES plus THEME_STYLE_PROPERTY_NAMES exactly", () => {
+  test("the --rb-* names declared in :root equal the colour tokens, style and image properties exactly", () => {
     const declared = Array.from(decls.keys()).filter((k) => k.startsWith("--rb-")).sort();
-    expect(declared).toEqual([...THEME_TOKEN_NAMES, ...THEME_STYLE_PROPERTY_NAMES].sort());
+    expect(declared).toEqual([...THEME_TOKEN_NAMES, ...THEME_STYLE_PROPERTY_NAMES, ...THEME_IMAGE_PROPERTY_NAMES].sort());
+  });
+
+  test("every image property defaults to none (an absent slot shows the flat colour)", () => {
+    for (const name of THEME_IMAGE_PROPERTY_NAMES) expect(decls.get(name), name).toBe("none");
   });
 
   test("every shadcn token is an alias of a --rb-* token", () => {

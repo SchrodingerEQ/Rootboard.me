@@ -1,6 +1,6 @@
 import { LayoutGrid, Puzzle, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
-import logoImage from "@assets/image_1753142842256.png";
+import { useThemeLogo } from "@/hooks/use-theme-logo";
 import { themeRadius } from "@/lib/theme-shape";
 
 /** A nav-rail glyph is either a lucide component (built-ins) or a
@@ -84,12 +84,13 @@ interface NavRailProps {
 }
 
 export function NavRail({ items, active, onNavigate, settingsButton }: NavRailProps) {
+  const logoImage = useThemeLogo();
   return (
     <div
-      className="flex flex-col items-center flex-shrink-0"
+      className="flex flex-col items-center flex-shrink-0 rb-image-sidebar"
       style={{
         width: 104,
-        background: "var(--rb-surface)",
+        backgroundColor: "var(--rb-surface)",
         boxShadow: "1px 0 0 var(--rb-shadow-soft)",
         padding: "18px 0 20px",
         gap: 8,

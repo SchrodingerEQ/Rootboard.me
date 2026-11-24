@@ -362,7 +362,10 @@ One small release, per the project's release workflow:
 - ~~Theme fonts.~~ Built 2026-11-24 (manifest v2 part 1, decision
   0026): an optional `font` block naming a bundled family. (The app's
   own fonts were already local: decision 0016.)
-- Logo, screensaver and background imagery; confetti shapes.
+- ~~Logo, screensaver and background imagery; confetti shapes.~~ Built
+  2026-11-24 (manifest v2 part 2, decision 0026): five optional image
+  slots and up to five confetti path strings. See
+  [THEME-ASSETS.md](THEME-ASSETS.md).
 - ~~Confetti colors (`CONFETTI_COLORS` const still shadows the
   `--rb-confetti-*` tokens).~~ Stale (noted 2026-11-24): the burst has
   read the theme's `--rb-confetti-*` tokens at burst time since the

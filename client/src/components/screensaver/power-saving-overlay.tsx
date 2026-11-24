@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import logoImage from "@assets/image_1753142842256.png";
+import { useThemeLogo } from "@/hooks/use-theme-logo";
 import {
   POWER_SAVING_HINT_OPACITY,
   POWER_SAVING_LOGO_OPACITY,
@@ -15,6 +15,7 @@ interface PowerSavingOverlayProps {
 }
 
 export function PowerSavingOverlay({ isActive, onWake, pageDimmed = false }: PowerSavingOverlayProps) {
+  const logoImage = useThemeLogo();
   useEffect(() => {
     if (!isActive) return;
 
@@ -38,7 +39,7 @@ export function PowerSavingOverlay({ isActive, onWake, pageDimmed = false }: Pow
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-rb-power-saving-bg flex items-center justify-center"
+      className="fixed inset-0 z-[100] bg-rb-power-saving-bg rb-image-screensaver flex items-center justify-center"
       style={{ filter: powerSavingOverlayFilter(pageDimmed) }}
       data-testid="power-saving-overlay"
     >

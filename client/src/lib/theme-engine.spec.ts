@@ -1,9 +1,16 @@
 import { describe, expect, test, vi } from "vitest";
-import { THEME_STYLE_PROPERTY_NAMES, THEME_TOKEN_NAMES, type ThemeManifest } from "@shared/theme-manifest";
+import {
+  THEME_IMAGE_PROPERTY_NAMES,
+  THEME_STYLE_PROPERTY_NAMES,
+  THEME_TOKEN_NAMES,
+  type ThemeManifest,
+} from "@shared/theme-manifest";
 import {
   DEFAULT_THEME_ID,
   THEME_CACHE_KEY,
   applyTheme,
+  getActiveConfettiShapes,
+  getActiveThemeLogo,
   getActiveThemeTokens,
   loadBuiltinThemes,
   readThemeCache,
@@ -56,7 +63,9 @@ describe("applyTheme", () => {
     const listener = vi.fn();
     const unsubscribe = subscribeTheme(listener);
     applyTheme(manifest("deep-space", "#0b1220"), { style: { setProperty } }, storage);
-    expect(setProperty).toHaveBeenCalledTimes(THEME_TOKEN_NAMES.length + THEME_STYLE_PROPERTY_NAMES.length);
+    expect(setProperty).toHaveBeenCalledTimes(
+      THEME_TOKEN_NAMES.length + THEME_STYLE_PROPERTY_NAMES.length + THEME_IMAGE_PROPERTY_NAMES.length,
+    );
     expect(setProperty).toHaveBeenCalledWith("--rb-canvas", "#0b1220");
     // A v1 manifest (no font, no shape) is backfilled from Default.
     expect(setProperty).toHaveBeenCalledWith("--rb-radius-scale", "1");
@@ -150,5 +159,41 @@ describe("theme cache", () => {
     expect(readThemeCache(memoryStorage({ [THEME_CACHE_KEY]: "{not json" }))).toBeNull();
     expect(readThemeCache(memoryStorage({ [THEME_CACHE_KEY]: JSON.stringify({ id: 1 }) }))).toBeNull();
     expect(readThemeCache(null)).toBeNull();
+  });
+});
+
+describe("theme images and confetti shapes", () => {
+  test("a theme without images clears every region image and falls back to the app logo and plain confetti", () => {
+    const setProperty = vi.fn();
+    applyTheme(manifest("plain"), { style: { setProperty } }, null);
+    for (const name of THEME_IMAGE_PROPERTY_NAMES) expect(setProperty).toHaveBeenCalledWith(name, "none");
+    expect(getActiveThemeLogo()).toBeNull();
+    expect(getActiveConfettiShapes()).toEqual([]);
+  });
+
+  test("a theme's slots reach the root, and its logo and shapes are readable; switching away clears them", () => {
+    const setProperty = vi.fn();
+    const pictured: ThemeManifest = {
+      ...manifest("pictured"),
+      engineVersion: 2,
+      images: { background: "/assets/bg.jpg", logo: "/assets/logo.png" },
+      confettiShapes: ["M0 0H24V24H0Z"],
+    };
+    applyTheme(pictured, { style: { setProperty } }, null);
+    expect(setProperty).toHaveBeenCalledWith("--rb-image-background", 'url("/assets/bg.jpg")');
+    expect(setProperty).toHaveBeenCalledWith("--rb-image-header", "none");
+    expect(getActiveThemeLogo()).toBe("/assets/logo.png");
+    expect(getActiveConfettiShapes()).toEqual(["M0 0H24V24H0Z"]);
+
+    applyTheme(manifest("plain"), { style: { setProperty } }, null);
+    expect(setProperty).toHaveBeenLastCalledWith("--rb-image-screensaver", "none");
+    expect(getActiveThemeLogo()).toBeNull();
+    expect(getActiveConfettiShapes()).toEqual([]);
+  });
+
+  test("images and shapes are not written to the boot cache (colour shows until the theme loads)", () => {
+    const storage = memoryStorage();
+    applyTheme({ ...manifest("pictured"), images: { background: "/assets/bg.jpg" } }, { style: { setProperty: vi.fn() } }, storage);
+    expect(storage.data[THEME_CACHE_KEY]).not.toContain("bg.jpg");
   });
 });

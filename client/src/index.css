@@ -37,6 +37,14 @@
   --rb-radius-scale: 1;
   --rb-shadow-softness: 1;
 
+  /* Theme image slots (manifest v2, decision 0026): url("…") of a bundled
+     image, or none. Each region keeps its colour token underneath, so an
+     absent or slow image shows today's flat colour. */
+  --rb-image-background: none;
+  --rb-image-header: none;
+  --rb-image-sidebar: none;
+  --rb-image-screensaver: none;
+
   /* Rootboard palette */
   --rb-canvas: #f7f6f3;
   --rb-surface: #ffffff;
@@ -224,6 +232,25 @@
     background: var(--rb-surface);
     box-shadow: 0 1px calc(2px * var(--rb-shadow-softness)) var(--rb-shadow-soft);
   }
+
+  /* ===== Theme image slots (decision 0026) =====
+     Each class layers its slot's image over the element's own background
+     colour: cover, centre anchor, never repeated. Images are CSS url() of a
+     bundle path only (THEME-ASSETS.md). rb-image-background goes on each
+     view's root, next to its canvas fill, so a theme without images
+     renders exactly as before. */
+  .rb-image-background,
+  .rb-image-header,
+  .rb-image-sidebar,
+  .rb-image-screensaver {
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  .rb-image-background { background-image: var(--rb-image-background); }
+  .rb-image-header { background-image: var(--rb-image-header); }
+  .rb-image-sidebar { background-image: var(--rb-image-sidebar); }
+  .rb-image-screensaver { background-image: var(--rb-image-screensaver); }
 
   /* ===== Screensaver / energy-saving =====
      Brightness and the idle dim are a black overlay (#rb-dim-overlay,

@@ -52,9 +52,9 @@ export default function ChoresPage({ onSleep, chores }: ChoresPageProps) {
   });
 
   return (
-    <div className="h-full flex flex-col" style={{ background: "var(--rb-canvas)" }}>
+    <div className="h-full flex flex-col rb-image-background" style={{ backgroundColor: "var(--rb-canvas)" }}>
       <header
-        className="bg-rb-surface px-7 py-3 flex items-center justify-between"
+        className="bg-rb-surface rb-image-header px-7 py-3 flex items-center justify-between"
         style={{ boxShadow: "0 1px 0 var(--rb-shadow-soft)" }}
       >
         <div className="flex items-baseline gap-3">

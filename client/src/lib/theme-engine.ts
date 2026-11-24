@@ -1,6 +1,7 @@
 import {
   THEME_ENGINE_VERSION,
   THEME_TOKEN_NAMES,
+  resolveThemeImageProperties,
   resolveThemeStyle,
   validateThemeManifest,
   type ThemeManifest,
@@ -178,6 +179,23 @@ export function getActiveThemeTokens(): Record<string, string> | null {
   return activeTokens;
 }
 
+// --- Active theme assets (logo, confetti shapes) -------------------------
+
+// Set by applyTheme. Not seeded from the boot cache: images and shapes are
+// not cached, so before the first apply the app shows its own logo and
+// plain confetti, with the cached colours underneath.
+let activeManifest: ThemeManifest | null = null;
+
+/** The applied theme's logo (a bundle path or data URI), or null for the app's own. */
+export function getActiveThemeLogo(): string | null {
+  return activeManifest?.images?.logo ?? null;
+}
+
+/** The applied theme's confetti shapes (SVG path data), or [] for squares and circles. */
+export function getActiveConfettiShapes(): readonly string[] {
+  return activeManifest?.confettiShapes ?? [];
+}
+
 // --- Apply ----------------------------------------------------------------
 
 function defaultRoot(): ThemeRoot {
@@ -185,8 +203,9 @@ function defaultRoot(): ThemeRoot {
 }
 
 /**
- * Writes every colour token and the v2 font/shape properties (Default's
- * where the manifest has none) onto the root element, then notifies
+ * Writes every colour token, the v2 font/shape properties (Default's where
+ * the manifest has none) and the region image properties (`none` where the
+ * manifest has none) onto the root element, then notifies
  * subscribers, then mirrors the manifest into the boot cache. Default goes
  * through this same path (no special-casing) so the path is exercised on
  * every boot.
@@ -202,7 +221,11 @@ export function applyTheme(
   for (const [name, value] of Object.entries(resolveThemeStyle(manifest))) {
     root.style.setProperty(name, value);
   }
+  for (const [name, value] of Object.entries(resolveThemeImageProperties(manifest))) {
+    root.style.setProperty(name, value);
+  }
   activeTokens = { ...manifest.tokens };
+  activeManifest = manifest;
   notify();
   writeThemeCache(manifest, storage);
 }
