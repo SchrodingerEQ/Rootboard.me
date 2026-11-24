@@ -14,6 +14,7 @@
 import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import type { NetworkService } from "./services/networkService";
+import { isSameOriginJsonRequest } from "./middleware/lanAuth";
 import { isPlausibleWifiPassword } from "@shared/system-network";
 
 export const SYSTEM_ROUTE_PATHS = {
@@ -49,15 +50,11 @@ export function registerSystemRoutes(
   deps: { service: NetworkService; isLocalRequest: (req: Request) => boolean },
 ): void {
   const { service, isLocalRequest } = deps;
-  // Two checks. The socket peer must be this machine. And the body must be
-  // JSON: any web page the kiosk's own browser happens to open could
-  // otherwise auto-submit an HTML form (urlencoded, no CORS preflight) to
-  // localhost and re-point the Wi-Fi. A cross-site fetch with a JSON body
-  // needs a preflight this server never grants, and Sec-Fetch-Site, where
-  // the browser sends it, rules out the rest.
+  // Two checks. The socket peer must be this machine. And the request must
+  // be same-origin JSON, so a web page the kiosk's own browser happens to
+  // open cannot form-POST to localhost and re-point the Wi-Fi.
   const localOnly = (req: Request, res: Response): boolean => {
-    const site = req.get("Sec-Fetch-Site");
-    if (isLocalRequest(req) && req.is("application/json") && (!site || site === "same-origin" || site === "none")) return true;
+    if (isLocalRequest(req) && isSameOriginJsonRequest(req)) return true;
     res.status(403).json({ message: "System settings can only be changed on the kiosk itself" });
     return false;
   };

@@ -122,10 +122,11 @@ even with a token.
   `apply`/`rollback`, to issuing/cancelling a pairing code, and to the four
   `/api/system/*` Wi-Fi/time-zone mutations (`server/system-routes.ts`)
   and the three Google sign-in mutations (`server/google-routes.ts`) —
-  a paired LAN device cannot change them either. The system mutations also
-  require a JSON body and refuse `Sec-Fetch-Site: cross-site`/`same-site`,
+  a paired LAN device cannot change them either. Update/rollback and the
+  system mutations also require a JSON body and refuse `Sec-Fetch-Site: cross-site`/`same-site`,
   so a web page open in the kiosk's own browser cannot form-POST to
-  localhost (update/rollback do not have this yet); so do Google start and
+  localhost (one shared check, `isSameOriginJsonRequest` in
+  `server/middleware/lanAuth.ts`); so do Google start and
   sign out. The Google callback cannot (it *is* Google's cross-site
   redirect) and relies on the single-use `state` instead. The same check is what
   lets the kiosk skip the LAN token (2.7). No `trust proxy` is configured,
@@ -861,8 +862,10 @@ System → **Diagnostics** (`system-diagnostics.tsx`, rows from
 it opens and shows it as label/value rows, with a warning mark on the
 ones that probably need fixing (supervisor off, update failed, Google not
 set up or not connected, sync error, weather failing, no network,
-internet unreachable, 3+ self-heal reconnects in 24 h, under 1 GB or 5 %
-disk free, widget errors, config warnings). **Copy** puts the same
+internet unreachable, 3+ self-heal reconnects in 24 h, a **Disk** row
+("<used> of <total> used (<n>%), <free> free") warned when over 80 % used or under
+1 GB or 5 % free; root-reserved blocks count as used, so it reads a few
+points above `df`), widget errors, config warnings). **Copy** puts the same
 redacted JSON on the clipboard; **Show details** shows the log tail;
 refresh re-fetches.
 
@@ -957,8 +960,9 @@ sites:
 - `lib/color-utils.ts` — the `rgb()`/`rgba()` string builders and the
   `hexToRgb` parse-failure fallback.
 - `components/chores/confetti-burst.tsx` `CONFETTI_COLORS` — the pinned
-  default; at runtime, callers read `--rb-confetti-1` through `-5` and
-  fall back to this constant only if a variable is missing.
+  default; at burst time `runtimeConfettiColors()` reads `--rb-confetti-1`
+  through `-5` and falls back to this constant only if a variable is
+  missing, logging the first missing token once (console warning).
 - `components/calendar/settings-menu.tsx`'s duplicate calendar-color
   fallback block — a known bug (tracked in TASKS.md), not a styling
   exception; it duplicates `lib/calendar-meta.ts` and should eventually
@@ -1027,6 +1031,10 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   white on surfaces with relative luminance < 0.2 (via `useSurfaceHex`),
   byte-identical on light surfaces; Deep Space event-chip contrast went
   from ~1.2–2.0:1 to ≥ 6.1:1.
+- **Confetti:** the chore check-off burst takes the active theme's
+  `--rb-confetti-1…5` at burst time (`runtimeConfettiColors` in
+  `components/chores/confetti-burst.tsx`), so a theme switch shows on
+  the next burst; tested in `confetti-colors.spec.ts`.
 - **Widgets:** `host.theme.subscribe` now fires on every switch.
 
 ### 3.10 What to Wear (`client/src/widgets/what-to-wear/`)
@@ -1110,8 +1118,8 @@ layout picker.
 
 ### 3.11 First-run wizard (`client/src/pages/setup-wizard.tsx`)
 
-Beta-launch brief 03, decision 0018. Session 1 shipped; the Google step
-is a placeholder until brief 02 (session 2).
+Beta-launch brief 03, decision 0018. Session 1 built the wizard; session
+2 (WP-02) made the Google step embed brief 02's connect panel.
 
 - **Steps:** Welcome → Network → Time zone → Google → Weather → Done.
   Every step but Network has "Skip this step"; Welcome and Done only move
@@ -1171,12 +1179,50 @@ is a placeholder until brief 02 (session 2).
   there; if the browser's own zone still differs it adds "The dashboard
   clock follows after the next restart." (Firefox keeps the zone it
   started with).
-- **Google step (placeholder):** connected/not connected from
-  `/api/calendar/auth-status`; "How to connect" opens `AuthDialog`,
-  which since brief 02 has the Connect Google tab (3.7). Signing in from
-  there reloads the app on return, so the wizard starts again in boot
-  mode; brief 03 session 2 replaces the step with the embedded
-  `GoogleConnectPanel`.
+- **Google step** (brief 03 decision 7): reads the shell's own
+  `/api/calendar/auth-status` query (no second query), through
+  `googleStepState` (`lib/setup-wizard.ts`):
+  - `connected` — authenticated in **either** mode (Google sign-in, or a
+    service-account key file): "Connected to Google as <email>." (sign-in)
+    or "Google Calendar is connected.", and **Continue**.
+  - `needs-client` / `connect` — not authenticated: `GoogleConnectPanel`
+    (large) with the status's `oauthClient` and, in sign-in mode, the
+    `error` as its reason. With no usable client file
+    (`data/google-oauth-client.json` missing or invalid) the panel says
+    so instead of offering a button that can't work, and its last
+    sentence points at the button below rather than the dialog's
+    Advanced tab.
+  - Under the panel, **Set up manually (self-hosting)** (founder
+    2026-11-24). It opens a warning, not the instructions: one paragraph
+    (significant manual setup on a computer — a Google Cloud project, a
+    service-account key file copied onto the unit; the steps are in the
+    install guide's service-account appendix and in the unit's own setup
+    guide, which the next screen links to; choosing it leaves the wizard —
+    on a first run adding that the wizard opens again at the next start,
+    from Settings only that it closes: `manualSetupLeaveSentence`). **Back to
+    setup** closes the warning and changes nothing. **Continue with manual
+    setup** closes the wizard **without** writing `setup.completedAt` and
+    opens `AuthDialog` on its **Advanced: service account** tab over the
+    dashboard (`manualSetupOutcome`). The calendar widget's own connect
+    dialog, which opens by itself on an unauthenticated kiosk, is held back
+    while those steps show (`lib/service-account-steps.ts`, a store both
+    React roots read) and opens as usual once they are closed. Not
+    writing the record is intended: after a first run the wizard opens
+    again on the next boot (from Settings the record already exists, so it
+    does not); a self-hoster who has put the key file in place by then finds
+    the Google step connected and taps through to Done, which writes it.
+  - **Skip this step** stays.
+- **Return from Google's page** (`startingStep`, `lib/setup-wizard.ts`):
+  the callback reloads the app at `/?google=connected` (or
+  `?google=failed&reason=`). With no completion record that load is
+  `first-run`, so the wizard **resumes at the Google step** instead of
+  Welcome: connected and Continue, or — after a failure, whose sentence
+  shows as a toast — the panel again. Wi-Fi and time zone are not redone.
+  The shell keeps the search string as the page loaded (it then takes the
+  parameters off the URL) and passes it in. A sign-in started from a
+  `rerun` (Settings → Run setup again) is not resumed: the reload lands on
+  the dashboard, where the calendar picker opens and Settings → Calendars
+  shows the account. Every other mode starts at its first step.
 - **Weather step:** embeds `WeatherLocationSettings` (3.7) with the
   shell's `saveWeatherLocation`; Continue appears once a place is saved.
 - **Managed outside Rootboard:** when nmcli/NetworkManager or
@@ -1241,6 +1287,12 @@ complete(100). The release **source tarball** is downloaded over HTTPS to
 `.update-temp/`, extracted with `tar`, and applied to the app root. If
 install or build fails, the updater sets an error status, auto-runs
 `rollback()`, and rethrows.
+
+`POST /api/update/apply` and `/api/update/rollback` start only for a
+same-origin JSON request from the kiosk itself (2.2), so a web page open
+in the kiosk's browser cannot form-POST either; the app's update prompt sends
+an empty JSON body. A call by hand on the kiosk needs one too:
+`curl -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:5000/api/update/apply`.
 
 - `PRESERVE_PATHS` (never touched by apply/backup/rollback): `.env`,
   `data`, `node_modules`, `.update-backups`, `.update-temp`,

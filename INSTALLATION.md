@@ -275,9 +275,9 @@ Once the app is running (step 9), you connect Google on the touchscreen, the way
 
 ### 7.2 Sign in on the kiosk
 
-1. The **Google Calendar Not Connected** dialog opens at first boot (it is also the setup wizard's Google step, and Settings → **Calendars** has the same button). Tap **Connect Google**.
+1. At first boot the [setup wizard](#first-boot-the-setup-wizard)'s **Google Calendar** step has the **Connect Google** button (so do the **Google Calendar Not Connected** dialog and Settings → **Calendars**). Tap **Connect Google**.
 2. Google's sign-in page opens in the kiosk browser. Choose the Google account whose calendars the kiosk should show and allow access to its calendars and events.
-3. Google sends the browser back to the dashboard and a **Choose which calendars to show** list opens. Calendars other people share with that account are in it too, so there is no separate sharing step. Switch off any you don't want and tap **Done**; events appear within one sync.
+3. Google sends the browser back: to the wizard's Google step, showing the account (tap **Continue** and finish the wizard), or to the dashboard when you signed in from there. A **Choose which calendars to show** list opens on the dashboard. Calendars other people share with that account are in it too, so there is no separate sharing step. Switch off any you don't want and tap **Done**; events appear within one sync.
 
 What happens to the sign-in:
 
@@ -353,7 +353,7 @@ The first time the app starts on a unit (no `setup` record in `data/config/dashb
 1. **Welcome.**
 2. **Network** — lists nearby Wi-Fi networks (strongest first); tap one, type the password, **Connect**. A hidden network has a "Network not listed? Type its name" option. With Ethernet plugged in, or a saved network that comes up on its own, the step confirms in one line and moves on. Network cannot be skipped.
 3. **Time zone** — a searchable list, starting on the zone the browser reports, with the current time shown so a wrong zone is obvious.
-4. **Google Calendar** — **How to connect** opens the connect dialog: **Connect Google** signs in on the kiosk ([step 7](#7-connect-your-google-account-on-the-kiosk)); **Advanced: service account** shows the key-file steps ([Appendix A](#appendix-a--advanced-google-service-account)). Skip it if Google is already connected. (Signing in from here reloads the app; the wizard's own Google step comes in a later release.)
+4. **Google Calendar** — tap **Connect Google** to sign in on the kiosk ([step 7](#7-connect-your-google-account-on-the-kiosk)). Google's page sends you back to this step, now showing the account, and **Continue** moves on. If Google is already connected (a sign-in or a service-account key file), the step says so. Self-hosting with a service account instead? **Set up manually (self-hosting)** first warns that this takes significant setup on a computer; **Continue with manual setup** leaves the wizard and shows the key-file steps ([Appendix A](#appendix-a--advanced-google-service-account)). The wizard opens again at the next start, so once the key file is in place, tap through it to **Done**. Or **Skip this step**.
 5. **Weather** — the same postal-code lookup as **Settings → System → Weather**.
 6. **Done** — the dashboard appears.
 

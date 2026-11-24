@@ -1,6 +1,6 @@
 # Theme Engine — Phase 1, Slice 1 (design spec)
 
-**Status:** released in v1.6.0 (2026-09-25).
+**Status:** released in v1.6.0 (2026-09-25). Current state and remaining slices, read 2026-11-24: [STATUS-2026-11.md](STATUS-2026-11.md).
 **Date:** 2026-09-22
 **Parent plan:** [THEME-SYSTEM-PLAN.md](THEME-SYSTEM-PLAN.md) (Phase 1).
 **Decision record:** [0009](../../decisions/0009-theme-engine-persistence-and-token-layer.md).
@@ -361,8 +361,11 @@ One small release, per the project's release workflow:
   Google Fonts loads were replaced by bundled woff2 files in
   `client/src/fonts.css` — decision 0016.)
 - Logo, screensaver and background imagery; confetti shapes.
-- Confetti colors (`CONFETTI_COLORS` const still shadows the
-  `--rb-confetti-*` tokens).
+- ~~Confetti colors (`CONFETTI_COLORS` const still shadows the
+  `--rb-confetti-*` tokens).~~ Stale (noted 2026-11-24): the burst has
+  read the theme's `--rb-confetti-*` tokens at burst time since the
+  Phase 0 sweep; `CONFETTI_COLORS` is only the fallback, which now warns
+  once and is tested. See [STATUS-2026-11.md](STATUS-2026-11.md).
 - Calendar `FALLBACK_COLORS` (`client/src/lib/calendar-meta.ts`) stays a
   pinned literal list, not a theme token — the server hashes
   calendar/event ids to the same list, so it can't move without breaking
