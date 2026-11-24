@@ -24,6 +24,14 @@ on the project up to date (see
   [Node runtime upgrade](plans/node-runtime-upgrade/BRIEF.md)). A brief
   is written so
   a fresh session can execute it without the planning conversation.
+- **[briefs/](briefs/)** — dated brief sets for a bounded stretch of
+  work, one folder per set (for example
+  [2026-11-23-remote-work](briefs/2026-11-23-remote-work/README.md): the
+  work that runs with no kiosk at hand). Each set has a README with the
+  order, dated decisions and a founder checklist, plus one `WP-NN` file
+  per work package, written to be handed to a fresh session as its whole
+  prompt. Plans describe an initiative; a brief set schedules the pieces
+  of one or more plans for a given week.
 
 ## Decision record format
 
