@@ -152,15 +152,20 @@ held at 1×.
 
 ## Surfaces over a background
 
-Month cells, cards and panels are opaque, so the main background shows
-only in margins and gaps. A theme may make its own surfaces translucent
-by setting `--rb-surface` and the cell tokens (`--rb-cell-weekend-bg`,
-`--rb-cell-inactive-bg`) to `rgba()` with about 88 % alpha; the manifest
-colour grammar already accepts it. The contrast guard
-(`themes/contrast.spec.ts`, `people-contrast.spec.ts`) composites a
-translucent surface or cell token over `--rb-canvas` before measuring
-(WP-07 PR A), so a built-in theme may ship translucent surfaces as long
-as the composited result passes the same floors.
+Default and Deep Space keep opaque month cells, cards and panels, so
+their background (none today) would show only in margins and gaps. A
+theme may make its surfaces translucent by setting `--rb-surface`,
+`--rb-surface-sunken`, the cell tokens (`--rb-cell-weekend-bg`,
+`--rb-cell-inactive-bg`) and the eight `--rb-person-N-tint` tokens to
+`rgba()`; the manifest colour grammar already accepts it. Winter Holiday
+uses 0.8 alpha on all of them (founder choice 2026-11-27 after comparing
+10, 15, 20 and 30 % in the dev server): 20 % of the picture shows
+through cards, cells, panels and the Chores person columns. Both guards
+(`themes/contrast.spec.ts`, `people-contrast.spec.ts`) composite a
+translucent surface, cell or tint over `--rb-canvas` before measuring
+(WP-07 PR A; the tint rule since #55), so a built-in theme may ship
+translucent surfaces as long as the composited result passes the same
+floors. `--rb-person-N-color` and `-text` stay opaque hex.
 
 ## Cost on the Pi
 

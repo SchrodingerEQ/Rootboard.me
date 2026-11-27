@@ -1085,6 +1085,11 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   logo (`client/src/themes/winter-holiday/`), snowflake, sparkle and berry confetti shapes, and a
   text backing that fades the canvas colour from 80 % to clear behind the
   header bars and the rail, with the canvas at 60 % behind the vote strip.
+  Its surfaces, cell tokens and the eight person-column tints are
+  `rgba()` at 0.8 alpha (founder choice 2026-11-27 after comparing 10,
+  15, 20 and 30 %), so cards, cells, panels and the Chores columns let
+  20 % of the picture through; both contrast guards composite such
+  colours over the canvas before measuring.
   `default.ts` is the copyable authoring reference.
 - **Persistence:** `data/config/dashboard.json` `theme` (optional,
   lenient — a malformed value becomes undefined, never invalidating the
