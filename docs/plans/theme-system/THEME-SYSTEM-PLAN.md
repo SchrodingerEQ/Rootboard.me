@@ -26,6 +26,7 @@
 > decision 5), and built-in themes are bundled TypeScript modules (not a served
 > `/themes` folder). Slice 1 is colors only; fonts, assets, confetti shapes,
 > person palettes, Spooky and Winter Holiday follow in later slices.
+> (Winter Holiday shipped to `main` on 2026-11-27, #55; Spooky still waits.)
 
 ---
 
