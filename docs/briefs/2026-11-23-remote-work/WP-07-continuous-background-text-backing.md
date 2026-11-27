@@ -53,7 +53,7 @@ backing?: {
 type Backing =
   | { kind: "none" }
   | { kind: "solid"; color: CssColor }                       // rgba() gives semi-transparent
-  | { kind: "gradient"; from: CssColor; to: CssColor; direction: "down" | "up" | "right" | "left" };
+  | { kind: "gradient"; from: CssColor; to: CssColor; direction: "down" | "right" };  // a bar fades down, a rail fades right; add more only when a theme needs one
 ```
 
 - `CssColor` is the existing colour grammar (`#rrggbb`, `#rrggbbaa`,
@@ -68,11 +68,29 @@ type Backing =
 - Engine version goes to **3**; the backfill rule from 0026 applies (a
   v2 manifest validates and gets the defaults). Decision record
   `docs/decisions/0027-theme-manifest-v3-continuous-background.md`.
-- Rendering is one CSS custom property per region (`--rb-backing-header`,
-  `--rb-backing-rail`, `--rb-backing-vote-strip`) holding a full
-  `background` value the engine builds from the block (a colour, or a
-  `linear-gradient(...)`), applied with `background: var(...)`. The engine
-  builds the string from validated parts; the manifest never carries it.
+- Rendering is two CSS custom properties per region: a colour layer
+  (`--rb-backing-header-color`, and so on) and an image layer
+  (`--rb-backing-header-image`, `none` or a `linear-gradient(...)`),
+  built by the engine from validated parts; the manifest never carries a
+  CSS string. Each region applies them as **separate longhands**, never
+  the `background` shorthand, because the shorthand resets
+  `background-image`, and the `header` and `sidebar` slot images share
+  that property: the region's `background-image` is the two-layer list
+  `var(--rb-image-<slot>), var(--rb-backing-<region>-image)` with the
+  slot image on top, the gradient under it, and the colour under both.
+  `:root` declares every backing property with the no-image default so a
+  theme without images, and the first paint before the engine runs,
+  resolve to today's values.
+- The 70 % alpha default is the engine converting the theme's `--rb-canvas`
+  (hex or rgb) to an `rgba()`; `color-utils.ts` already parses hex.
+- The header bars also carry `boxShadow: var(--rb-shadow-soft)` today;
+  that stays as it is for every theme, since it is not part of backing.
+- Cards, month cells and panels are **not** backing regions in this
+  brief: they stay opaque unless a theme sets their tokens to `rgba()`,
+  which the guard now composites. A gradient on cards is a later slice if
+  ever wanted. The Dinner vote strip is included because its slots are
+  transparent already and the 2026-11-27 look showed a label lost over a
+  bright patch of art.
 
 ## Measured regions (2026-11-24 dev server, 1920×1080, device pixel ratio 1)
 
@@ -97,9 +115,12 @@ type Backing =
    the three header bars (`client/src/components/calendar/calendar-header.tsx:108`,
    `client/src/pages/chores.tsx:57`, `client/src/pages/dinner.tsx:82`);
    the view roots carrying `rb-image-background` (`day-view.tsx`,
-   `week-view.tsx`, `month-view.tsx`, `chores.tsx:55`, `dinner.tsx:80`).
+   `week-view.tsx`, `month-view.tsx`, `chores.tsx:55`, `dinner.tsx:80`,
+   and the What to Wear widget root, `client/src/widgets/what-to-wear/WhatToWear.tsx:133`,
+   which must lose the class too or it paints a second copy of the image).
 3. `client/src/themes/contrast.spec.ts` and `people-contrast.spec.ts`
-   (the pairs and floors), `theme-assets.spec.ts`, `theme-boot-script.spec.ts`.
+   (the pairs and floors), `theme-assets.spec.ts`, and
+   `client/src/lib/theme-boot-script.spec.ts`.
 4. The WP-06 hand-over note and #64's description (its screenshot method
    for the pixel-identical check against `main`).
 5. `CLAUDE.md` security review; `CODING-STANDARDS.md`.
@@ -113,9 +134,10 @@ type Backing =
    colour under it, so one image covers 1920 × 1080 once. The view roots
    keep their canvas fill only when no background image is set (a
    transparent root otherwise), so a theme without images renders as
-   before. Header bars and the rail lose their opaque `bg-rb-surface`
-   fill in favour of `background: var(--rb-backing-*)`, whose default
-   with no image is exactly that surface colour.
+   before. The three header bars lose their `bg-rb-surface` class and the
+   rail its inline `backgroundColor: var(--rb-surface)` style
+   (`nav-rail.tsx` line 93) in favour of `background: var(--rb-backing-*)`,
+   whose default with no image is exactly that surface colour.
 2. **Header and sidebar slots become overlays.** `rb-image-header` and
    `rb-image-sidebar` stay on their elements and paint above the backing,
    so a theme that sets them gets distinct art there and a theme that
@@ -153,14 +175,18 @@ type Backing =
 
 ### PR B — Winter Holiday on the new image (onto #55; waits for the founder)
 
-9. Check out `claude/wp-05-winter-holiday` from a new local branch name
-   (it is checked out in another worktree on this laptop), merge `main`
-   in. Replace the three images with the founder's one full-screen image
+9. Check out `claude/wp-05-winter-holiday` under a new local branch
+   name (another worktree may hold the branch itself), merge `main` in. Replace the three images with the founder's one full-screen image
    as `background.jpg` (cover 1920 × 1080, metadata stripped, under the
    3 MB cap); delete `header.jpg` and `sidebar.jpg` and their manifest
-   entries. Keep the confetti shapes from the 2026-11-27 local commit
-   (`e76e6a5` on the scratch branch `wp06-pr-c-images`, which also holds
-   the cropping steps in its message; take the shapes, not the images).
+   entries. Declare these three confetti shapes (24 × 24 viewBox; a six-point
+   snowflake, a four-point sparkle, a round berry):
+
+   ```text
+   M12 2 L15 7.5 L21 7.5 L18 12 L21 16.5 L15 16.5 L12 22 L9 16.5 L3 16.5 L6 12 L3 7.5 L9 7.5 Z
+   M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z
+   M12 4 A8 8 0 1 1 11.99 4 Z
+   ```
 10. Set `backing`: header and rail as a gradient from the canvas colour
     at about 80 % alpha down to transparent (so the title sits on a calm
     band that fades into the picture), vote strip `solid` canvas at 60 %.
