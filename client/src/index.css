@@ -38,8 +38,10 @@
   --rb-shadow-softness: 1;
 
   /* Theme image slots (manifest v2, decision 0026): url("…") of a bundled
-     image, or none. Each region keeps its colour token underneath, so an
-     absent or slow image shows today's flat colour. */
+     image, or none. The background sits over the canvas colour on the app
+     shell; the header and sidebar images sit over their region's text
+     backing (decision 0027). An absent or slow image shows the colour
+     underneath. */
   --rb-image-background: none;
   --rb-image-header: none;
   --rb-image-sidebar: none;

@@ -1,7 +1,9 @@
 # 0026 — Theme manifest v2: additive, optional fields filled from Default
 Date: 2026-11-24
 Status: accepted (built under `docs/briefs/2026-11-23-remote-work/WP-06-theme-imagery.md`;
-the launch set itself is founder decision 9 in that folder's README)
+the launch set itself is founder decision 9 in that folder's README).
+Where the background image is drawn, and what sits under the header and
+sidebar images, is superseded by decision 0027 (manifest v3, 2026-11-27).
 
 ## Decision
 
