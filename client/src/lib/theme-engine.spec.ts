@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from "vitest";
 import {
   THEME_IMAGE_PROPERTY_NAMES,
+  THEME_LAYER_PROPERTY_NAMES,
   THEME_STYLE_PROPERTY_NAMES,
   THEME_TOKEN_NAMES,
   type ThemeManifest,
@@ -64,7 +65,10 @@ describe("applyTheme", () => {
     const unsubscribe = subscribeTheme(listener);
     applyTheme(manifest("deep-space", "#0b1220"), { style: { setProperty } }, storage);
     expect(setProperty).toHaveBeenCalledTimes(
-      THEME_TOKEN_NAMES.length + THEME_STYLE_PROPERTY_NAMES.length + THEME_IMAGE_PROPERTY_NAMES.length,
+      THEME_TOKEN_NAMES.length +
+        THEME_STYLE_PROPERTY_NAMES.length +
+        THEME_IMAGE_PROPERTY_NAMES.length +
+        THEME_LAYER_PROPERTY_NAMES.length,
     );
     expect(setProperty).toHaveBeenCalledWith("--rb-canvas", "#0b1220");
     // A v1 manifest (no font, no shape) is backfilled from Default.
@@ -123,9 +127,18 @@ describe("theme cache", () => {
     writeThemeCache(manifest("deep-space", "#0b1220"), storage);
     const cache = readThemeCache(storage);
     expect(cache?.id).toBe("deep-space");
-    expect(cache?.engineVersion).toBe(2);
+    expect(cache?.engineVersion).toBe(3);
     expect(cache?.tokens["--rb-ink"]).toBe("#0b1220");
     expect(cache?.style?.["--rb-shadow-softness"]).toBe("1");
+    expect(cache?.layers?.["--rb-backing-header-color"]).toBe("#0b1220");
+    expect(cache?.layers?.["--rb-view-fill"]).toBe("#0b1220");
+  });
+
+  test("a v2 cache (no layers) still reads", () => {
+    const v2 = JSON.stringify({ engineVersion: 2, id: "x", tokens: { "--rb-ink": "#e6edf7" }, style: { "--rb-radius-scale": "1" } });
+    const cache = readThemeCache(memoryStorage({ [THEME_CACHE_KEY]: v2 }));
+    expect(cache?.style?.["--rb-radius-scale"]).toBe("1");
+    expect(cache?.layers).toBeUndefined();
   });
 
   test("a theme's own shape and font reach the root and the cache", () => {
@@ -186,7 +199,8 @@ describe("theme images and confetti shapes", () => {
     expect(getActiveConfettiShapes()).toEqual(["M0 0H24V24H0Z"]);
 
     applyTheme(manifest("plain"), { style: { setProperty } }, null);
-    expect(setProperty).toHaveBeenLastCalledWith("--rb-image-screensaver", "none");
+    expect(setProperty).toHaveBeenCalledWith("--rb-image-background", "none");
+    expect(setProperty).toHaveBeenLastCalledWith("--rb-view-fill", "#123456");
     expect(getActiveThemeLogo()).toBeNull();
     expect(getActiveConfettiShapes()).toEqual([]);
   });
@@ -195,5 +209,63 @@ describe("theme images and confetti shapes", () => {
     const storage = memoryStorage();
     applyTheme({ ...manifest("pictured"), images: { background: "/assets/bg.jpg" } }, { style: { setProperty: vi.fn() } }, storage);
     expect(storage.data[THEME_CACHE_KEY]).not.toContain("bg.jpg");
+  });
+});
+
+describe("text backing and the shell background (manifest v3, decision 0027)", () => {
+  const pictured = (backing?: ThemeManifest["backing"]): ThemeManifest => ({
+    ...manifest("pictured", "#f7f6f3"),
+    engineVersion: 3,
+    images: { background: "/assets/bg.jpg" },
+    ...(backing ? { backing } : {}),
+  });
+  function applied(m: ThemeManifest): Record<string, string> {
+    const out: Record<string, string> = {};
+    applyTheme(m, { style: { setProperty: (n, v) => { out[n] = v; } } }, null);
+    return out;
+  }
+
+  test("no background image: bars are the surface token, the vote strip bare, the views filled", () => {
+    const props = applied(manifest("plain", "#abcdef"));
+    expect(props["--rb-backing-header-color"]).toBe("#abcdef");
+    expect(props["--rb-backing-header-image"]).toBe("none");
+    expect(props["--rb-backing-rail-color"]).toBe("#abcdef");
+    expect(props["--rb-backing-vote-strip-color"]).toBe("transparent");
+    expect(props["--rb-view-fill"]).toBe("#abcdef");
+  });
+
+  test("a background image and no backing: bars at the canvas colour, 70 %; views transparent", () => {
+    const props = applied(pictured());
+    expect(props["--rb-backing-header-color"]).toBe("rgba(247, 246, 243, 0.7)");
+    expect(props["--rb-backing-rail-color"]).toBe("rgba(247, 246, 243, 0.7)");
+    expect(props["--rb-backing-vote-strip-color"]).toBe("transparent");
+    expect(props["--rb-backing-vote-strip-image"]).toBe("none");
+    expect(props["--rb-view-fill"]).toBe("transparent");
+  });
+
+  test("each backing kind builds its two layers", () => {
+    const props = applied(
+      pictured({
+        header: { kind: "gradient", from: "rgba(10, 20, 30, 0.8)", to: "rgba(10, 20, 30, 0)", direction: "down" },
+        rail: { kind: "gradient", from: "#000000cc", to: "#00000000", direction: "right" },
+        voteStrip: { kind: "solid", color: "rgba(255, 255, 255, 0.6)" },
+      }),
+    );
+    expect(props["--rb-backing-header-color"]).toBe("transparent");
+    expect(props["--rb-backing-header-image"]).toBe("linear-gradient(to bottom, rgba(10, 20, 30, 0.8), rgba(10, 20, 30, 0))");
+    expect(props["--rb-backing-rail-image"]).toBe("linear-gradient(to right, #000000cc, #00000000)");
+    expect(props["--rb-backing-vote-strip-color"]).toBe("rgba(255, 255, 255, 0.6)");
+    expect(props["--rb-backing-vote-strip-image"]).toBe("none");
+
+    const none = applied(pictured({ header: { kind: "none" } }));
+    expect(none["--rb-backing-header-color"]).toBe("transparent");
+    expect(none["--rb-backing-header-image"]).toBe("none");
+  });
+
+  test("the cache carries the layers, so the boot script can repaint them", () => {
+    const storage = memoryStorage();
+    applyTheme(pictured({ voteStrip: { kind: "none" } }), { style: { setProperty: vi.fn() } }, storage);
+    const cached = JSON.parse(storage.data[THEME_CACHE_KEY]);
+    expect(Object.keys(cached.layers).sort()).toEqual([...THEME_LAYER_PROPERTY_NAMES].sort());
   });
 });

@@ -105,7 +105,7 @@ export function CalendarHeader({
   );
 
   return (
-    <header className="bg-rb-surface rb-image-header px-7 py-3 flex items-center justify-between">
+    <header className="rb-image-header px-7 py-3 flex items-center justify-between">
       {/* Left: nav + title + today */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1">

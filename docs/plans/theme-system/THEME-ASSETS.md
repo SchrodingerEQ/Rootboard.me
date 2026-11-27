@@ -1,9 +1,12 @@
 # Theme assets: image slots, confetti shapes, budget
 
 Reference for anyone making a theme's images and confetti shapes.
-Contract: `shared/theme-manifest.ts` (manifest v2, decision 0026). Written
-2026-11-24 with WP-06 PR B; the sizes were measured that day in the dev
-server at 1920×1080, device pixel ratio 1.
+Contract: `shared/theme-manifest.ts` (manifest v2, decision 0026; v3,
+decision 0027). Written 2026-11-24 with WP-06 PR B; the sizes were
+measured that day in the dev server at 1920×1080, device pixel ratio 1.
+Updated 2026-11-27 with WP-07 PR A: the `background` slot paints the whole
+viewer, the `header` and `sidebar` slots are overlays, and the backing
+behind text over the picture is a theme choice (see "Text backing").
 
 ## The slots
 
@@ -14,9 +17,9 @@ once its images land.
 
 | Slot | Region | Shown at (px) | Supply (px) | Fit | Colour underneath |
 |---|---|---|---|---|---|
-| `background` | each view's own area: the calendar views below their header; Chores, Dinner and What to Wear behind their whole page (their header bar covers the top) | 1816 × 988 (calendar) | 1920 × 1080 | cover, centre | `--rb-canvas` |
-| `header` | the view header bar (calendar, Chores, Dinner) | 1816 × 88–92 | 1920 × 128 | cover, centre | `--rb-surface` |
-| `sidebar` | the nav rail | 104 × 1080 | 128 × 1080 | cover, centre | `--rb-surface` |
+| `background` | the whole viewer, under everything: one image under the nav rail, the header bars and every view | 1920 × 1080 | 1920 × 1080 | cover, centre | `--rb-canvas` |
+| `header` | optional overlay on the view header bar (calendar, Chores, Dinner), drawn above the header's text backing | 1816 × 88–92 | 1920 × 128 | cover, centre | the header's backing, then the background image |
+| `sidebar` | optional overlay on the nav rail, drawn above the rail's text backing | 104 × 1080 | 128 × 1080 | cover, centre | the rail's backing, then the background image |
 | `screensaver` | the power-saving overlay, full screen | 1920 × 1080 | 1920 × 1080 | cover, centre | `--rb-power-saving-bg` |
 | `logo` | the nav-rail logo and the screensaver's logo | 76 × 76 (rail) | 256 × 256 | contain | none (transparent PNG/WebP) |
 | `confettiShapes` | the chore check-off burst | 7–13 px particles | 1–5 path strings on a 24 × 24 viewBox | each a single `<path>` | filled with `--rb-confetti-1…5` in rotation |
@@ -27,7 +30,56 @@ loads a moment later (the app's own logo shows until then).
 
 Content always draws on top at full opacity. Cards, cells and panels keep
 their own colours, so a background shows in the margins and gaps around
-them (see "Surfaces over a background" below).
+them (see "Surfaces over a background" below). A theme that wants one
+continuous picture sets `background` only; `header` and `sidebar` are for
+an author who wants distinct art in those regions, and a theme may set
+any subset.
+
+## Text backing
+
+Three regions carry text over the picture: the view header bar (calendar,
+Chores, Dinner; on the calendar it covers the title row and the calendar
+filters row below it), the nav rail, and Dinner's "Vote on upcoming
+dinners" strip (its label and its row of slots). For each, the manifest's optional `backing`
+block (manifest v3) chooses what sits behind the text:
+
+| Kind | Manifest | Renders |
+|---|---|---|
+| none | `{ kind: "none" }` | transparent: the picture shows through |
+| solid | `{ kind: "solid", color }` | one colour; `rgba()` or `#rrggbbaa` makes it semi-transparent |
+| gradient | `{ kind: "gradient", from, to, direction }` | two stops; `direction` is `down` (a bar) or `right` (the rail) |
+
+```ts
+backing: {
+  header: { kind: "gradient", from: "rgba(247, 246, 243, 0.8)", to: "rgba(247, 246, 243, 0)", direction: "down" },
+  rail: { kind: "solid", color: "rgba(247, 246, 243, 0.7)" },
+  voteStrip: { kind: "solid", color: "rgba(247, 246, 243, 0.6)" },
+},
+```
+
+Colours use the manifest colour grammar only (`#rrggbb`, `#rrggbbaa`,
+`rgb()`, `rgba()`); never `url()`, `var()` or a CSS string. The engine
+builds the CSS.
+
+Defaults, when a region is left out:
+
+| Theme | header, rail | voteStrip |
+|---|---|---|
+| no `background` image | `solid` at `--rb-surface` (today's look) | `none` |
+| a `background` image | `solid` at `--rb-canvas`, 70 % alpha | `none` |
+
+The header bars keep their soft shadow whatever the backing. The contrast
+guard measures `--rb-ink` over each region's backing composited over
+`--rb-canvas`, at both stops of a gradient.
+
+Measured regions (2026-11-24 dev server, 1920 × 1080, device pixel ratio 1):
+
+| Region | Box | Note for image authors |
+|---|---|---|
+| whole viewer (the `background` slot) | 1920 × 1080 | one 16:9 image, cover, centre |
+| nav rail | x 0–104, full height | logo at the top (76 × 76 at y 18), three icons below, the Settings gear at the bottom |
+| header bar | x 104–1920, y 0–88 (calendar) or 0–92 (Chores, Dinner) | title at the left, buttons at the right |
+| content area | x 104–1920, y 88–1080 | cards and grids are opaque unless the theme makes them translucent |
 
 Supply sizes are 1×: the kiosk's 21.5-inch 1920 × 1080 panel is expected to
 report a device pixel ratio of 1 (a kiosk check confirms it). A 2× image
@@ -83,6 +135,10 @@ held at 1×.
 
 - **Background and screensaver:** ask for 16:9 landscape at the largest
   size offered; scale to 1920 × 1080.
+- **Full-screen safe area (background):** the top 92 px band and the left
+  104 px column carry the title, buttons and nav icons. Keep them calm
+  (low detail, even tone) so the text backing can stay light; put the
+  interest in the content area.
 - **Header:** ask for 3:1 and crop a centre band to 1920 × 128 (15:1).
   Keep the interest in the middle third: the band is cropped further on
   narrower views.
@@ -100,14 +156,16 @@ Month cells, cards and panels are opaque, so the main background shows
 only in margins and gaps. A theme may make its own surfaces translucent
 by setting `--rb-surface` and the cell tokens (`--rb-cell-weekend-bg`,
 `--rb-cell-inactive-bg`) to `rgba()` with about 88 % alpha; the manifest
-colour grammar already accepts it. **Before any built-in theme ships
-translucent surfaces, the contrast guard (`themes/contrast.spec.ts`) must
-composite the surface over the canvas before measuring** (WP-06 step 7);
-until then, built-in themes keep opaque surfaces.
+colour grammar already accepts it. The contrast guard
+(`themes/contrast.spec.ts`, `people-contrast.spec.ts`) composites a
+translucent surface or cell token over `--rb-canvas` before measuring
+(WP-07 PR A), so a built-in theme may ship translucent surfaces as long
+as the composited result passes the same floors.
 
 ## Cost on the Pi
 
-Each region image is drawn once by the browser and left alone: no
+A theme that sets `background` only decodes one full-screen image (about
+8 MB) for the whole viewer. Each region image is drawn once by the browser and left alone: no
 animation, no per-frame work. The confetti burst builds its 14 particle
 elements once per check-off and only changes their transform and
 opacity while they fly. Expected to be fine on a Pi 4 at the budget

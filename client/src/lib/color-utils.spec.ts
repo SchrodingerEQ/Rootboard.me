@@ -130,6 +130,12 @@ describe("eventTextColor", () => {
 });
 
 describe("compositeOver", () => {
+  test("blends #rrggbbaa and treats transparent as the background (theme contrast guard)", () => {
+    expect(compositeOver("#ffffff80", "#000000")).toBe("#808080");
+    expect(compositeOver("#000000ff", "#ffffff")).toBe("#000000");
+    expect(compositeOver("transparent", "#0b1220")).toBe("#0b1220");
+  });
+
   test("blends a translucent rgba() over an opaque hex background", () => {
     expect(compositeOver("rgba(255, 255, 255, 0.6)", "#fdf0db")).toBe("#fef9f1");
     expect(compositeOver("rgba(255, 255, 255, 0.1)", "#0b2e1a")).toBe("#234331");

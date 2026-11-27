@@ -8,7 +8,10 @@ import type { ThemeManifest } from "@shared/theme-manifest";
  * missing one), so starting from a complete copy is the intended workflow.
  * Plain literals only — no var(), no helpers — so the file stays copyable.
  * `font` and `shape` (manifest v2) are optional: leave either out and the
- * theme gets Default's values below.
+ * theme gets Default's values below. Default sets no `images` and no
+ * `backing` (manifest v3, THEME-ASSETS.md "Text backing"): a theme that adds
+ * a background image gets header and rail backing at its canvas colour,
+ * 70 % alpha, unless it sets `backing` itself.
  *
  * Contrast: new themes must meet WCAG AA (4.5:1) on the pairs listed in
  * client/src/themes/contrast.spec.ts; Default is grandfathered at its

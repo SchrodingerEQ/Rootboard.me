@@ -1,3 +1,5 @@
+import { parseCssColor } from "@shared/theme-manifest";
+
 // Warm family-display color helpers.
 // Calendars/events arrive with arbitrary hex colors (from Google or the
 // generated palette in calendar-filters), so we derive a soft tint and a
@@ -133,8 +135,6 @@ export function deltaE76(hexA: string, hexB: string): number {
 // --- rgba compositing (theme token resolution) -----------------------------
 
 const HEX6_RE = /^#[0-9a-f]{6}$/i;
-// Mirrors RGB_COLOR_RE in shared/theme-manifest.ts's cssColorSchema.
-const RGBA_RE = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(0|1|0?\.\d+)\s*)?\)$/i;
 
 function toHexByte(n: number): string {
   const clamped = Math.max(0, Math.min(255, Math.round(n)));
@@ -142,11 +142,12 @@ function toHexByte(n: number): string {
 }
 
 /**
- * Composites an `rgb()`/`rgba()`/`#rrggbb` foreground color over an opaque
- * `#rrggbb` background, returning a lowercase `#rrggbb`. Accepts the same
- * rgb/rgba grammar as `cssColorSchema` in `shared/theme-manifest.ts`; an
- * opaque `#rrggbb` foreground is returned lowercased as-is. Throws on any
- * other format.
+ * Composites an `rgb()`/`rgba()`/`#rrggbb`/`#rrggbbaa` foreground color over
+ * an opaque `#rrggbb` background, returning a lowercase `#rrggbb`. Accepts
+ * the same grammar as `cssColorSchema` in `shared/theme-manifest.ts`, plus
+ * `transparent` (the background itself); an opaque `#rrggbb` foreground is
+ * returned lowercased as-is. Throws on any other format, including an
+ * upper-case `RGBA(`, which the manifest grammar never produces.
  */
 export function compositeOver(rgba: string, bgHex: string): string {
   const v = (rgba || "").trim();
@@ -154,16 +155,13 @@ export function compositeOver(rgba: string, bgHex: string): string {
   if (HEX6_RE.test(v)) {
     return v.toLowerCase();
   }
-
-  const m = RGBA_RE.exec(v);
-  if (!m) {
+  // One parser for the manifest colour grammar (shared/theme-manifest.ts).
+  const fg = v === "transparent" ? { r: 0, g: 0, b: 0, a: 0 } : parseCssColor(v);
+  if (!fg) {
     throw new Error(`compositeOver: unsupported color format: ${rgba}`);
   }
 
-  const fgR = Number(m[1]);
-  const fgG = Number(m[2]);
-  const fgB = Number(m[3]);
-  const alpha = m[4] !== undefined ? Number(m[4]) : 1;
+  const { r: fgR, g: fgG, b: fgB, a: alpha } = fg;
 
   const { r: bgR, g: bgG, b: bgB } = hexToRgb(bgHex);
 
