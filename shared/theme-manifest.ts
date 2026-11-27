@@ -462,7 +462,8 @@ export interface RgbaColor {
 }
 
 /** Parses `#rrggbb`, `#rrggbbaa`, `rgb()` or `rgba()`; null for anything
- *  else (the schema never lets anything else through). */
+ *  else (the schema never lets anything else through). An `rgb()` channel
+ *  above 255 is clamped, as CSS does (the grammar allows three digits). */
 export function parseCssColor(value: string): RgbaColor | null {
   if (HEX_COLOR_RE.test(value)) {
     const h = value.slice(1);
@@ -471,8 +472,8 @@ export function parseCssColor(value: string): RgbaColor | null {
   }
   if (RGB_COLOR_RE.test(value)) {
     const parts = value.slice(value.indexOf("(") + 1, -1).split(",").map((p) => Number(p.trim()));
-    if (parts.slice(0, 3).some((c) => c > 255)) return null;
-    return { r: parts[0], g: parts[1], b: parts[2], a: parts.length === 4 ? parts[3] : 1 };
+    const channel = (i: number) => Math.min(255, parts[i]);
+    return { r: channel(0), g: channel(1), b: channel(2), a: parts.length === 4 ? parts[3] : 1 };
   }
   return null;
 }

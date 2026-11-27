@@ -146,7 +146,8 @@ function toHexByte(n: number): string {
  * an opaque `#rrggbb` background, returning a lowercase `#rrggbb`. Accepts
  * the same grammar as `cssColorSchema` in `shared/theme-manifest.ts`, plus
  * `transparent` (the background itself); an opaque `#rrggbb` foreground is
- * returned lowercased as-is. Throws on any other format.
+ * returned lowercased as-is. Throws on any other format, including an
+ * upper-case `RGBA(`, which the manifest grammar never produces.
  */
 export function compositeOver(rgba: string, bgHex: string): string {
   const v = (rgba || "").trim();
