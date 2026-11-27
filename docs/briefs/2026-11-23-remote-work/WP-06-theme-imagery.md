@@ -1,5 +1,10 @@
 # WP-06 — Theme system: imagery, confetti shapes, fonts and shape tokens (the launch set)
 
+> **2026-11-27:** PR A (#63) and PR B (#64) merged. PR C is superseded by
+> [WP-07](WP-07-continuous-background-text-backing.md) PR B (README
+> decision 10): the background becomes one continuous image and the
+> header and sidebar slots become optional overlays.
+
 | | |
 |---|---|
 | **Repo** | `SchrodingerEQ/Rootboard.me`, three PRs in sequence, plus the Winter Holiday assets onto the open #55 branch |
