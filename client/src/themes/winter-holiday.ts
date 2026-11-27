@@ -1,11 +1,14 @@
 import type { ThemeManifest } from "@shared/theme-manifest";
 import background from "./winter-holiday/background.jpg";
+import logo from "./winter-holiday/logo.png";
+import screensaver from "./winter-holiday/screensaver.jpg";
 
 /**
  * WINTER HOLIDAY — a cozy, non-denominational winter look. Deep evergreen
  * canvas, warm evergreen surfaces, soft snow-white ink, a cranberry accent
  * and a gold badge, over one full-screen picture of frosted boughs, berries
- * and warm lights (the founder's art, 2026-11-27). Original palette and
+ * and warm lights, a matching screensaver framed by boughs, and a
+ * snow-white sparkle logo (the founder's art, 2026-11-27). Original palette and
  * art: no holiday brand colours or trademarked motifs. Same file shape as
  * default.ts and deep-space.ts so the three diff cleanly.
  *
@@ -26,8 +29,10 @@ export const winterHolidayTheme: ThemeManifest = {
   id: "winter-holiday",
   name: "Winter Holiday",
   // ===== Images (manifest v2/v3) =====
-  // The whole viewer, 1920 × 1080, cover. Screensaver and logo stay the app's.
-  images: { background },
+  // background: the whole viewer, 1920 × 1080, cover. screensaver: the
+  // power-saving overlay, 1920 × 1080. logo: the nav rail and screensaver
+  // logo, 256 × 256 with alpha. No header or sidebar overlay.
+  images: { background, screensaver, logo },
   // ===== Confetti shapes (manifest v2) =====
   // 24 × 24 viewBox: a six-point snowflake, a four-point sparkle, a round berry.
   // The berry is one arc ending just short of its start (11.99): an arc whose
