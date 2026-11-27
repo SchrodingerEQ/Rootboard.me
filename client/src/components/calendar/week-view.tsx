@@ -105,7 +105,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-canvas)] rb-image-background">
+      <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-view-fill)]">
         <div className="flex bg-rb-surface flex-shrink-0 z-10 border-b border-[var(--border)]">
           <div className="w-16 flex-shrink-0 h-16" />
           {Array.from({ length: 7 }).map((_, i) => (
@@ -135,7 +135,7 @@ export function WeekView({ currentDate, events, isLoading, onEventClick }: WeekV
   const hasAllDay = weekDays.some(date => getAllDayEventsForDay(date).length > 0);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-canvas)] rb-image-background">
+    <div className="flex flex-col h-full overflow-hidden bg-[var(--rb-view-fill)]">
       {/* Fixed Week Header */}
       <div className="flex bg-rb-surface flex-shrink-0 z-10 border-b border-[var(--border)]">
         <div className="w-16 flex-shrink-0" />

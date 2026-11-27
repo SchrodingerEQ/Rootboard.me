@@ -2,6 +2,7 @@ import {
   THEME_ENGINE_VERSION,
   THEME_TOKEN_NAMES,
   resolveThemeImageProperties,
+  resolveThemeLayerProperties,
   resolveThemeStyle,
   validateThemeManifest,
   type ThemeManifest,
@@ -51,6 +52,10 @@ export interface ThemeCache {
    *  cache written before v2; the boot script then leaves :root's Default
    *  values in place and says so in the console. */
   style?: Record<string, string>;
+  /** Manifest v3's backing and view-fill properties
+   *  (resolveThemeLayerProperties). Absent in a cache written before v3; the
+   *  boot script then leaves :root's no-image defaults and says so. */
+  layers?: Record<string, string>;
 }
 
 function bestEffortId(raw: unknown): string {
@@ -137,6 +142,7 @@ export function readThemeCache(storage: ThemeStorage | null = defaultStorage()):
     }
     const cache: ThemeCache = { engineVersion: parsed.engineVersion, id: parsed.id, tokens: parsed.tokens as Record<string, string> };
     if (parsed.style && typeof parsed.style === "object") cache.style = parsed.style as Record<string, string>;
+    if (parsed.layers && typeof parsed.layers === "object") cache.layers = parsed.layers as Record<string, string>;
     return cache;
   } catch {
     return null;
@@ -150,6 +156,7 @@ export function writeThemeCache(manifest: ThemeManifest, storage: ThemeStorage |
     id: manifest.id,
     tokens: { ...manifest.tokens },
     style: resolveThemeStyle(manifest),
+    layers: resolveThemeLayerProperties(manifest),
   };
   try {
     storage.setItem(THEME_CACHE_KEY, JSON.stringify(cache));
@@ -204,8 +211,9 @@ function defaultRoot(): ThemeRoot {
 
 /**
  * Writes every colour token, the v2 font/shape properties (Default's where
- * the manifest has none) and the region image properties (`none` where the
- * manifest has none) onto the root element, then notifies
+ * the manifest has none), the region image properties (`none` where the
+ * manifest has none) and the v3 backing and view-fill properties (the
+ * defaults in resolveThemeBacking) onto the root element, then notifies
  * subscribers, then mirrors the manifest into the boot cache. Default goes
  * through this same path (no special-casing) so the path is exercised on
  * every boot.
@@ -222,6 +230,9 @@ export function applyTheme(
     root.style.setProperty(name, value);
   }
   for (const [name, value] of Object.entries(resolveThemeImageProperties(manifest))) {
+    root.style.setProperty(name, value);
+  }
+  for (const [name, value] of Object.entries(resolveThemeLayerProperties(manifest))) {
     root.style.setProperty(name, value);
   }
   activeTokens = { ...manifest.tokens };

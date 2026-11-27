@@ -318,7 +318,7 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="bg-rb-surface border-b border-border shadow-sm">
+      <div className="rb-backing-header border-b border-border shadow-sm">
         {/* Main header row */}
         <CalendarHeader
           currentView={currentView}

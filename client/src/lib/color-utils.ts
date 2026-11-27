@@ -133,6 +133,7 @@ export function deltaE76(hexA: string, hexB: string): number {
 // --- rgba compositing (theme token resolution) -----------------------------
 
 const HEX6_RE = /^#[0-9a-f]{6}$/i;
+const HEX8_RE = /^#([0-9a-f]{6})([0-9a-f]{2})$/i;
 // Mirrors RGB_COLOR_RE in shared/theme-manifest.ts's cssColorSchema.
 const RGBA_RE = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(0|1|0?\.\d+)\s*)?\)$/i;
 
@@ -142,17 +143,25 @@ function toHexByte(n: number): string {
 }
 
 /**
- * Composites an `rgb()`/`rgba()`/`#rrggbb` foreground color over an opaque
- * `#rrggbb` background, returning a lowercase `#rrggbb`. Accepts the same
- * rgb/rgba grammar as `cssColorSchema` in `shared/theme-manifest.ts`; an
- * opaque `#rrggbb` foreground is returned lowercased as-is. Throws on any
- * other format.
+ * Composites an `rgb()`/`rgba()`/`#rrggbb`/`#rrggbbaa` foreground color over
+ * an opaque `#rrggbb` background, returning a lowercase `#rrggbb`. Accepts
+ * the same grammar as `cssColorSchema` in `shared/theme-manifest.ts`, plus
+ * `transparent` (the background itself); an opaque `#rrggbb` foreground is
+ * returned lowercased as-is. Throws on any other format.
  */
 export function compositeOver(rgba: string, bgHex: string): string {
   const v = (rgba || "").trim();
 
   if (HEX6_RE.test(v)) {
     return v.toLowerCase();
+  }
+  if (v === "transparent") {
+    return compositeOver("rgba(0, 0, 0, 0)", bgHex);
+  }
+  const hex8 = HEX8_RE.exec(v);
+  if (hex8) {
+    const { r, g, b } = hexToRgb(hex8[1]);
+    return compositeOver(`rgba(${r}, ${g}, ${b}, ${parseInt(hex8[2], 16) / 255})`, bgHex);
   }
 
   const m = RGBA_RE.exec(v);

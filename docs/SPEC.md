@@ -953,6 +953,10 @@ plus shadcn tokens) defined in `client/src/index.css`. Tailwind exposes
 a subset of them as `rb-*` utility classes via the `rb` map in
 `tailwind.config.ts` (38 keys); tokens not in that map are consumed via
 arbitrary-value classes (`[var(--rb-…)]`) or inline `style` props.
+The text-backing and view-fill properties (`--rb-backing-*`,
+`--rb-view-fill`, manifest v3) are not colour tokens: the theme engine
+builds them from the theme's tokens and its `backing` block, and their
+`:root` defaults are `var(--rb-*)` aliases, `transparent` or `none`.
 
 Hardcoded color literals are allowed only at these documented exception
 sites:
@@ -998,7 +1002,7 @@ deliberate, accepted deviations —
 
 Anything not on these two lists renders exactly as before the sweep.
 
-### Themes (engine slice 1, manifest v2)
+### Themes (engine slice 1, manifest v3)
 
 Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
 
@@ -1007,9 +1011,9 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   of the 100 `--rb-*` tokens. `--rb-ink-tertiary` carries the former
   `--muted-foreground` value. The `.dark` block is dead (never applied).
 - **Manifest** (`shared/theme-manifest.ts`): `{ engineVersion, id, name,
-  tokens, font?, shape?, images?, confettiShapes? }`. `tokens`: every token required, unknown keys
+  tokens, font?, shape?, images?, confettiShapes?, backing? }`. `tokens`: every token required, unknown keys
   rejected, literal colors only. `engineVersion > THEME_ENGINE_VERSION`
-  (now 2) → "built for a newer Rootboard".
+  (now 3) → "built for a newer Rootboard".
 - **Manifest v2 (decision 0026):** fields added after version 1 are
   optional and an absent one takes Default's value (the backfill rule,
   `resolveThemeStyle`), so a v1 manifest still validates and looks as it
@@ -1032,17 +1036,40 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   under 4 KB); no URL, query, `..` or SVG. Per-slot byte caps
   (`THEME_IMAGE_BUDGET_BYTES`). The four region slots land on `:root` as
   `--rb-image-{background,header,sidebar,screensaver}` (`url("…")` or
-  `none`) and the classes `rb-image-*` in `index.css` layer them over the
-  region's own colour token (cover, centre): `rb-image-background` on each
-  view's root next to its canvas fill, `rb-image-header` on the calendar,
-  Chores and Dinner header bars, `rb-image-sidebar` on the nav rail,
-  `rb-image-screensaver` on `power-saving-overlay.tsx`. The logo is an
+  `none`) and the classes `rb-image-*` in `index.css` layer them (cover,
+  centre): `rb-image-background` on the app shell's root over the canvas
+  colour, so one image covers the whole viewer (rail, header bars and
+  views; decision 0027); `rb-image-header` on the calendar, Chores and
+  Dinner header bars and `rb-image-sidebar` on the nav rail, each an
+  optional overlay drawn above that region's text backing;
+  `rb-image-screensaver` on `power-saving-overlay.tsx`. Each view root
+  (calendar day, week and month; Chores; Dinner; What to Wear) fills with
+  `--rb-view-fill`: the canvas colour, or `transparent` when the theme
+  sets a background image. The logo is an
   `<img src>` from `useThemeLogo()` (nav rail and screensaver), the app's
   own logo when the theme has none. Images are not in the boot cache: the
   cached colours show until the theme loads. Built-in images live in
   `client/src/themes/<id>/<slot>.<ext>`; `theme-assets.spec.ts` checks
   names, types, budget and stripped metadata. Slot table, supply sizes
   and generator parameters: `docs/plans/theme-system/THEME-ASSETS.md`.
+- **Text backing (manifest v3, decision 0027):** `backing` = optional
+  `header`, `rail` and `voteStrip` entries, each `{ kind: "none" }`,
+  `{ kind: "solid", color }` or `{ kind: "gradient", from, to, direction:
+  "down" | "right" }`, colours in the manifest grammar only. Defaults
+  (`resolveThemeBacking`): no background image → header and rail `solid`
+  at `--rb-surface`, vote strip `none` (today's look); a background image →
+  header and rail `solid` at `--rb-canvas` with 70 % alpha, vote strip
+  `none`. The engine writes two properties per region,
+  `--rb-backing-{header,rail,vote-strip}-color` and `-image` (`none` or a
+  `linear-gradient(…)` it builds), plus `--rb-view-fill`
+  (`THEME_LAYER_PROPERTY_NAMES`, declared in `index.css` with the no-image
+  defaults). The classes `rb-backing-header` (the calendar's header block
+  and the Chores and Dinner header bars), `rb-backing-rail` (nav rail) and
+  `rb-backing-vote-strip` (Dinner's voting strip) apply them as
+  longhands; where the slot overlay shares the element, the slot image is
+  the top layer, the gradient under it, the colour under both. The header
+  bars keep their shadow. Region map and authoring notes:
+  `THEME-ASSETS.md` "Text backing".
 - **Confetti shapes:** `confettiShapes` = 1–5 SVG path strings on a 24×24
   viewBox, checked by a strict grammar (commands and numbers only) at
   load and again at burst time (`runtimeConfettiShapes`; a failure falls
@@ -1057,18 +1084,26 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   lenient — a malformed value becomes undefined, never invalidating the
   file). Unknown id → Default. Hand-edits land within the 60 s poll.
 - **Boot cache:** `applyTheme` mirrors the resolved tokens, plus a
-  `style` object with the three v2 properties, to
+  `style` object with the three v2 properties and a `layers` object with
+  the seven v3 backing and view-fill properties, to
   `localStorage["rootboard.theme-cache"]`; an inline script in
   `client/index.html` (`#rb-theme-boot`) repaints `--rb-*` colours and
-  the three named properties (each against its own grammar) from it
-  before React mounts, so a dark theme does not flash light. A cache
-  with no `style` predates v2: the colours repaint, `:root`'s Default
-  font and shape stay, and one console line says so. The config remains
+  the named properties (each against its own grammar: a colour layer is a
+  literal colour or `transparent`, an image layer `none` or a two-stop
+  `linear-gradient` of literal colours) from it before React mounts, so a
+  dark theme does not flash light. A cache with no `style` predates v2:
+  the colours repaint, `:root`'s Default font and shape stay, and one
+  console line says so; a cache with no `layers` predates v3 and keeps
+  `:root`'s no-image backing the same way. The config remains
   the source of truth and corrects the cache on the first successful
   config load.
 - **Contrast guard** (`themes/contrast.spec.ts`): new themes ≥ 4.5:1 on
   the text/fill pairs listed there; Default is grandfathered at its
-  measured ratios (no regression).
+  measured ratios (no regression). A background token with alpha is
+  composited over `--rb-canvas` before measuring (here and in
+  `people-contrast.spec.ts`), and `--rb-ink` is measured over each text
+  backing region as resolved, composited over the canvas, at both stops
+  of a gradient.
 - **Person palette:** 24 of the 100 tokens are `--rb-person-{1..8}-
   {color,tint,text}` (slot order = identity, stable across themes: 1
   purple, 2 green, 3 orange, 4 blue, 5 rose/red, 6 teal, 7 pink, 8

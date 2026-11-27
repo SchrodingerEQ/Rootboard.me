@@ -2,7 +2,12 @@
 import fs from "fs";
 import path from "path";
 import { describe, expect, test } from "vitest";
-import { THEME_IMAGE_PROPERTY_NAMES, THEME_STYLE_PROPERTY_NAMES, THEME_TOKEN_NAMES } from "@shared/theme-manifest";
+import {
+  THEME_IMAGE_PROPERTY_NAMES,
+  THEME_LAYER_PROPERTY_NAMES,
+  THEME_STYLE_PROPERTY_NAMES,
+  THEME_TOKEN_NAMES,
+} from "@shared/theme-manifest";
 import { parseRootDeclarations, resolveRootTokens } from "./theme-stylesheet";
 
 const css = fs.readFileSync(path.resolve(import.meta.dirname, "../index.css"), "utf-8");
@@ -18,9 +23,23 @@ const SHADCN_TOKENS = [
 describe("index.css :root vs THEME_TOKEN_NAMES", () => {
   const decls = parseRootDeclarations(css);
 
-  test("the --rb-* names declared in :root equal the colour tokens, style and image properties exactly", () => {
+  test("the --rb-* names declared in :root equal the colour tokens, style, image and layer properties exactly", () => {
     const declared = Array.from(decls.keys()).filter((k) => k.startsWith("--rb-")).sort();
-    expect(declared).toEqual([...THEME_TOKEN_NAMES, ...THEME_STYLE_PROPERTY_NAMES, ...THEME_IMAGE_PROPERTY_NAMES].sort());
+    expect(declared).toEqual(
+      [...THEME_TOKEN_NAMES, ...THEME_STYLE_PROPERTY_NAMES, ...THEME_IMAGE_PROPERTY_NAMES, ...THEME_LAYER_PROPERTY_NAMES].sort(),
+    );
+  });
+
+  test("the layer properties default to today's no-image look (surface bars, bare vote strip, canvas views)", () => {
+    expect(Object.fromEntries(THEME_LAYER_PROPERTY_NAMES.map((n) => [n, decls.get(n)]))).toEqual({
+      "--rb-backing-header-color": "var(--rb-surface)",
+      "--rb-backing-header-image": "none",
+      "--rb-backing-rail-color": "var(--rb-surface)",
+      "--rb-backing-rail-image": "none",
+      "--rb-backing-vote-strip-color": "transparent",
+      "--rb-backing-vote-strip-image": "none",
+      "--rb-view-fill": "var(--rb-canvas)",
+    });
   });
 
   test("every image property defaults to none (an absent slot shows the flat colour)", () => {
