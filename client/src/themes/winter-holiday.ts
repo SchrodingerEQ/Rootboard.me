@@ -18,6 +18,9 @@ import screensaver from "./winter-holiday/screensaver.jpg";
  * colour from 80 % to clear behind the header bars (downward) and the rail
  * (rightward), and puts the canvas at 60 % behind Dinner's vote strip.
  *
+ * Surfaces at 80 % alpha (founder 2026-11-27, after comparing 10/15/20/30 %):
+ * cards, cells, panels and the person columns let 20 % of the background
+ * picture through. The contrast guard composites them over the canvas.
  * Contrast notes: like Deep Space this is a dark theme, so
  * `--rb-on-color-ink` stays light and every coloured fill it sits on
  * (accent, badge, danger, success, info, btn-dark, the person colours) is
@@ -52,7 +55,7 @@ export const winterHolidayTheme: ThemeManifest = {
   tokens: {
     // ===== Core palette =====
     "--rb-canvas": "#0b1813",
-    "--rb-surface": "#12221c",
+    "--rb-surface": "rgba(18, 34, 28, 0.8)",
     "--rb-ink": "#f5f1e8",
     "--rb-muted": "#7e958b",
     "--rb-faint": "#536a60",
@@ -88,9 +91,9 @@ export const winterHolidayTheme: ThemeManifest = {
     "--rb-on-color-ink": "#fffdf8",
 
     // ===== Surfaces + borders =====
-    "--rb-surface-sunken": "#0f1e18",
-    "--rb-cell-weekend-bg": "#10201a",
-    "--rb-cell-inactive-bg": "#0d1b16",
+    "--rb-surface-sunken": "rgba(15, 30, 24, 0.8)",
+    "--rb-cell-weekend-bg": "rgba(16, 32, 26, 0.8)",
+    "--rb-cell-inactive-bg": "rgba(13, 27, 22, 0.8)",
     "--rb-field-border": "#2e4a3f",
     "--rb-border-strong": "#3c5c4f",
     "--rb-accent-wash": "#241112",
@@ -152,28 +155,28 @@ export const winterHolidayTheme: ThemeManifest = {
 
     // ===== People (8 identity slots) =====
     "--rb-person-1-color": "#983ceb",  // purple
-    "--rb-person-1-tint": "#2a1540",   // purple
+    "--rb-person-1-tint": "rgba(42, 21, 64, 0.8)",   // purple
     "--rb-person-1-text": "#d8b4fe",   // purple
     "--rb-person-2-color": "#157f3d",  // green
-    "--rb-person-2-tint": "#0b2e1a",   // green
+    "--rb-person-2-tint": "rgba(11, 46, 26, 0.8)",   // green
     "--rb-person-2-text": "#86efac",   // green
     "--rb-person-3-color": "#b35309",  // orange
-    "--rb-person-3-tint": "#3a2205",   // orange
+    "--rb-person-3-tint": "rgba(58, 34, 5, 0.8)",   // orange
     "--rb-person-3-text": "#fdba74",   // orange
     "--rb-person-4-color": "#2865eb",  // blue
-    "--rb-person-4-tint": "#0f1f45",   // blue
+    "--rb-person-4-tint": "rgba(15, 31, 69, 0.8)",   // blue
     "--rb-person-4-text": "#93c5fd",   // blue
     "--rb-person-5-color": "#d91741",  // rose/red
-    "--rb-person-5-tint": "#3b0d1a",   // rose/red
+    "--rb-person-5-tint": "rgba(59, 13, 26, 0.8)",   // rose/red
     "--rb-person-5-text": "#fda4af",   // rose/red
     "--rb-person-6-color": "#107c74",  // teal
-    "--rb-person-6-tint": "#062a27",   // teal
+    "--rb-person-6-tint": "rgba(6, 42, 39, 0.8)",   // teal
     "--rb-person-6-text": "#5eead4",   // teal
     "--rb-person-7-color": "#cd2974",  // pink
-    "--rb-person-7-tint": "#3a0f25",   // pink
+    "--rb-person-7-tint": "rgba(58, 15, 37, 0.8)",   // pink
     "--rb-person-7-text": "#f9a8d4",   // pink
     "--rb-person-8-color": "#5f7088",  // slate
-    "--rb-person-8-tint": "#1e2836",   // slate
+    "--rb-person-8-tint": "rgba(30, 40, 54, 0.8)",   // slate
     "--rb-person-8-text": "#cbd5e1",   // slate
   },
 };
