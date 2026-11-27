@@ -87,7 +87,7 @@ Replace ~150 hardcoded hex colors across ~20 component files with named CSS vari
 - Active theme stored via `useAppState` → `/api/state/theme`.
 - Built-in themes ship in a repo `/themes` folder.
 - Settings menu gets a theme picker with preview swatches.
-- Launch set: **Default** (current look, extracted into a manifest), **Spooky**, **Winter Holiday**, **Deep Space**. (Status 2026-11-24: Default and Deep Space shipped in v1.6.0; Winter Holiday added as a colour-only theme, see [STATUS-2026-11.md](STATUS-2026-11.md); Spooky not started.)
+- Launch set: **Default** (current look, extracted into a manifest), **Spooky**, **Winter Holiday**, **Deep Space**. (Status 2026-11-24: Default and Deep Space shipped in v1.6.0; Winter Holiday added as a colour-only theme, see [STATUS-2026-11.md](STATUS-2026-11.md), and given its imagery, confetti shapes and text backing on 2026-11-27; Spooky not started.)
 - Design workflow: Claude Design produces each theme visually → values extracted into manifests.
 → Claude Design prompt: `claude-design-themes-prompt.md`
 

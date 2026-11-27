@@ -30,6 +30,8 @@ export const winterHolidayTheme: ThemeManifest = {
   images: { background },
   // ===== Confetti shapes (manifest v2) =====
   // 24 × 24 viewBox: a six-point snowflake, a four-point sparkle, a round berry.
+  // The berry is one arc ending just short of its start (11.99): an arc whose
+  // end equals its start draws nothing.
   confettiShapes: [
     "M12 2 L15 7.5 L21 7.5 L18 12 L21 16.5 L15 16.5 L12 22 L9 16.5 L3 16.5 L6 12 L3 7.5 L9 7.5 Z",
     "M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z",
