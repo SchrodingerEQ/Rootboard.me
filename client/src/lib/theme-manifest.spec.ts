@@ -10,9 +10,12 @@ import {
   THEME_IMAGE_BUDGET_BYTES,
   THEME_STYLE_PROPERTY_NAMES,
   THEME_TOKEN_NAMES,
+  colorWithAlpha,
   confettiShapeProblem,
   fontFamilyValue,
+  parseCssColor,
   personTokenName,
+  resolveThemeBacking,
   resolveThemeImageProperties,
   resolveThemeStyle,
   themeImageBudgetProblem,
@@ -113,8 +116,8 @@ describe("themeManifestSchema", () => {
 describe("manifest v2: font and shape (docs/decisions/0026)", () => {
   const font = { family: "Nunito", fallback: ["system-ui", "Segoe UI", "sans-serif"], files: ["nunito/nunito-latin.woff2"] };
 
-  test("the engine is at version 2", () => {
-    expect(THEME_ENGINE_VERSION).toBe(2);
+  test("the engine is at version 3 (v2's fields still validate)", () => {
+    expect(THEME_ENGINE_VERSION).toBe(3);
   });
 
   test("a v1 manifest with neither block still validates", () => {
@@ -289,5 +292,75 @@ describe("confetti shape check stays fast on hostile input", () => {
     const t = performance.now();
     expect(confettiShapeProblem(d)).not.toBeNull();
     expect(performance.now() - t).toBeLessThan(50);
+  });
+});
+
+describe("manifest v3: text backing (docs/decisions/0027)", () => {
+  const ok = (backing: unknown) => validateThemeManifest(manifest({ engineVersion: 3, backing })).ok;
+
+  test("each backing kind validates, in any region", () => {
+    expect(ok({ header: { kind: "none" } })).toBe(true);
+    expect(ok({ rail: { kind: "solid", color: "rgba(0, 0, 0, 0.5)" } })).toBe(true);
+    expect(ok({ voteStrip: { kind: "solid", color: "#ffffff99" } })).toBe(true);
+    expect(ok({ header: { kind: "gradient", from: "#000000cc", to: "rgba(0, 0, 0, 0)", direction: "down" } })).toBe(true);
+    expect(ok({ rail: { kind: "gradient", from: "rgb(1, 2, 3)", to: "#010203", direction: "right" } })).toBe(true);
+    expect(ok({})).toBe(true);
+  });
+
+  test("a colour carrying url(, var( or raw CSS is rejected", () => {
+    for (const color of ["url(x.png)", "var(--rb-canvas)", "red", "#fff; background: url(x)", "linear-gradient(#000, #fff)"]) {
+      expect(ok({ header: { kind: "solid", color } }), color).toBe(false);
+      expect(ok({ rail: { kind: "gradient", from: color, to: "#000000", direction: "right" } }), color).toBe(false);
+    }
+  });
+
+  test("an unknown kind, direction, region or extra key is rejected", () => {
+    expect(ok({ header: { kind: "image", src: "/a.png" } })).toBe(false);
+    expect(ok({ header: { kind: "gradient", from: "#000000", to: "#ffffff", direction: "up" } })).toBe(false);
+    expect(ok({ cards: { kind: "none" } })).toBe(false);
+    expect(ok({ header: { kind: "solid", color: "#000000", css: "x" } })).toBe(false);
+    expect(ok({ header: { kind: "none", color: "#000000" } })).toBe(false);
+  });
+
+  test("defaults without a background image reproduce today: surface bars, bare vote strip", () => {
+    const m = themeManifestSchema.parse(manifest({ tokens: { ...fullTokens(), "--rb-surface": "#ffffff" } }));
+    expect(resolveThemeBacking(m)).toEqual({
+      header: { kind: "solid", color: "#ffffff" },
+      rail: { kind: "solid", color: "#ffffff" },
+      voteStrip: { kind: "none" },
+    });
+  });
+
+  test("defaults with a background image: bars at the canvas colour, 70 %; an explicit region wins", () => {
+    const m = themeManifestSchema.parse(
+      manifest({
+        engineVersion: 3,
+        tokens: { ...fullTokens(), "--rb-canvas": "#0b1220" },
+        images: { background: "/assets/bg.jpg" },
+        backing: { rail: { kind: "none" } },
+      }),
+    );
+    expect(resolveThemeBacking(m)).toEqual({
+      header: { kind: "solid", color: "rgba(11, 18, 32, 0.7)" },
+      rail: { kind: "none" },
+      voteStrip: { kind: "none" },
+    });
+  });
+
+  test("a v2 manifest with images and no backing validates and gets the defaults (backfill)", () => {
+    const result = validateThemeManifest(manifest({ engineVersion: 2, images: { background: "/assets/bg.jpg" } }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(resolveThemeBacking(result.manifest).header).toEqual({ kind: "solid", color: "rgba(18, 52, 86, 0.7)" });
+  });
+
+  test("colour parsing and alpha follow the manifest grammar", () => {
+    expect(parseCssColor("#0b1220")).toEqual({ r: 11, g: 18, b: 32, a: 1 });
+    expect(parseCssColor("#00000080")?.a).toBeCloseTo(128 / 255);
+    expect(parseCssColor("rgba(1, 2, 3, .5)")).toEqual({ r: 1, g: 2, b: 3, a: 0.5 });
+    expect(parseCssColor("rgb(300, 0, 0)")).toEqual({ r: 255, g: 0, b: 0, a: 1 });
+    expect(parseCssColor("red")).toBeNull();
+    expect(colorWithAlpha("rgba(10, 20, 30, 0.5)", 0.7)).toBe("rgba(10, 20, 30, 0.35)");
+    expect(colorWithAlpha("#ffffff", 0.7)).toBe("rgba(255, 255, 255, 0.7)");
+    expect(() => colorWithAlpha("red", 0.7)).toThrow();
   });
 });

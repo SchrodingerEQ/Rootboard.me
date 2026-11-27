@@ -1,6 +1,6 @@
 # Theme Engine — Phase 1, Slice 1 (design spec)
 
-**Status:** released in v1.6.0 (2026-09-25). Current state and remaining slices, read 2026-11-24: [STATUS-2026-11.md](STATUS-2026-11.md).
+**Status:** released in v1.6.0 (2026-09-25). Current state and remaining slices, read 2026-11-24: [STATUS-2026-11.md](STATUS-2026-11.md). Since then: manifest v2 (fonts, shape, image slots, confetti shapes; decision 0026) and manifest v3 (one continuous background, text backing; decision 0027, 2026-11-27); the as-built contract is `docs/SPEC.md` "Themes" and [THEME-ASSETS.md](THEME-ASSETS.md).
 **Date:** 2026-09-22
 **Parent plan:** [THEME-SYSTEM-PLAN.md](THEME-SYSTEM-PLAN.md) (Phase 1).
 **Decision record:** [0009](../../decisions/0009-theme-engine-persistence-and-token-layer.md).

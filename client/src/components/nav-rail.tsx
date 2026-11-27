@@ -87,10 +87,9 @@ export function NavRail({ items, active, onNavigate, settingsButton }: NavRailPr
   const logoImage = useThemeLogo();
   return (
     <div
-      className="flex flex-col items-center flex-shrink-0 rb-image-sidebar"
+      className="flex flex-col items-center flex-shrink-0 rb-backing-rail rb-image-sidebar"
       style={{
         width: 104,
-        backgroundColor: "var(--rb-surface)",
         boxShadow: "1px 0 0 var(--rb-shadow-soft)",
         padding: "18px 0 20px",
         gap: 8,

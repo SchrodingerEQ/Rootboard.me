@@ -140,7 +140,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
 
   if (isLoading) {
     return (
-      <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] rb-image-background" style={{ padding: '22px 28px' }}>
+      <div className="h-full flex gap-[22px] bg-[var(--rb-view-fill)]" style={{ padding: '22px 28px' }}>
         <aside className="flex flex-col gap-[18px] flex-shrink-0" style={{ width: 380 }}>
           <div className="bg-rb-surface rounded-[calc(18px*var(--rb-radius-scale))] p-4"><Skeleton className="h-6 w-32 mb-3 rounded-md" /><Skeleton className="h-48 w-full rounded-xl" /></div>
           <div className="bg-rb-surface rounded-[calc(18px*var(--rb-radius-scale))] p-4">
@@ -161,7 +161,7 @@ export function DayView({ currentDate, events, isLoading, onEventClick, monthEve
   }
 
   return (
-    <div className="h-full flex gap-[22px] bg-[var(--rb-canvas)] rb-image-background overflow-hidden" style={{ padding: '22px 28px' }}>
+    <div className="h-full flex gap-[22px] bg-[var(--rb-view-fill)] overflow-hidden" style={{ padding: '22px 28px' }}>
       {/* Left rail */}
       <aside className="flex flex-col gap-[18px] flex-shrink-0 overflow-y-auto" style={{ width: 380 }}>
         <MiniMonth

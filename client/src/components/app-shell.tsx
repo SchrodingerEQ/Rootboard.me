@@ -1206,7 +1206,7 @@ export default function AppShell() {
   }
 
   return (
-    <div className="h-screen flex bg-background">
+    <div className="h-screen flex bg-background rb-image-background">
       <NavRail
         items={navItems}
         active={section}

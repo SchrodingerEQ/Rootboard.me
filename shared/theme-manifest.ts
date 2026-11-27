@@ -7,12 +7,14 @@ import { z } from "zod";
  *   1 — the 100 colour tokens (v1.6.0).
  *   2 — optional `font`, `shape`, `images` and `confettiShapes`
  *       (docs/decisions/0026).
+ *   3 — optional `backing` (text backing per region); the `background`
+ *       image paints the whole shell (docs/decisions/0027).
  * Fields added after version 1 are optional; an absent one is filled from
  * Default (the backfill rule, `resolveThemeStyle`), so a v1 manifest stays
  * valid and looks as it did.
  * See docs/plans/theme-system/THEME-ENGINE-SPEC.md §2.
  */
-export const THEME_ENGINE_VERSION = 2;
+export const THEME_ENGINE_VERSION = 3;
 
 export const NEWER_ENGINE_MESSAGE = "built for a newer Rootboard";
 
@@ -448,6 +450,161 @@ export const confettiShapeSchema = z.string().superRefine((d, ctx) => {
   if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
 });
 
+// --- Manifest v3: text backing (docs/decisions/0027) -----------------------
+
+/** A parsed colour from the manifest grammar (`cssColorSchema`). Channels
+ *  0–255, alpha 0–1. */
+export interface RgbaColor {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+/** Parses `#rrggbb`, `#rrggbbaa`, `rgb()` or `rgba()`; null for anything
+ *  else (the schema never lets anything else through). An `rgb()` channel
+ *  above 255 is clamped, as CSS does (the grammar allows three digits). */
+export function parseCssColor(value: string): RgbaColor | null {
+  if (HEX_COLOR_RE.test(value)) {
+    const h = value.slice(1);
+    const byte = (i: number) => parseInt(h.slice(i, i + 2), 16);
+    return { r: byte(0), g: byte(2), b: byte(4), a: h.length === 8 ? byte(6) / 255 : 1 };
+  }
+  if (RGB_COLOR_RE.test(value)) {
+    const parts = value.slice(value.indexOf("(") + 1, -1).split(",").map((p) => Number(p.trim()));
+    const channel = (i: number) => Math.min(255, parts[i]);
+    return { r: channel(0), g: channel(1), b: channel(2), a: parts.length === 4 ? parts[3] : 1 };
+  }
+  return null;
+}
+
+/** `color` as `rgba()` with its alpha multiplied by `alpha` (0–1). Throws
+ *  on a colour outside the manifest grammar (the schema never passes one). */
+export function colorWithAlpha(color: string, alpha: number): string {
+  const c = parseCssColor(color);
+  if (!c) throw new Error(`colorWithAlpha: not a manifest colour: ${color}`);
+  const a = Number((c.a * alpha).toFixed(3));
+  return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
+}
+
+/** The regions that carry text over the picture and take a theme backing. */
+export const THEME_BACKING_REGIONS = ["header", "rail", "voteStrip"] as const;
+export type ThemeBackingRegion = (typeof THEME_BACKING_REGIONS)[number];
+
+/**
+ * What sits behind a region's text. Colours use the manifest colour grammar
+ * (never `url()`, `var()` or a CSS string); the engine builds the CSS.
+ * - `none`: transparent, the picture shows through.
+ * - `solid`: one colour; `rgba()` or `#rrggbbaa` makes it semi-transparent.
+ * - `gradient`: two stops, fading `down` (a bar) or `right` (the rail).
+ */
+export const themeBackingSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("none") }).strict(),
+  z.object({ kind: z.literal("solid"), color: cssColorSchema }).strict(),
+  z
+    .object({
+      kind: z.literal("gradient"),
+      from: cssColorSchema,
+      to: cssColorSchema,
+      direction: z.enum(["down", "right"]),
+    })
+    .strict(),
+]);
+export type ThemeBacking = z.infer<typeof themeBackingSchema>;
+
+export const themeBackingBlockSchema = z
+  .object({
+    header: themeBackingSchema.optional(),
+    rail: themeBackingSchema.optional(),
+    voteStrip: themeBackingSchema.optional(),
+  })
+  .strict();
+export type ThemeBackingBlock = z.infer<typeof themeBackingBlockSchema>;
+
+/** Alpha of the default header and rail backing when a theme sets a
+ *  background image but no `backing`: its canvas colour at 70 %. */
+export const DEFAULT_BACKING_ALPHA_OVER_IMAGE = 0.7;
+
+
+/**
+ * The shell-layer custom properties a theme drives, declared in
+ * client/src/index.css `:root` with the no-image defaults (a spec asserts
+ * it): per backing region a colour layer and an image layer (`none` or a
+ * `linear-gradient(…)`), plus `--rb-view-fill`, the fill of each view's
+ * root (the canvas colour, or `transparent` when the background image
+ * paints the shell behind it).
+ */
+export const THEME_LAYER_PROPERTY_NAMES = [
+  "--rb-backing-header-color",
+  "--rb-backing-header-image",
+  "--rb-backing-rail-color",
+  "--rb-backing-rail-image",
+  "--rb-backing-vote-strip-color",
+  "--rb-backing-vote-strip-image",
+  "--rb-view-fill",
+] as const;
+export type ThemeLayerPropertyName = (typeof THEME_LAYER_PROPERTY_NAMES)[number];
+
+/** Each region's colour-layer and image-layer property. */
+const BACKING_PROPERTIES: Record<ThemeBackingRegion, { color: ThemeLayerPropertyName; image: ThemeLayerPropertyName }> = {
+  header: { color: "--rb-backing-header-color", image: "--rb-backing-header-image" },
+  rail: { color: "--rb-backing-rail-color", image: "--rb-backing-rail-image" },
+  voteStrip: { color: "--rb-backing-vote-strip-color", image: "--rb-backing-vote-strip-image" },
+};
+
+/** True when the theme sets a `background` image (it then paints the shell). */
+export function hasBackgroundImage(manifest: ThemeManifest): boolean {
+  return Boolean(manifest.images?.background);
+}
+
+/**
+ * Each region's backing after the defaults:
+ * - an explicit `backing.<region>` wins;
+ * - no background image: header and rail are `solid` `--rb-surface`, the
+ *   vote strip `none` (today's look exactly);
+ * - a background image: header and rail are `solid` `--rb-canvas` at 70 %,
+ *   the vote strip `none`.
+ */
+export function resolveThemeBacking(manifest: ThemeManifest): Record<ThemeBackingRegion, ThemeBacking> {
+  const bar: ThemeBacking = hasBackgroundImage(manifest)
+    ? { kind: "solid", color: colorWithAlpha(manifest.tokens["--rb-canvas"], DEFAULT_BACKING_ALPHA_OVER_IMAGE) }
+    : { kind: "solid", color: manifest.tokens["--rb-surface"] };
+  const defaults: Record<ThemeBackingRegion, ThemeBacking> = { header: bar, rail: bar, voteStrip: { kind: "none" } };
+  const set = manifest.backing ?? {};
+  return {
+    header: set.header ?? defaults.header,
+    rail: set.rail ?? defaults.rail,
+    voteStrip: set.voteStrip ?? defaults.voteStrip,
+  };
+}
+
+/** The colour layer and image layer for one backing. */
+export function backingLayers(backing: ThemeBacking): { color: string; image: string } {
+  switch (backing.kind) {
+    case "none":
+      return { color: "transparent", image: "none" };
+    case "solid":
+      return { color: backing.color, image: "none" };
+    case "gradient": {
+      const to = backing.direction === "down" ? "to bottom" : "to right";
+      return { color: "transparent", image: `linear-gradient(${to}, ${backing.from}, ${backing.to})` };
+    }
+  }
+}
+
+/** The shell-layer properties for `:root` (THEME_LAYER_PROPERTY_NAMES). */
+export function resolveThemeLayerProperties(manifest: ThemeManifest): Record<ThemeLayerPropertyName, string> {
+  const resolved = resolveThemeBacking(manifest);
+  const out = {} as Record<ThemeLayerPropertyName, string>;
+  for (const region of THEME_BACKING_REGIONS) {
+    const layers = backingLayers(resolved[region]);
+    out[BACKING_PROPERTIES[region].color] = layers.color;
+    out[BACKING_PROPERTIES[region].image] = layers.image;
+  }
+  out["--rb-view-fill"] = hasBackgroundImage(manifest) ? "transparent" : manifest.tokens["--rb-canvas"];
+  return out;
+}
+
 export const themeManifestSchema = z.object({
   engineVersion: z.number().int().positive(),
   id: themeIdSchema,
@@ -462,6 +619,9 @@ export const themeManifestSchema = z.object({
   /** v2, optional: 1–5 path strings on a 24×24 viewBox, filled with
    *  `--rb-confetti-1…5` in rotation; absent = squares and circles. */
   confettiShapes: z.array(confettiShapeSchema).min(1).max(CONFETTI_SHAPE_MAX_COUNT).optional(),
+  /** v3, optional: per-region text backing; absent = the defaults in
+   *  `resolveThemeBacking`. */
+  backing: themeBackingBlockSchema.optional(),
 });
 export type ThemeManifest = z.infer<typeof themeManifestSchema>;
 

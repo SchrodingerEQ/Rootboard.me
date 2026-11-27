@@ -45,6 +45,18 @@
   --rb-image-sidebar: none;
   --rb-image-screensaver: none;
 
+  /* Text backing + view fill (manifest v3, decision 0027): the no-image
+     defaults, so a theme without images, and the first paint before the
+     engine runs, look as before. Each region applies its two layers as
+     longhands (.rb-backing-*), never the background shorthand. */
+  --rb-backing-header-color: var(--rb-surface);
+  --rb-backing-header-image: none;
+  --rb-backing-rail-color: var(--rb-surface);
+  --rb-backing-rail-image: none;
+  --rb-backing-vote-strip-color: transparent;
+  --rb-backing-vote-strip-image: none;
+  --rb-view-fill: var(--rb-canvas);
+
   /* Rootboard palette */
   --rb-canvas: #f7f6f3;
   --rb-surface: #ffffff;
@@ -233,16 +245,21 @@
     box-shadow: 0 1px calc(2px * var(--rb-shadow-softness)) var(--rb-shadow-soft);
   }
 
-  /* ===== Theme image slots (decision 0026) =====
+  /* ===== Theme image slots (decisions 0026, 0027) =====
      Each class layers its slot's image over the element's own background
      colour: cover, centre anchor, never repeated. Images are CSS url() of a
-     bundle path only (THEME-ASSETS.md). rb-image-background goes on each
-     view's root, next to its canvas fill, so a theme without images
-     renders exactly as before. */
+     bundle path only (THEME-ASSETS.md). rb-image-background goes on the
+     app shell's root, over the canvas colour, so one image covers the
+     whole viewer; each view root fills with --rb-view-fill (the canvas, or
+     transparent when that image is set). The header and sidebar slots are
+     overlays on their regions, drawn above the region's text backing. */
   .rb-image-background,
   .rb-image-header,
   .rb-image-sidebar,
-  .rb-image-screensaver {
+  .rb-image-screensaver,
+  .rb-backing-header,
+  .rb-backing-rail,
+  .rb-backing-vote-strip {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -251,6 +268,29 @@
   .rb-image-header { background-image: var(--rb-image-header); }
   .rb-image-sidebar { background-image: var(--rb-image-sidebar); }
   .rb-image-screensaver { background-image: var(--rb-image-screensaver); }
+
+  /* ===== Text backing (manifest v3, decision 0027) =====
+     Colour layer + image layer (none or a gradient), as longhands so the
+     slot image survives. On an element that is also its slot's overlay,
+     the slot image sits on top of the gradient, the colour under both. */
+  .rb-backing-header {
+    background-color: var(--rb-backing-header-color);
+    background-image: var(--rb-backing-header-image);
+  }
+  .rb-backing-header.rb-image-header {
+    background-image: var(--rb-image-header), var(--rb-backing-header-image);
+  }
+  .rb-backing-rail {
+    background-color: var(--rb-backing-rail-color);
+    background-image: var(--rb-backing-rail-image);
+  }
+  .rb-backing-rail.rb-image-sidebar {
+    background-image: var(--rb-image-sidebar), var(--rb-backing-rail-image);
+  }
+  .rb-backing-vote-strip {
+    background-color: var(--rb-backing-vote-strip-color);
+    background-image: var(--rb-backing-vote-strip-image);
+  }
 
   /* ===== Screensaver / energy-saving =====
      Brightness and the idle dim are a black overlay (#rb-dim-overlay,

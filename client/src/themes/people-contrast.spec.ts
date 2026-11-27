@@ -42,7 +42,9 @@ describe("built-in theme person palette", () => {
     describe(theme.id, () => {
       const onColorInk = theme.tokens["--rb-on-color-ink"];
       const onTintChip = theme.tokens["--rb-on-tint-chip"];
-      const surface = theme.tokens["--rb-surface"];
+      const canvas = theme.tokens["--rb-canvas"];
+      // A translucent surface is measured as it renders: over the canvas.
+      const surface = /^#[0-9a-f]{6}$/i.test(canvas) ? compositeOver(theme.tokens["--rb-surface"], canvas) : "";
 
       for (let slot = 1; slot <= PERSON_SLOT_COUNT; slot++) {
         const color = theme.tokens[personTokenName(slot, "color")];
@@ -85,7 +87,7 @@ describe("built-in theme person palette", () => {
           theme.id === "default" ? (DEFAULT_PERSON_FLOORS[colorSurfaceKey] ?? AA_LARGE) : AA_LARGE;
         test(`slot ${slot} color/surface >= ${colorSurfaceFloor}`, () => {
           expect(color, `person-${slot}-color must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
-          expect(surface, "--rb-surface must be #rrggbb for contrast checks").toMatch(/^#[0-9a-f]{6}$/i);
+          expect(canvas, "--rb-canvas must be #rrggbb for contrast checks").toMatch(/^#[0-9a-f]{6}$/i);
           expect(contrastRatio(color, surface)).toBeGreaterThanOrEqual(colorSurfaceFloor);
         });
       }

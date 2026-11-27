@@ -21,7 +21,7 @@ export function VotingStrip({ candidates, cooldownActive, cooldownSeconds, onVot
   const emptySlots = Math.max(0, VOTE_SLOTS - candidates.length);
 
   return (
-    <div style={{ padding: "18px 24px 0" }}>
+    <div className="rb-backing-vote-strip" style={{ padding: "18px 24px 0" }}>
       <div className="flex items-baseline justify-between" style={{ padding: "0 4px 10px" }}>
         <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: ".8px", textTransform: "uppercase", color: "var(--rb-muted)" }}>
           Vote on upcoming dinners
