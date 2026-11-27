@@ -76,6 +76,10 @@
              layer is none or a two-stop linear-gradient of literal
              colours. A cache without them predates v3: :root's no-image
              defaults stay. */
+          /* C is COLOR without its ^( )$ anchors, so COLOR must stay
+             wrapped in ^(...)$. GRAD matches exactly what the engine
+             writes (shared/theme-manifest.ts backingLayers), comma-space
+             separators included. */
           var C = COLOR.source.slice(1, -1);
           var FILL = new RegExp("^(transparent|" + C + ")$", "i");
           var GRAD = new RegExp("^(none|linear-gradient\\(to (bottom|right), " + C + ", " + C + "\\))$", "i");

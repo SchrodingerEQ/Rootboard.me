@@ -318,6 +318,9 @@ function CalendarApp({ host, bridge }: CalendarAppProps) {
 
   return (
     <div className="h-full flex flex-col">
+      {/* The header backing covers the whole header block (title row and
+          filters row), as the surface fill did; the header slot overlay
+          sits on the title row only (calendar-header.tsx). */}
       <div className="rb-backing-header border-b border-border shadow-sm">
         {/* Main header row */}
         <CalendarHeader

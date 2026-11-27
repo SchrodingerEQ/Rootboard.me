@@ -477,11 +477,11 @@ export function parseCssColor(value: string): RgbaColor | null {
   return null;
 }
 
-/** `color` as `rgba()` with its alpha multiplied by `alpha` (0–1). Returns
- *  `color` unchanged if it cannot be parsed. */
+/** `color` as `rgba()` with its alpha multiplied by `alpha` (0–1). Throws
+ *  on a colour outside the manifest grammar (the schema never passes one). */
 export function colorWithAlpha(color: string, alpha: number): string {
   const c = parseCssColor(color);
-  if (!c) return color;
+  if (!c) throw new Error(`colorWithAlpha: not a manifest colour: ${color}`);
   const a = Number((c.a * alpha).toFixed(3));
   return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
 }
@@ -524,13 +524,6 @@ export type ThemeBackingBlock = z.infer<typeof themeBackingBlockSchema>;
  *  background image but no `backing`: its canvas colour at 70 %. */
 export const DEFAULT_BACKING_ALPHA_OVER_IMAGE = 0.7;
 
-/** CSS custom-property stem per region: `--rb-backing-<stem>-color` and
- *  `--rb-backing-<stem>-image`. */
-const BACKING_PROPERTY_STEM: Record<ThemeBackingRegion, string> = {
-  header: "header",
-  rail: "rail",
-  voteStrip: "vote-strip",
-};
 
 /**
  * The shell-layer custom properties a theme drives, declared in
@@ -551,6 +544,18 @@ export const THEME_LAYER_PROPERTY_NAMES = [
 ] as const;
 export type ThemeLayerPropertyName = (typeof THEME_LAYER_PROPERTY_NAMES)[number];
 
+/** Each region's colour-layer and image-layer property. */
+const BACKING_PROPERTIES: Record<ThemeBackingRegion, { color: ThemeLayerPropertyName; image: ThemeLayerPropertyName }> = {
+  header: { color: "--rb-backing-header-color", image: "--rb-backing-header-image" },
+  rail: { color: "--rb-backing-rail-color", image: "--rb-backing-rail-image" },
+  voteStrip: { color: "--rb-backing-vote-strip-color", image: "--rb-backing-vote-strip-image" },
+};
+
+/** True when the theme sets a `background` image (it then paints the shell). */
+export function hasBackgroundImage(manifest: ThemeManifest): boolean {
+  return Boolean(manifest.images?.background);
+}
+
 /**
  * Each region's backing after the defaults:
  * - an explicit `backing.<region>` wins;
@@ -560,8 +565,7 @@ export type ThemeLayerPropertyName = (typeof THEME_LAYER_PROPERTY_NAMES)[number]
  *   the vote strip `none`.
  */
 export function resolveThemeBacking(manifest: ThemeManifest): Record<ThemeBackingRegion, ThemeBacking> {
-  const hasImage = Boolean(manifest.images?.background);
-  const bar: ThemeBacking = hasImage
+  const bar: ThemeBacking = hasBackgroundImage(manifest)
     ? { kind: "solid", color: colorWithAlpha(manifest.tokens["--rb-canvas"], DEFAULT_BACKING_ALPHA_OVER_IMAGE) }
     : { kind: "solid", color: manifest.tokens["--rb-surface"] };
   const defaults: Record<ThemeBackingRegion, ThemeBacking> = { header: bar, rail: bar, voteStrip: { kind: "none" } };
@@ -592,12 +596,11 @@ export function resolveThemeLayerProperties(manifest: ThemeManifest): Record<The
   const resolved = resolveThemeBacking(manifest);
   const out = {} as Record<ThemeLayerPropertyName, string>;
   for (const region of THEME_BACKING_REGIONS) {
-    const { color, image } = backingLayers(resolved[region]);
-    const stem = BACKING_PROPERTY_STEM[region];
-    out[`--rb-backing-${stem}-color` as ThemeLayerPropertyName] = color;
-    out[`--rb-backing-${stem}-image` as ThemeLayerPropertyName] = image;
+    const layers = backingLayers(resolved[region]);
+    out[BACKING_PROPERTIES[region].color] = layers.color;
+    out[BACKING_PROPERTIES[region].image] = layers.image;
   }
-  out["--rb-view-fill"] = manifest.images?.background ? "transparent" : manifest.tokens["--rb-canvas"];
+  out["--rb-view-fill"] = hasBackgroundImage(manifest) ? "transparent" : manifest.tokens["--rb-canvas"];
   return out;
 }
 

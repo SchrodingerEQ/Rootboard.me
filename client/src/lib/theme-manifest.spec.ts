@@ -361,5 +361,6 @@ describe("manifest v3: text backing (docs/decisions/0027)", () => {
     expect(parseCssColor("red")).toBeNull();
     expect(colorWithAlpha("rgba(10, 20, 30, 0.5)", 0.7)).toBe("rgba(10, 20, 30, 0.35)");
     expect(colorWithAlpha("#ffffff", 0.7)).toBe("rgba(255, 255, 255, 0.7)");
+    expect(() => colorWithAlpha("red", 0.7)).toThrow();
   });
 });

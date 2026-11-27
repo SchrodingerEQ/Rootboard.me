@@ -38,8 +38,9 @@ any subset.
 ## Text backing
 
 Three regions carry text over the picture: the view header bar (calendar,
-Chores, Dinner), the nav rail, and the chip row of Dinner's "Vote on
-upcoming dinners" strip. For each, the manifest's optional `backing`
+Chores, Dinner; on the calendar it covers the title row and the calendar
+filters row below it), the nav rail, and Dinner's "Vote on upcoming
+dinners" strip (its label and its row of slots). For each, the manifest's optional `backing`
 block (manifest v3) chooses what sits behind the text:
 
 | Kind | Manifest | Renders |

@@ -1,3 +1,5 @@
+import { parseCssColor } from "@shared/theme-manifest";
+
 // Warm family-display color helpers.
 // Calendars/events arrive with arbitrary hex colors (from Google or the
 // generated palette in calendar-filters), so we derive a soft tint and a
@@ -133,9 +135,6 @@ export function deltaE76(hexA: string, hexB: string): number {
 // --- rgba compositing (theme token resolution) -----------------------------
 
 const HEX6_RE = /^#[0-9a-f]{6}$/i;
-const HEX8_RE = /^#([0-9a-f]{6})([0-9a-f]{2})$/i;
-// Mirrors RGB_COLOR_RE in shared/theme-manifest.ts's cssColorSchema.
-const RGBA_RE = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(0|1|0?\.\d+)\s*)?\)$/i;
 
 function toHexByte(n: number): string {
   const clamped = Math.max(0, Math.min(255, Math.round(n)));
@@ -155,24 +154,13 @@ export function compositeOver(rgba: string, bgHex: string): string {
   if (HEX6_RE.test(v)) {
     return v.toLowerCase();
   }
-  if (v === "transparent") {
-    return compositeOver("rgba(0, 0, 0, 0)", bgHex);
-  }
-  const hex8 = HEX8_RE.exec(v);
-  if (hex8) {
-    const { r, g, b } = hexToRgb(hex8[1]);
-    return compositeOver(`rgba(${r}, ${g}, ${b}, ${parseInt(hex8[2], 16) / 255})`, bgHex);
-  }
-
-  const m = RGBA_RE.exec(v);
-  if (!m) {
+  // One parser for the manifest colour grammar (shared/theme-manifest.ts).
+  const fg = v === "transparent" ? { r: 0, g: 0, b: 0, a: 0 } : parseCssColor(v);
+  if (!fg) {
     throw new Error(`compositeOver: unsupported color format: ${rgba}`);
   }
 
-  const fgR = Number(m[1]);
-  const fgG = Number(m[2]);
-  const fgB = Number(m[3]);
-  const alpha = m[4] !== undefined ? Number(m[4]) : 1;
+  const { r: fgR, g: fgG, b: fgB, a: alpha } = fg;
 
   const { r: bgR, g: bgG, b: bgB } = hexToRgb(bgHex);
 
