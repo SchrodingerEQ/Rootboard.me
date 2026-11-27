@@ -48,12 +48,17 @@ describe("built-in theme person palette", () => {
 
       for (let slot = 1; slot <= PERSON_SLOT_COUNT; slot++) {
         const color = theme.tokens[personTokenName(slot, "color")];
-        const tint = theme.tokens[personTokenName(slot, "tint")];
+        const rawTint = theme.tokens[personTokenName(slot, "tint")];
         const text = theme.tokens[personTokenName(slot, "text")];
+        // A person column may be translucent so the background picture shows
+        // through (THEME-ASSETS.md "Surfaces over a background"); it is judged
+        // as it renders, composited over the canvas, like the surface guard.
+        const tint = /^#[0-9a-f]{6}$/i.test(canvas) ? compositeOver(rawTint, canvas) : rawTint;
 
-        test(`slot ${slot} tokens are #rrggbb`, () => {
+        test(`slot ${slot} tokens are #rrggbb (tint may carry alpha)`, () => {
           expect(color, `person-${slot}-color must be #rrggbb`).toMatch(/^#[0-9a-f]{6}$/i);
-          expect(tint, `person-${slot}-tint must be #rrggbb`).toMatch(/^#[0-9a-f]{6}$/i);
+          expect(rawTint, `person-${slot}-tint must be #rrggbb or rgba()`).toMatch(/^(#[0-9a-f]{6}|rgba?\([^)]*\))$/i);
+          expect(tint, `person-${slot}-tint must composite to #rrggbb`).toMatch(/^#[0-9a-f]{6}$/i);
           expect(text, `person-${slot}-text must be #rrggbb`).toMatch(/^#[0-9a-f]{6}$/i);
         });
 
@@ -61,7 +66,7 @@ describe("built-in theme person palette", () => {
         const textTintFloor = theme.id === "default" ? (DEFAULT_PERSON_FLOORS[textTintKey] ?? AA) : AA;
         test(`slot ${slot} text/tint >= ${textTintFloor}`, () => {
           expect(text, `person-${slot}-text must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
-          expect(tint, `person-${slot}-tint must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
+          expect(tint, `person-${slot}-tint must composite to #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
           expect(contrastRatio(text, tint)).toBeGreaterThanOrEqual(textTintFloor);
         });
 
@@ -69,7 +74,7 @@ describe("built-in theme person palette", () => {
         const chipFloor = theme.id === "default" ? (DEFAULT_PERSON_FLOORS[chipKey] ?? AA) : AA;
         test(`slot ${slot} text/chip-over-tint >= ${chipFloor}`, () => {
           expect(text, `person-${slot}-text must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
-          expect(tint, `person-${slot}-tint must be #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
+          expect(tint, `person-${slot}-tint must composite to #rrggbb for contrast checks`).toMatch(/^#[0-9a-f]{6}$/i);
           const chipOverTint = compositeOver(onTintChip, tint);
           expect(contrastRatio(text, chipOverTint)).toBeGreaterThanOrEqual(chipFloor);
         });

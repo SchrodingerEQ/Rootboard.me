@@ -375,7 +375,7 @@ One small release, per the project's release workflow:
   pinned literal list, not a theme token — the server hashes
   calendar/event ids to the same list, so it can't move without breaking
   that agreement.
-- Spooky and Winter Holiday.
+- Spooky. (Winter Holiday: added 2026-11-24 as a colour-only built-in theme, `client/src/themes/winter-holiday.ts`; given a full-screen background image, confetti shapes and text backing on 2026-11-27, manifest v3.)
 - ~~Shape/depth tokens (`--radius`, shadow softness).~~ Built
   2026-11-24 (manifest v2 part 1, decision 0026): an optional `shape`
   block, `radiusScale` and `shadowSoftness`.

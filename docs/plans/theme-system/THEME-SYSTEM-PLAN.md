@@ -1,6 +1,6 @@
 # Rootboard Theme System — Plan
 
-**Status:** Phase 0 complete. Phase 1 slice 1 (engine + Default + Deep Space) released in v1.6.0 — see [THEME-ENGINE-SPEC.md](THEME-ENGINE-SPEC.md). Phase 1 slice 2 (person palettes + calendar ink on dark surfaces) released in v1.6.0 — see [THEME-PEOPLE-PLAN.md](THEME-PEOPLE-PLAN.md). Fonts/assets/confetti/Spooky/Winter Holiday are later slices. Current state and remaining slices, read 2026-11-24: [STATUS-2026-11.md](STATUS-2026-11.md).
+**Status:** Phase 0 complete. Phase 1 slice 1 (engine + Default + Deep Space) released in v1.6.0 — see [THEME-ENGINE-SPEC.md](THEME-ENGINE-SPEC.md). Phase 1 slice 2 (person palettes + calendar ink on dark surfaces) released in v1.6.0 — see [THEME-PEOPLE-PLAN.md](THEME-PEOPLE-PLAN.md). Fonts/assets/confetti shapes/Spooky are later slices; Winter Holiday was added as a colour-only theme on 2026-11-24 and given its imagery, confetti shapes and text backing on 2026-11-27 (manifest v3, decision 0027). Current state and remaining slices, read 2026-11-24: [STATUS-2026-11.md](STATUS-2026-11.md).
 **Decided:** July 18, 2026
 **Scope of initial rollout:** Built-in themes only. Community themes are explicitly deferred (see "Deferred" section).
 
@@ -87,7 +87,7 @@ Replace ~150 hardcoded hex colors across ~20 component files with named CSS vari
 - Active theme stored via `useAppState` → `/api/state/theme`.
 - Built-in themes ship in a repo `/themes` folder.
 - Settings menu gets a theme picker with preview swatches.
-- Launch set: **Default** (current look, extracted into a manifest), **Spooky**, **Winter Holiday**, **Deep Space**.
+- Launch set: **Default** (current look, extracted into a manifest), **Spooky**, **Winter Holiday**, **Deep Space**. (Status 2026-11-24: Default and Deep Space shipped in v1.6.0; Winter Holiday added as a colour-only theme, see [STATUS-2026-11.md](STATUS-2026-11.md), and given its imagery, confetti shapes and text backing on 2026-11-27; Spooky not started.)
 - Design workflow: Claude Design produces each theme visually → values extracted into manifests.
 → Claude Design prompt: `claude-design-themes-prompt.md`
 

@@ -12,8 +12,8 @@ behind text over the picture is a theme choice (see "Text backing").
 
 Every slot is separate and optional. A theme may supply any subset; an
 absent slot leaves its region on the theme's flat colour token. Default
-declares no images, by design. Winter Holiday is the copyable example
-once its images land.
+declares no images, by design. Winter Holiday is the copyable example:
+`background`, `screensaver` and `logo` images and a `backing` block (`client/src/themes/winter-holiday.ts`).
 
 | Slot | Region | Shown at (px) | Supply (px) | Fit | Colour underneath |
 |---|---|---|---|---|---|

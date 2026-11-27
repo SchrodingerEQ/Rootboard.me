@@ -126,6 +126,10 @@ describe("built-in theme contrast", () => {
   test("there is a deep-space theme", () => {
     expect(themes().map((t) => t.id)).toContain("deep-space");
   });
+
+  test("there is a winter-holiday theme", () => {
+    expect(themes().map((t) => t.id)).toContain("winter-holiday");
+  });
 });
 
 describe("the guard composites translucent surfaces and backings over the canvas", () => {
