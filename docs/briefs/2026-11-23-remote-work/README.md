@@ -104,6 +104,16 @@ Settled. A brief cites them; an executing agent does not reopen them.
    separate optional asset), confetti shapes, fonts, and shape tokens.
    The founder generates the Winter Holiday images; the agent builds the
    contract and render paths. WP-06 is that brief.
+10. **One continuous background, and text backing in the contract
+    (2026-11-27).** With the three WP-06 slots filled, the seams between
+    the background, header and sidebar images read as disjointed. The
+    `background` slot now paints the whole viewer (rail and header
+    included); `header` and `sidebar` stay as optional overlays for
+    authors who want distinct art there; and the backing behind text over
+    the picture (header bar, nav rail, Dinner's vote strip) becomes a
+    theme choice: none, solid with alpha, or a gradient. The founder
+    regenerates the Winter Holiday image at full screen. WP-07 is that
+    brief; WP-06's PR C is superseded by WP-07's PR B.
 
 ## Order
 
@@ -115,6 +125,7 @@ Settled. A brief cites them; an executing agent does not reopen them.
 | **WP-04** | [Small fixes from TASKS.md, one PR each](WP-04-small-fixes.md) | nothing; merge after WP-03 PR A if both touch `INSTALLATION.md` | safe zone, each | 2–4 h |
 | **WP-05** | [Theme system: audit, Winter Holiday, confetti colours](WP-05-theme-audit-winter-holiday-confetti.md) | nothing | safe zone; the Winter Holiday PR waits for the founder's look in the dev server | 3–5 h |
 | **WP-06** | [Theme system: imagery, confetti shapes, fonts, shape tokens](WP-06-theme-imagery.md) (added 2026-11-24, decision 9) | WP-05 merged (#50, #57); its PR C waits for the founder's image files | safe zone for PR A and PR B; PR C lands on the held #55 and waits for the founder's look | 7–11 h |
+| **WP-07** | [Theme system: one continuous background, text backing](WP-07-continuous-background-text-backing.md) (added 2026-11-27, decision 10) | WP-06 PR A and PR B merged (#63, #64); its PR B waits for the founder's full-screen image | safe zone for PR A; PR B lands on the held #55 and waits for the founder's look | 4–7 h |
 
 WP-01 to WP-05 are independent and may run in parallel sessions; WP-06
 follows WP-05 (its PRs #50 and #57 are in `main`). Several edit
@@ -191,9 +202,15 @@ Things only the founder does. Nothing here is an agent's.
 - [x] Look at Winter Holiday in `npm run dev` on the laptop (Settings →
   Theme) before WP-05's second PR merges; say yes, or what to change.
   (2026-11-24: looked; held until it carries imagery, decision 9.)
-- [ ] Generate the Winter Holiday images with an image generator using
+- [x] Generate the Winter Holiday images with an image generator using
   the slot table in WP-06 (main background, header banner, sidebar,
   screensaver, logo) and hand them to the WP-06 session for PR C.
+  (2026-11-27: three made and tried; the seams between them led to
+  decision 10.)
+- [ ] Generate **one** full-screen Winter Holiday image (16:9, shown at
+  1920 × 1080, calm top band and left column for the title and nav
+  icons) per WP-07, plus the screensaver and logo, and hand them to the
+  WP-07 session for its PR B.
 - [ ] Pick opaque or translucent surfaces from WP-06's two screenshot
   sets, then look at #55 again with the imagery in `npm run dev`.
 - [ ] Read WP-04 (e)'s `bufferutil` removal PR, the proposal the TASKS.md
@@ -255,3 +272,4 @@ fresh clone of `main`.
 - **WP-04:** "Execute `docs/briefs/2026-11-23-remote-work/WP-04-small-fixes.md` against `main`. Read its README first."
 - **WP-05:** "Execute `docs/briefs/2026-11-23-remote-work/WP-05-theme-audit-winter-holiday-confetti.md` against `main`. Read its README first."
 - **WP-06:** "Execute `docs/briefs/2026-11-23-remote-work/WP-06-theme-imagery.md` against `main`. Read its README first."
+- **WP-07:** "Execute `docs/briefs/2026-11-23-remote-work/WP-07-continuous-background-text-backing.md` against `main`. Read its README first."
