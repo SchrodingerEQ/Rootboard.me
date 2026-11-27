@@ -1,11 +1,19 @@
 import type { ThemeManifest } from "@shared/theme-manifest";
+import background from "./winter-holiday/background.jpg";
 
 /**
- * WINTER HOLIDAY — a cozy, non-denominational winter look, colours only.
- * Deep evergreen canvas, warm evergreen surfaces, soft snow-white ink, a
- * cranberry accent and a gold badge. Original palette: no holiday brand
- * colours or trademarked motifs. Same file shape as default.ts and
- * deep-space.ts so the three diff cleanly.
+ * WINTER HOLIDAY — a cozy, non-denominational winter look. Deep evergreen
+ * canvas, warm evergreen surfaces, soft snow-white ink, a cranberry accent
+ * and a gold badge, over one full-screen picture of frosted boughs, berries
+ * and warm lights (the founder's art, 2026-11-27). Original palette and
+ * art: no holiday brand colours or trademarked motifs. Same file shape as
+ * default.ts and deep-space.ts so the three diff cleanly.
+ *
+ * Manifest v3 (THEME-ASSETS.md): one `background` image under the whole
+ * viewer; no header or sidebar overlay, so the picture runs continuously
+ * under the title bars and the rail. The text backing fades the canvas
+ * colour from 80 % to clear behind the header bars (downward) and the rail
+ * (rightward), and puts the canvas at 60 % behind Dinner's vote strip.
  *
  * Contrast notes: like Deep Space this is a dark theme, so
  * `--rb-on-color-ink` stays light and every coloured fill it sits on
@@ -14,9 +22,26 @@ import type { ThemeManifest } from "@shared/theme-manifest";
  * confetti and the logo glow.
  */
 export const winterHolidayTheme: ThemeManifest = {
-  engineVersion: 1,
+  engineVersion: 3,
   id: "winter-holiday",
   name: "Winter Holiday",
+  // ===== Images (manifest v2/v3) =====
+  // The whole viewer, 1920 × 1080, cover. Screensaver and logo stay the app's.
+  images: { background },
+  // ===== Confetti shapes (manifest v2) =====
+  // 24 × 24 viewBox: a six-point snowflake, a four-point sparkle, a round berry.
+  confettiShapes: [
+    "M12 2 L15 7.5 L21 7.5 L18 12 L21 16.5 L15 16.5 L12 22 L9 16.5 L3 16.5 L6 12 L3 7.5 L9 7.5 Z",
+    "M12 2 L14 10 L22 12 L14 14 L12 22 L10 14 L2 12 L10 10 Z",
+    "M12 4 A8 8 0 1 1 11.99 4 Z",
+  ],
+  // ===== Text backing (manifest v3) =====
+  // Canvas colour (#0b1813) at the alphas below.
+  backing: {
+    header: { kind: "gradient", from: "rgba(11, 24, 19, 0.8)", to: "rgba(11, 24, 19, 0)", direction: "down" },
+    rail: { kind: "gradient", from: "rgba(11, 24, 19, 0.8)", to: "rgba(11, 24, 19, 0)", direction: "right" },
+    voteStrip: { kind: "solid", color: "rgba(11, 24, 19, 0.6)" },
+  },
   tokens: {
     // ===== Core palette =====
     "--rb-canvas": "#0b1813",

@@ -1080,7 +1080,11 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   `deep-space`, `winter-holiday`), validated at load by
   `lib/theme-engine.ts`; a failing one is listed under Settings →
   "Theme Errors" instead of crashing. Winter Holiday (2026-11) is a
-  colour-only dark theme: evergreen canvas, cranberry accent, gold badge.
+  dark theme (evergreen canvas, cranberry accent, gold badge) at manifest
+  v3: one full-screen background image (`client/src/themes/winter-holiday/
+  background.jpg`), snowflake, sparkle and berry confetti shapes, and a
+  text backing that fades the canvas colour from 80 % to clear behind the
+  header bars and the rail, with the canvas at 60 % behind the vote strip.
   `default.ts` is the copyable authoring reference.
 - **Persistence:** `data/config/dashboard.json` `theme` (optional,
   lenient — a malformed value becomes undefined, never invalidating the
