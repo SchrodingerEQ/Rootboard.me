@@ -1,5 +1,6 @@
 import { defaultTheme } from "./default";
 import { deepSpaceTheme } from "./deep-space";
+import { spookyTheme } from "./spooky";
 import { winterHolidayTheme } from "./winter-holiday";
 
 /**
@@ -8,4 +9,4 @@ import { winterHolidayTheme } from "./winter-holiday";
  * malformed module is reported in the settings menu ("Theme Errors")
  * instead of throwing at import time and taking the kiosk down.
  */
-export const BUILTIN_THEMES: readonly unknown[] = [defaultTheme, deepSpaceTheme, winterHolidayTheme];
+export const BUILTIN_THEMES: readonly unknown[] = [defaultTheme, deepSpaceTheme, winterHolidayTheme, spookyTheme];
