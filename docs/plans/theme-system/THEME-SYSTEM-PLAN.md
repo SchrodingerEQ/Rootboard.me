@@ -93,6 +93,7 @@ Replace ~150 hardcoded hex colors across ~20 component files with named CSS vari
 → Claude Design prompt: `claude-design-themes-prompt.md`
 
 ### Phase 2 — DEFERRED: local community install
+> **2026-11-28:** still deferred as a decision, but now the next slice on the theme line. Everything it builds on is in `main` (manifest v3 with the backfill rule, four built-ins, `THEME-ASSETS.md`, the widget folder-drop precedent). The brief that would execute it, together with the authoring guide, is `docs/briefs/2026-11-23-remote-work/WP-08-theme-authoring-guide-community-install.md`; it proposes folder-drop first and leaves zip upload and paste-a-URL as founder questions.
 Zip upload via the setup page, or paste-a-GitHub-URL (reuse download/extract pattern from `server/services/updateService.ts`). Server-side validation: schema, size caps, contrast warnings, SVG sanitization.
 **User guide requirement (founder, 2026-09-22):** the theme authoring guide must include Default's complete token map and, once later slices add them, its assets (fonts, logo, screensaver image, confetti shapes) as copyable starting material, so an author can port any Default element into their theme verbatim. `client/src/themes/default.ts` is written as that reference (see THEME-ENGINE-SPEC.md §3).
 **Implementation landmine noted for later:** installed themes must live in a directory on the auto-updater's preserve list (`updateService.ts` keeps service-account keys etc. across updates) — otherwise every app update silently deletes installed themes.
