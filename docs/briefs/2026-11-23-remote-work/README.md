@@ -21,6 +21,38 @@ brief says so.
 Written 2026-11-23 with the founder, from a read of `main` at `0640de6`
 (PR 45), not from memory.
 
+## Resume point, 2026-11-28
+
+For the next session, read this block, then the brief it names.
+
+**Merged this week, all on `main`:** WP-01 (#54, plus CrucibleWebsite's
+draft), WP-02 (#51), WP-03 PR A (#49) and PR B (#60), WP-04 (#48 and
+its one-PR-each siblings), WP-05 (#50, #57), WP-06 PR A (#63) and PR B
+(#64), WP-07 PR A (#67), Winter Holiday with the founder's imagery and
+20 % see-through surfaces (#55), Spooky the same way (#70), and the docs
+follow-ups (#65, #66, #68, #69). The `pr-assets/*` screenshot branches
+and the session worktrees are deleted.
+
+**Not released.** The kiosk is on v1.8.0. Everything above ships in
+v1.9.0, which the founder cuts at the kiosk (decision 1); the kiosk
+checks for it are in the founder checklist below.
+
+**Next brief:** [WP-08, the theme authoring guide and community
+install](WP-08-theme-authoring-guide-community-install.md), written
+2026-11-28. PR A (the guide) runs unattended; PR B (folder-drop install)
+waits on four founder answers that PR A's report asks for. Kickoff:
+
+> Execute `docs/briefs/2026-11-23-remote-work/WP-08-theme-authoring-guide-community-install.md` against `main`. Read its README first.
+
+**Open founder items, remote:** the four WP-08 questions (after PR A);
+CrucibleWebsite's feedback change-history row; awesome-rootboard's
+pending PR; the `bufferutil` removal proposal from WP-04 (e). The two
+orphaned `node` dev-server processes on the laptop (ports 5000 and 5001)
+are not project state; end them before the next `npm run dev`.
+
+**Current theme state:** `docs/plans/theme-system/STATUS-2026-11.md`,
+"Where things stand, 2026-11-28".
+
 Facts verified on 2026-11-23:
 
 | Fact | Value |
@@ -76,8 +108,9 @@ Settled. A brief cites them; an executing agent does not reopen them.
    stale docs are corrected.** Fonts, imagery, shape tokens, Spooky, the
    authoring guide and community install stay later slices.
    *(2026-11-24: the colour-only scope and the deferral of fonts, imagery
-   and shape tokens are superseded by decision 9. Spooky, the authoring
-   guide and community install still wait.)*
+   and shape tokens are superseded by decision 9. 2026-11-28: Spooky
+   shipped to `main` as #70; the authoring guide and community install
+   are WP-08.)*
 5. **Beta hardware: one unit built like the reference kiosk (Pi 5),
    one microSD.** The reference kiosk is what the install docs were
    written from. Brief 09's two-card rule (one ships, one stays as a
@@ -126,6 +159,7 @@ Settled. A brief cites them; an executing agent does not reopen them.
 | **WP-05** | [Theme system: audit, Winter Holiday, confetti colours](WP-05-theme-audit-winter-holiday-confetti.md) | nothing | safe zone; the Winter Holiday PR waits for the founder's look in the dev server | 3–5 h |
 | **WP-06** | [Theme system: imagery, confetti shapes, fonts, shape tokens](WP-06-theme-imagery.md) (added 2026-11-24, decision 9) | WP-05 merged (#50, #57); its PR C waits for the founder's image files | safe zone for PR A and PR B; PR C lands on the held #55 and waits for the founder's look | 7–11 h |
 | **WP-07** | [Theme system: one continuous background, text backing](WP-07-continuous-background-text-backing.md) (added 2026-11-27, decision 10) | WP-06 PR A and PR B merged (#63, #64); its PR B waits for the founder's full-screen image | safe zone for PR A; PR B lands on the held #55 and waits for the founder's look | 4–7 h |
+| **WP-08** | [Theme system: the authoring guide, and community install (plan Phase 2)](WP-08-theme-authoring-guide-community-install.md) (added 2026-11-28) | WP-05 to WP-07 and #55, #70 merged (all are); PR B waits on four founder answers asked in PR A's report | safe zone for PR A (docs); safe zone expected for PR B, the review decides | PR A 2–3 h; PR B 4–6 h |
 
 WP-01 to WP-05 are independent and may run in parallel sessions; WP-06
 follows WP-05 (its PRs #50 and #57 are in `main`). Several edit
@@ -148,6 +182,8 @@ calls a paid service.
 | WP-03 | `docs/plans/node-runtime-upgrade/BRIEF.md` | Answers its four founder decisions (section 4) and runs steps 2 and 5; step 3 is dropped by decision 3 above; steps 1, 4 and 6 are founder checklist items. |
 | WP-04 | `TASKS.md` open items; brief 05 and brief 06 follow-ups | Small items that would otherwise ride along with a Pi-dependent brief. |
 | WP-05 | `docs/plans/theme-system/THEME-ENGINE-SPEC.md` ("Out of scope: later slices"), `THEME-SYSTEM-PLAN.md` | Two of the later slices (one more built-in theme; confetti colours), after an audit that records what the engine does today. |
+| WP-06, WP-07 | `THEME-ENGINE-SPEC.md` later slices, `THEME-SYSTEM-PLAN.md` launch set | The rest of the launch set (fonts, shape, images, confetti shapes; then the continuous background and text backing), as manifest v2 and v3 (decisions 0026, 0027). |
+| WP-08 | `THEME-SYSTEM-PLAN.md` Phase 2 and the 2026-09-22 authoring-guide requirement (TASKS.md) | The last two theme items: the guide, and folder-drop install after the widget precedent (decision 0006). Zip upload and paste-a-URL stay founder questions. |
 
 ## Standing rules for every brief here
 
@@ -207,12 +243,18 @@ Things only the founder does. Nothing here is an agent's.
   screensaver, logo) and hand them to the WP-06 session for PR C.
   (2026-11-27: three made and tried; the seams between them led to
   decision 10.)
-- [ ] Generate **one** full-screen Winter Holiday image (16:9, shown at
+- [x] Generate **one** full-screen Winter Holiday image (16:9, shown at
   1920 × 1080, calm top band and left column for the title and nav
   icons) per WP-07, plus the screensaver and logo, and hand them to the
-  WP-07 session for its PR B.
-- [ ] Pick opaque or translucent surfaces from WP-06's two screenshot
+  WP-07 session for its PR B. (2026-11-27: done; on #55.)
+- [x] Pick opaque or translucent surfaces from WP-06's two screenshot
   sets, then look at #55 again with the imagery in `npm run dev`.
+  (2026-11-27: 20 % see-through, after live renders at 10, 15, 20 and
+  30 %; #55 merged that day. 2026-11-28: Spooky built the same way from
+  three new images and merged as #70.)
+- [ ] Answer WP-08's four questions (install path, where the guide
+  lives, a `rootboard-theme-template` repo, the dropped-folder format)
+  once its PR A report asks them.
 - [ ] Read WP-04 (e)'s `bufferutil` removal PR, the proposal the TASKS.md
   line asked for, and merge it or decline.
 
@@ -240,10 +282,12 @@ Things only the founder does. Nothing here is an agent's.
   router-off boot), #38 (sign-in, restart, refresh, revoke), brief 01's
   weather location, and now WP-01 (send one `TEST`-prefixed feedback
   item from the kiosk and confirm the ticket code), WP-02 (the wizard's
-  Google step on hardware), WP-04 (c) (the disk row), WP-05 and WP-06
-  (Winter Holiday with imagery on the 21.5-inch screen; shaped confetti
-  in the theme's colours stays smooth; CPU and memory in Diagnostics
-  before and after a theme switch; `window.devicePixelRatio` in the
+  Google step on hardware), WP-04 (c) (the disk row), WP-05 to WP-07 and #70
+  (Winter Holiday and Spooky with imagery on the 21.5-inch screen, the
+  faded header and rail and the 20 % see-through cards readable from
+  across the room; each theme's screensaver under the power-saving dim;
+  shaped confetti in the theme's colours stays smooth; CPU and memory in
+  Diagnostics before and after a theme switch; `window.devicePixelRatio` in the
   kiosk Firefox is 1, which WP-06's image supply sizes assume).
 - [ ] Brief 00 §3.1 device-flow test (optional, 15 minutes) and the §3.2
   verification recording, which needs the sign-in on screen.
