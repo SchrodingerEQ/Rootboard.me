@@ -1077,7 +1077,7 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   an `<svg><path fill=…>` built once per burst, coloured from
   `--rb-confetti-1…5` in rotation; the motion is unchanged.
 - **Built-ins** are bundled modules under `client/src/themes/` (`default`,
-  `deep-space`, `winter-holiday`), validated at load by
+  `deep-space`, `winter-holiday`, `spooky`), validated at load by
   `lib/theme-engine.ts`; a failing one is listed under Settings →
   "Theme Errors" instead of crashing. Winter Holiday (2026-11) is a
   dark theme (evergreen canvas, cranberry accent, gold badge) at manifest
@@ -1089,7 +1089,12 @@ Design: `docs/plans/theme-system/THEME-ENGINE-SPEC.md`; decision 0009.
   `rgba()` at 0.8 alpha (founder choice 2026-11-27 after comparing 10,
   15, 20 and 30 %), so cards, cells, panels and the Chores columns let
   20 % of the picture through; both contrast guards composite such
-  colours over the canvas before measuring.
+  colours over the canvas before measuring. Spooky (2026-11-28) is the
+  same shape at manifest v3: a plum canvas, a pumpkin accent and an amber
+  badge over a full-screen moonlit-hills painting, a pumpkin-patch
+  screensaver and a jack-o'-lantern logo (`client/src/themes/spooky/`),
+  bat, pumpkin, ghost, crescent-moon and star confetti shapes, the same
+  backing alphas and the same 0.8-alpha surfaces and tints.
   `default.ts` is the copyable authoring reference.
 - **Persistence:** `data/config/dashboard.json` `theme` (optional,
   lenient — a malformed value becomes undefined, never invalidating the

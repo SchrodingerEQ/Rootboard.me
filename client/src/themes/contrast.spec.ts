@@ -130,6 +130,10 @@ describe("built-in theme contrast", () => {
   test("there is a winter-holiday theme", () => {
     expect(themes().map((t) => t.id)).toContain("winter-holiday");
   });
+
+  test("there is a spooky theme", () => {
+    expect(themes().map((t) => t.id)).toContain("spooky");
+  });
 });
 
 describe("the guard composites translucent surfaces and backings over the canvas", () => {
